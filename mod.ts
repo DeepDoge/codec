@@ -269,14 +269,18 @@ export class Option<T extends Codec<any>> extends Codec<Option.Infer<T>> {
 
 	public encode(value: Option.Infer<T>): Uint8Array {
 		if (value === null) {
-			return new Uint8Array([]);
+			return new Uint8Array([0]);
 		} else {
-			return this.codec.encode(value);
+			const encoded = this.codec.encode(value);
+			const result = new Uint8Array(1 + encoded.length);
+			result[0] = 1;
+			result.set(encoded, 1);
+			return result;
 		}
 	}
 
 	public decode(data: Uint8Array): Option.Infer<T> {
-		if (data.length === 0) {
+		if (data[0] === 0) {
 			return null;
 		} else {
 			return this.codec.decode(data.subarray(1));

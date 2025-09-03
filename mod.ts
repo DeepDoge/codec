@@ -255,27 +255,28 @@ export class Bytes extends Codec<Uint8Array> {
 
 export const bytes = new Bytes();
 
-export class Option<T> extends Codec<T | null> {
-	private readonly codec: Codec<T>;
-	public readonly stride: number | null;
+export namespace Option {
+	export type Infer<T extends Codec<any>> = Codec.Infer<T> | null;
+}
+export class Option<T extends Codec<any>> extends Codec<Option.Infer<T>> {
+	private readonly codec: T;
+	public readonly stride = null;
 
-	constructor(codec: Codec<T>) {
+	constructor(codec: T) {
 		super();
 		this.codec = codec;
-		this.stride = codec.stride === null ? null : codec.stride + 1;
 	}
 
-	public encode(value: T | null): Uint8Array {
+	public encode(value: Option.Infer<T>): Uint8Array {
 		if (value === null) {
-			return new Uint8Array([0]);
+			return new Uint8Array([]);
 		} else {
-			const encoded = this.codec.encode(value);
-			return new Uint8Array([1, ...encoded]);
+			return this.codec.encode(value);
 		}
 	}
 
-	public decode(data: Uint8Array): T | null {
-		if (data[0] === 0) {
+	public decode(data: Uint8Array): Option.Infer<T> {
+		if (data.length === 0) {
 			return null;
 		} else {
 			return this.codec.decode(data.subarray(1));
@@ -379,16 +380,19 @@ export class Struct<T extends Record<string, Codec<any>>> extends Codec<Struct.I
 	}
 }
 
-export class Vector<T> extends Codec<T[]> {
+export namespace Vector {
+	export type Infer<T extends Codec<any>> = Codec.Infer<T>[];
+}
+export class Vector<T extends Codec<any>> extends Codec<Vector.Infer<T>> {
 	public readonly stride = null;
-	public readonly codec: Codec<T>;
+	public readonly codec: T;
 
-	constructor(codec: Codec<T>) {
+	constructor(codec: T) {
 		super();
 		this.codec = codec;
 	}
 
-	public encode(value: T[]): Uint8Array {
+	public encode(value: Vector.Infer<T>[]): Uint8Array {
 		if (this.codec.stride !== null) {
 			const parts = new Uint8Array(value.length * this.codec.stride);
 			for (let i = 0; i < value.length; i++) {
@@ -415,8 +419,8 @@ export class Vector<T> extends Codec<T[]> {
 		}
 	}
 
-	public decode(data: Uint8Array): T[] {
-		const result: T[] = [];
+	public decode(data: Uint8Array): Vector.Infer<T> {
+		const result: Vector.Infer<T> = [];
 		let offset = 0;
 		if (this.codec.stride !== null) {
 			while (offset + this.codec.stride <= data.length) {

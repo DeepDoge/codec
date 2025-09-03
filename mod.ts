@@ -363,7 +363,7 @@ export class Struct<T extends Record<string, Codec<any>>> extends Codec<Struct.I
 	constructor(shape: T) {
 		super();
 		this.shape = shape;
-		this.keys = Object.keys(shape).sort() as (keyof T)[];
+		this.keys = Object.keys(shape) as (keyof T)[]; // definition order
 		this.tuple = new Tuple(this.keys.map((key) => shape[key]));
 		this.stride = this.tuple.stride;
 	}

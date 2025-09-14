@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-namespace no-explicit-any
 // internal number-based varint (for lengths, etc.)
 function encodeVarInt(value: number): Uint8Array {
 	const parts = [];
@@ -44,12 +45,16 @@ export class I8 extends Codec<number> {
 	}
 
 	public decode(data: Uint8Array): number {
-		const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		const view = new DataView(
+			data.buffer,
+			data.byteOffset,
+			data.byteLength,
+		);
 		return view.getInt8(0);
 	}
 }
 
-export const i8 = new I8();
+export const i8: I8 = new I8();
 
 export class U8 extends Codec<number> {
 	public readonly stride = 1;
@@ -62,12 +67,16 @@ export class U8 extends Codec<number> {
 	}
 
 	public decode(data: Uint8Array): number {
-		const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		const view = new DataView(
+			data.buffer,
+			data.byteOffset,
+			data.byteLength,
+		);
 		return view.getUint8(0);
 	}
 }
 
-export const u8 = new U8();
+export const u8: U8 = new U8();
 
 export class I16 extends Codec<number> {
 	public readonly stride = 2;
@@ -80,12 +89,16 @@ export class I16 extends Codec<number> {
 	}
 
 	public decode(data: Uint8Array): number {
-		const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		const view = new DataView(
+			data.buffer,
+			data.byteOffset,
+			data.byteLength,
+		);
 		return view.getInt16(0, true);
 	}
 }
 
-export const i16 = new I16();
+export const i16: I16 = new I16();
 
 export class U16 extends Codec<number> {
 	public readonly stride = 2;
@@ -98,12 +111,16 @@ export class U16 extends Codec<number> {
 	}
 
 	public decode(data: Uint8Array): number {
-		const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		const view = new DataView(
+			data.buffer,
+			data.byteOffset,
+			data.byteLength,
+		);
 		return view.getUint16(0, true);
 	}
 }
 
-export const u16 = new U16();
+export const u16: U16 = new U16();
 
 export class I32 extends Codec<number> {
 	public readonly stride = 4;
@@ -116,12 +133,16 @@ export class I32 extends Codec<number> {
 	}
 
 	public decode(data: Uint8Array): number {
-		const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		const view = new DataView(
+			data.buffer,
+			data.byteOffset,
+			data.byteLength,
+		);
 		return view.getInt32(0, true);
 	}
 }
 
-export const i32 = new I32();
+export const i32: I32 = new I32();
 
 export class U32 extends Codec<number> {
 	public readonly stride = 4;
@@ -134,12 +155,16 @@ export class U32 extends Codec<number> {
 	}
 
 	public decode(data: Uint8Array): number {
-		const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		const view = new DataView(
+			data.buffer,
+			data.byteOffset,
+			data.byteLength,
+		);
 		return view.getUint32(0, true);
 	}
 }
 
-export const u32 = new U32();
+export const u32: U32 = new U32();
 
 export class I64 extends Codec<bigint> {
 	public readonly stride = 8;
@@ -152,12 +177,16 @@ export class I64 extends Codec<bigint> {
 	}
 
 	public decode(data: Uint8Array): bigint {
-		const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		const view = new DataView(
+			data.buffer,
+			data.byteOffset,
+			data.byteLength,
+		);
 		return view.getBigInt64(0, true);
 	}
 }
 
-export const i64 = new I64();
+export const i64: I64 = new I64();
 
 export class U64 extends Codec<bigint> {
 	public readonly stride = 8;
@@ -170,12 +199,16 @@ export class U64 extends Codec<bigint> {
 	}
 
 	public decode(data: Uint8Array): bigint {
-		const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		const view = new DataView(
+			data.buffer,
+			data.byteOffset,
+			data.byteLength,
+		);
 		return view.getBigUint64(0, true);
 	}
 }
 
-export const u64 = new U64();
+export const u64: U64 = new U64();
 
 export class F32 extends Codec<number> {
 	public readonly stride = 4;
@@ -188,12 +221,16 @@ export class F32 extends Codec<number> {
 	}
 
 	public decode(data: Uint8Array): number {
-		const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		const view = new DataView(
+			data.buffer,
+			data.byteOffset,
+			data.byteLength,
+		);
 		return view.getFloat32(0, true);
 	}
 }
 
-export const f32 = new F32();
+export const f32: F32 = new F32();
 
 export class F64 extends Codec<number> {
 	public readonly stride = 8;
@@ -206,12 +243,16 @@ export class F64 extends Codec<number> {
 	}
 
 	public decode(data: Uint8Array): number {
-		const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		const view = new DataView(
+			data.buffer,
+			data.byteOffset,
+			data.byteLength,
+		);
 		return view.getFloat64(0, true);
 	}
 }
 
-export const f64 = new F64();
+export const f64: F64 = new F64();
 
 export class Bool extends Codec<boolean> {
 	public readonly stride = 1;
@@ -225,7 +266,7 @@ export class Bool extends Codec<boolean> {
 	}
 }
 
-export const bool = new Bool();
+export const bool: Bool = new Bool();
 
 export class Str extends Codec<string> {
 	public readonly stride = null;
@@ -241,7 +282,7 @@ export class Str extends Codec<string> {
 	}
 }
 
-export const str = new Str();
+export const str: Str = new Str();
 
 export class Bytes extends Codec<Uint8Array> {
 	public readonly stride = null;
@@ -253,7 +294,7 @@ export class Bytes extends Codec<Uint8Array> {
 	}
 }
 
-export const bytes = new Bytes();
+export const bytes: Bytes = new Bytes();
 
 export namespace Option {
 	export type Infer<T extends Codec<any>> = Codec.Infer<T> | null;
@@ -289,9 +330,12 @@ export class Option<T extends Codec<any>> extends Codec<Option.Infer<T>> {
 }
 
 export namespace Tuple {
-	export type Infer<T extends readonly Codec<any>[]> = { [K in keyof T]: Codec.Infer<T[K]> };
+	export type Infer<T extends readonly Codec<any>[]> = {
+		[K in keyof T]: Codec.Infer<T[K]>;
+	};
 }
-export class Tuple<T extends readonly Codec<any>[]> extends Codec<Tuple.Infer<T>> {
+export class Tuple<T extends readonly Codec<any>[]>
+	extends Codec<Tuple.Infer<T>> {
 	public readonly codecs: T;
 	public readonly stride: number | null;
 
@@ -321,7 +365,10 @@ export class Tuple<T extends readonly Codec<any>[]> extends Codec<Tuple.Infer<T>
 			parts.push(part);
 		}
 
-		const combinedLength = parts.reduce((sum, part) => sum + part.length, 0);
+		const combinedLength = parts.reduce(
+			(sum, part) => sum + part.length,
+			0,
+		);
 		const combined = new Uint8Array(combinedLength);
 		let offset = 0;
 		for (const part of parts) {
@@ -338,7 +385,9 @@ export class Tuple<T extends readonly Codec<any>[]> extends Codec<Tuple.Infer<T>
 			const codec = this.codecs[i]!;
 			let length = codec.stride;
 			if (length === null) {
-				const { value, bytesRead } = decodeVarInt(data.subarray(offset));
+				const { value, bytesRead } = decodeVarInt(
+					data.subarray(offset),
+				);
 				length = value;
 				offset += bytesRead;
 			}
@@ -351,9 +400,12 @@ export class Tuple<T extends readonly Codec<any>[]> extends Codec<Tuple.Infer<T>
 }
 
 export namespace Struct {
-	export type Infer<T extends Record<string, Codec<any>>> = { [K in keyof T]: Codec.Infer<T[K]> };
+	export type Infer<T extends Record<string, Codec<any>>> = {
+		[K in keyof T]: Codec.Infer<T[K]>;
+	};
 }
-export class Struct<T extends Record<string, Codec<any>>> extends Codec<Struct.Infer<T>> {
+export class Struct<T extends Record<string, Codec<any>>>
+	extends Codec<Struct.Infer<T>> {
 	public readonly stride: number | null;
 	public readonly shape: T;
 
@@ -412,7 +464,10 @@ export class Vector<T extends Codec<any>> extends Codec<Vector.Infer<T>> {
 				parts.push(part);
 			}
 
-			const combinedLength = parts.reduce((sum, part) => sum + part.length, 0);
+			const combinedLength = parts.reduce(
+				(sum, part) => sum + part.length,
+				0,
+			);
 			const combined = new Uint8Array(combinedLength);
 			let offset = 0;
 			for (const part of parts) {
@@ -434,7 +489,9 @@ export class Vector<T extends Codec<any>> extends Codec<Vector.Infer<T>> {
 			}
 		} else {
 			while (offset < data.length) {
-				const { value: length, bytesRead } = decodeVarInt(data.subarray(offset));
+				const { value: length, bytesRead } = decodeVarInt(
+					data.subarray(offset),
+				);
 				offset += bytesRead;
 				const part = data.subarray(offset, offset + length);
 				result.push(this.codec.decode(part));
@@ -450,7 +507,8 @@ export namespace Enum {
 		[K in keyof T]: { type: K; value: Codec.Infer<T[K]> };
 	}[keyof T];
 }
-export class Enum<T extends Record<string, Codec<any>>> extends Codec<Enum.Infer<T>> {
+export class Enum<T extends Record<string, Codec<any>>>
+	extends Codec<Enum.Infer<T>> {
 	public readonly stride = null;
 	public readonly variants: T;
 	private readonly keys: (keyof T)[];
@@ -483,7 +541,8 @@ export class Enum<T extends Record<string, Codec<any>>> extends Codec<Enum.Infer
 	}
 }
 
-export class Mapping<K extends Codec<any>, V extends Codec<any>> extends Codec<Map<Codec.Infer<K>, Codec.Infer<V>>> {
+export class Mapping<K extends Codec<any>, V extends Codec<any>>
+	extends Codec<Map<Codec.Infer<K>, Codec.Infer<V>>> {
 	public readonly stride = null;
 	#entriesCodec: Vector<Tuple<[K, V]>>;
 

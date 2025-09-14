@@ -29,7 +29,7 @@ export namespace Codec {
 }
 
 export abstract class Codec<T> {
-	public abstract readonly stride: number | null;
+	public abstract readonly stride: number;
 	public abstract encode(value: T): Uint8Array;
 	public abstract decode(data: Uint8Array): T;
 }
@@ -269,7 +269,7 @@ export class Bool extends Codec<boolean> {
 export const bool: Bool = new Bool();
 
 export class Str extends Codec<string> {
-	public readonly stride = null;
+	public readonly stride = -1;
 	private readonly encoder = new TextEncoder();
 	private readonly decoder = new TextDecoder();
 
@@ -285,7 +285,7 @@ export class Str extends Codec<string> {
 export const str: Str = new Str();
 
 export class Bytes extends Codec<Uint8Array> {
-	public readonly stride = null;
+	public readonly stride = -1;
 	public encode(value: Uint8Array): Uint8Array {
 		return value;
 	}
@@ -301,7 +301,7 @@ export namespace Option {
 }
 export class Option<T extends Codec<any>> extends Codec<Option.Infer<T>> {
 	private readonly codec: T;
-	public readonly stride = null;
+	public readonly stride = -1;
 
 	constructor(codec: T) {
 		super();
@@ -337,15 +337,15 @@ export namespace Tuple {
 export class Tuple<T extends readonly Codec<any>[]>
 	extends Codec<Tuple.Infer<T>> {
 	public readonly codecs: T;
-	public readonly stride: number | null;
+	public readonly stride: number;
 
 	constructor(codecs: T) {
 		super();
 		this.codecs = codecs;
 		this.stride = 0;
 		for (const codec of codecs) {
-			if (codec.stride === null) {
-				this.stride = null;
+			if (codec.stride < 0) {
+				this.stride = -1;
 				break;
 			}
 			this.stride += codec.stride;
@@ -359,7 +359,7 @@ export class Tuple<T extends readonly Codec<any>[]>
 		for (let i = 0; i < this.codecs.length; i++) {
 			const codec = this.codecs[i]!;
 			const part = codec.encode(value[i]!);
-			if (codec.stride === null) {
+			if (codec.stride < 0) {
 				parts.push(encodeVarInt(part.length));
 			}
 			parts.push(part);
@@ -406,7 +406,7 @@ export namespace Struct {
 }
 export class Struct<T extends Record<string, Codec<any>>>
 	extends Codec<Struct.Infer<T>> {
-	public readonly stride: number | null;
+	public readonly stride: number;
 	public readonly shape: T;
 
 	private readonly keys: (keyof T)[];
@@ -440,7 +440,7 @@ export namespace Vector {
 	export type Infer<T extends Codec<any>> = Codec.Infer<T>[];
 }
 export class Vector<T extends Codec<any>> extends Codec<Vector.Infer<T>> {
-	public readonly stride = null;
+	public readonly stride = -1;
 	public readonly codec: T;
 
 	constructor(codec: T) {
@@ -449,7 +449,7 @@ export class Vector<T extends Codec<any>> extends Codec<Vector.Infer<T>> {
 	}
 
 	public encode(value: Vector.Infer<T>[]): Uint8Array {
-		if (this.codec.stride !== null) {
+		if (this.codec.stride >= 0) {
 			const parts = new Uint8Array(value.length * this.codec.stride);
 			for (let i = 0; i < value.length; i++) {
 				const part = this.codec.encode(value[i]!);
@@ -481,7 +481,7 @@ export class Vector<T extends Codec<any>> extends Codec<Vector.Infer<T>> {
 	public decode(data: Uint8Array): Vector.Infer<T> {
 		const result: Vector.Infer<T> = [];
 		let offset = 0;
-		if (this.codec.stride !== null) {
+		if (this.codec.stride >= 0) {
 			while (offset + this.codec.stride <= data.length) {
 				const part = data.subarray(offset, offset + this.codec.stride);
 				result.push(this.codec.decode(part));
@@ -509,7 +509,7 @@ export namespace Enum {
 }
 export class Enum<T extends Record<string, Codec<any>>>
 	extends Codec<Enum.Infer<T>> {
-	public readonly stride = null;
+	public readonly stride = -1;
 	public readonly variants: T;
 	private readonly keys: (keyof T)[];
 
@@ -543,7 +543,7 @@ export class Enum<T extends Record<string, Codec<any>>>
 
 export class Mapping<K extends Codec<any>, V extends Codec<any>>
 	extends Codec<Map<Codec.Infer<K>, Codec.Infer<V>>> {
-	public readonly stride = null;
+	public readonly stride = -1;
 	#entriesCodec: Vector<Tuple<[K, V]>>;
 
 	constructor(keyCodec: K, valueCodec: V) {

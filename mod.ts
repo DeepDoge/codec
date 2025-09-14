@@ -482,3 +482,22 @@ export class Enum<T extends Record<string, Codec<any>>> extends Codec<Enum.Infer
 		return { type: key, value } as never;
 	}
 }
+
+export class Mapping<K extends Codec<any>, V extends Codec<any>> extends Codec<Map<Codec.Infer<K>, Codec.Infer<V>>> {
+	public readonly stride = null;
+	#entriesCodec: Vector<Tuple<[K, V]>>;
+
+	constructor(keyCodec: K, valueCodec: V) {
+		super();
+		this.#entriesCodec = new Vector(new Tuple([keyCodec, valueCodec]));
+	}
+
+	public encode(value: Map<Codec.Infer<K>, Codec.Infer<V>>): Uint8Array {
+		return this.#entriesCodec.encode(value.entries().toArray());
+	}
+
+	public decode(data: Uint8Array): Map<Codec.Infer<K>, Codec.Infer<V>> {
+		const entries = this.#entriesCodec.decode(data);
+		return new Map(entries);
+	}
+}

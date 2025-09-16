@@ -343,12 +343,12 @@ export class Option<T> extends Codec<Option.Value<T>> {
 }
 
 export namespace Tuple {
-	export type Value<T extends any[]> = T;
-	export type Infer<T extends Codec<any>[]> = {
+	export type Value<T extends readonly any[] | any[]> = T;
+	export type Infer<T extends readonly Codec<any>[] | Codec<any>[]> = {
 		[K in keyof T]: Codec.Infer<T[K]>;
 	};
 }
-export class Tuple<T extends any[]> extends Codec<T> {
+export class Tuple<T extends readonly any[] | any[]> extends Codec<T> {
 	public readonly codecs: { [I in keyof T]: Codec<T[I]> };
 	public readonly stride: number;
 

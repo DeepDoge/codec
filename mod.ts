@@ -1,24 +1,26 @@
 // deno-lint-ignore-file no-namespace no-explicit-any
-// internal number-based varint (for lengths, etc.)
-function encodeVarInt(value: number): Uint8Array {
+// LEB128-style varint (safe up to Number.MAX_SAFE_INTEGER)
+export function encodeVarInt(value: number): Uint8Array {
 	if (value < 0 || !Number.isSafeInteger(value)) {
 		throw new RangeError("Value must be a non-negative safe integer");
 	}
 	const parts: number[] = [];
 	while (value > 0x7F) {
 		parts.push((value & 0x7F) | 0x80);
-		value = Math.floor(value / 128); // arithmetic shift
+		value >>>= 7; // shift instead of divide
 	}
-	parts.push(value);
+	parts.push(value & 0x7F);
 	return new Uint8Array(parts);
 }
 
-function decodeVarInt(data: Uint8Array): { value: number; bytesRead: number } {
+export function decodeVarInt(
+	data: Uint8Array,
+): { value: number; bytesRead: number } {
 	let value = 0;
 	let shift = 0;
 	let bytesRead = 0;
 	for (const byte of data) {
-		value += (byte & 0x7F) * Math.pow(2, shift);
+		value |= (byte & 0x7F) << shift;
 		bytesRead++;
 		if ((byte & 0x80) === 0) {
 			if (!Number.isSafeInteger(value)) {

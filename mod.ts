@@ -395,7 +395,7 @@ export class Tuple<T extends readonly any[]> extends Codec<T> {
 		for (let i = 0; i < this.codecs.length; i++) {
 			const codec = this.codecs[i]!;
 			let length = codec.stride;
-			if (length === null) {
+			if (length < 0) {
 				const { value, bytesRead } = decodeVarInt(
 					data.subarray(offset),
 				);

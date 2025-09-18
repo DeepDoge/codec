@@ -1,5 +1,5 @@
 /**
- * codec provides composable binary codecs for TypeScript/JavaScript.
+ * @nomadshiba/codec provides composable binary codecs for TypeScript/JavaScript.
  *
  * Core ideas:
  * - Every codec extends Codec<T> with encode/decode and a stride:
@@ -21,26 +21,33 @@
  *
  * Quickstart
  * @example
+ * ```ts
  * // Primitives
  * import { u32, str } from "@nomadshiba/codec";
  * const b = u32.encode(42);
  * u32.decode(b); // 42
+ * ```
  *
  * @example
+ * ```ts
  * // Tuple: [u8, str] -> first a byte, then varint length + UTF-8
  * import { u8, str, Tuple } from "@nomadshiba/codec";
  * const T = new Tuple([u8, str] as const);
  * const bytes = T.encode([7, "hi"]); // [0x07, 0x02, 0x68, 0x69]
  * T.decode(bytes); // [7, "hi"]
+ * ```
  *
  * @example
+ * ```ts
  * // Struct: DEFINITION ORDER MATTERS (serialized exactly as a tuple)
  * import { u32, str, Struct } from "@nomadshiba/codec";
  * const User = new Struct({ id: u32, name: str } as const);
  * const bin = User.encode({ id: 1, name: "Ada" });
  * User.decode(bin); // { id: 1, name: "Ada" }
+ * ```
  *
  * @example
+ * ```ts
  * // Vector and Mapping
  * import { Vector, Mapping, u16, str } from "@nomadshiba/codec";
  * const Numbers = new Vector(u16);
@@ -48,8 +55,10 @@
  * const Dict = new Mapping(str, u16);
  * const out = Dict.decode(Dict.encode(new Map([["x", 1], ["y", 2]])));
  * // Map { "x" => 1, "y" => 2 }
+ * ```
  *
  * @example
+ * ```ts
  * // Enum and Option
  * import { Enum, Option, u8, str } from "@nomadshiba/codec";
  * const MaybeU8 = new Option(u8);
@@ -57,8 +66,10 @@
  * const MyEnum = new Enum({ A: u8, B: str } as const);
  * const v = MyEnum.decode(MyEnum.encode({ kind: "B", value: "ok" }));
  * // { kind: "B", value: "ok" }
+ * ```
  *
  * @example
+ * ```ts
  * // Custom codec: Date as u64 milliseconds since epoch
  * import { Codec, u64 } from "@nomadshiba/codec";
  * class DateCodec extends Codec<Date> {
@@ -66,6 +77,7 @@
  *   encode(d: Date) { return u64.encode(BigInt(d.getTime())); }
  *   decode(b: Uint8Array) { return new Date(Number(u64.decode(b))); }
  * }
+ * ```
  *
  * Notes
  * - VarInt here is unsigned LEB128 for non-negative JS numbers.
@@ -89,13 +101,17 @@
  * @throws {RangeError} If value is negative or not a safe integer
  *
  * @example
+ * ```ts
  * // 0..127 encode to a single byte
  * encodeVarInt(0);    // [0x00]
  * encodeVarInt(127);  // [0x7F]
+ * ```
  *
  * @example
+ * ```ts
  * // 128 = 0b1000_0000 -> two bytes: 0x80 0x01
  * Array.from(encodeVarInt(128)); // [0x80, 0x01]
+ * ```
  */
 export function encodeVarInt(value: number): Uint8Array {
 	if (value < 0 || !Number.isSafeInteger(value)) {
@@ -124,10 +140,12 @@ export function encodeVarInt(value: number): Uint8Array {
  * @throws {Error} If the data ends before the varint terminates
  *
  * @example
+ * ```ts
  * const buf = encodeVarInt(300); // e.g. [0xAC, 0x02]
  * const { value, bytesRead } = decodeVarInt(buf);
  * value === 300;      // true
  * bytesRead >= 1;     // true
+ * ```
  */
 export function decodeVarInt(
 	data: Uint8Array,
@@ -157,7 +175,9 @@ export function decodeVarInt(
  *
  * @template T - Codec type to infer from
  * @example
+ * ```ts
  * type N = Codec.Infer<U32>; // number
+ * ```
  */
 export declare namespace Codec {
 	/**
@@ -178,12 +198,14 @@ export declare namespace Codec {
  * @template T - Encoded/decoded value type
  *
  * @example
+ * ```ts
  * // Custom codec: Date as u64 milliseconds since epoch
  * class DateCodec extends Codec<Date> {
  *   readonly stride = 8;
  *   encode(d: Date) { return u64.encode(BigInt(d.getTime())); }
  *   decode(b: Uint8Array) { return new Date(Number(u64.decode(b))); }
  * }
+ * ```
  */
 export abstract class Codec<T> {
 	/**
@@ -214,8 +236,10 @@ export abstract class Codec<T> {
  * Endianness: N/A (1 byte)
  *
  * @example
+ * ```ts
  * const b = i8.encode(-5);            // [0xFB]
  * i8.decode(b) === -5;                // true
+ * ```
  */
 export class I8 extends Codec<number> {
 	public readonly stride = 1;
@@ -245,8 +269,10 @@ export const i8: I8 = new I8();
  * Endianness: N/A (1 byte)
  *
  * @example
+ * ```ts
  * const b = u8.encode(255);           // [0xFF]
  * u8.decode(b) === 255;               // true
+ * ```
  */
 export class U8 extends Codec<number> {
 	public readonly stride = 1;
@@ -274,8 +300,10 @@ export const u8: U8 = new U8();
  * Codec for signed 16-bit integers (int16), little-endian.
  *
  * @example
+ * ```ts
  * const b = i16.encode(-2);           // [0xFE, 0xFF] in LE
  * i16.decode(b) === -2;               // true
+ * ```
  */
 export class I16 extends Codec<number> {
 	public readonly stride = 2;
@@ -303,8 +331,10 @@ export const i16: I16 = new I16();
  * Codec for unsigned 16-bit integers (uint16), little-endian.
  *
  * @example
+ * ```ts
  * const b = u16.encode(513);          // [0x01, 0x02] in LE
  * u16.decode(b) === 513;              // true
+ * ```
  */
 export class U16 extends Codec<number> {
 	public readonly stride = 2;
@@ -332,8 +362,10 @@ export const u16: U16 = new U16();
  * Codec for signed 32-bit integers (int32), little-endian.
  *
  * @example
+ * ```ts
  * const b = i32.encode(-123456);      // 4 bytes
  * i32.decode(b) === -123456;          // true
+ * ```
  */
 export class I32 extends Codec<number> {
 	public readonly stride = 4;
@@ -361,8 +393,10 @@ export const i32: I32 = new I32();
  * Codec for unsigned 32-bit integers (uint32), little-endian.
  *
  * @example
+ * ```ts
  * const b = u32.encode(4294967295 >>> 1); // fits in 32-bit number
  * u32.decode(b);                          // same value
+ * ```
  */
 export class U32 extends Codec<number> {
 	public readonly stride = 4;
@@ -390,8 +424,10 @@ export const u32: U32 = new U32();
  * Codec for signed 64-bit integers (bigint), little-endian.
  *
  * @example
+ * ```ts
  * const b = i64.encode(-123n);
  * i64.decode(b) === -123n;            // true
+ * ```
  */
 export class I64 extends Codec<bigint> {
 	public readonly stride = 8;
@@ -419,8 +455,10 @@ export const i64: I64 = new I64();
  * Codec for unsigned 64-bit integers (bigint), little-endian.
  *
  * @example
+ * ```ts
  * const b = u64.encode(9007199254740991n); // MAX_SAFE_INTEGER as bigint
  * u64.decode(b) === 9007199254740991n;     // true
+ * ```
  */
 export class U64 extends Codec<bigint> {
 	public readonly stride = 8;
@@ -448,8 +486,10 @@ export const u64: U64 = new U64();
  * Codec for 32-bit floating point numbers (float32), little-endian.
  *
  * @example
+ * ```ts
  * const b = f32.encode(Math.fround(1.5));
  * f32.decode(b);                      // ~1.5
+ * ```
  */
 export class F32 extends Codec<number> {
 	public readonly stride = 4;
@@ -477,8 +517,10 @@ export const f32: F32 = new F32();
  * Codec for 64-bit floating point numbers (float64), little-endian.
  *
  * @example
+ * ```ts
  * const b = f64.encode(1.2345);
  * f64.decode(b) === 1.2345;           // true
+ * ```
  */
 export class F64 extends Codec<number> {
 	public readonly stride = 8;
@@ -507,8 +549,10 @@ export const f64: F64 = new F64();
  * Encoded as a single byte: 0x00 = false, 0x01 = true.
  *
  * @example
+ * ```ts
  * const b = bool.encode(true);        // [0x01]
  * bool.decode(b) === true;            // true
+ * ```
  */
 export class Bool extends Codec<boolean> {
 	public readonly stride = 1;
@@ -530,8 +574,10 @@ export const bool: Bool = new Bool();
  * Use inside Tuple/Vector/etc. to delineate boundaries (via varint length).
  *
  * @example
+ * ```ts
  * const raw = str.encode("hi");       // [0x68, 0x69]
  * str.decode(raw) === "hi";           // true
+ * ```
  */
 export class Str extends Codec<string> {
 	public readonly stride = -1;
@@ -554,8 +600,10 @@ export const str: Str = new Str();
  * Variable length. Pass-through of provided bytes.
  *
  * @example
+ * ```ts
  * const b = bytes.encode(new Uint8Array([1,2,3]));
  * bytes.decode(b);                    // Uint8Array([1,2,3])
+ * ```
  */
 export class Bytes extends Codec<Uint8Array> {
 	public readonly stride = -1;
@@ -573,8 +621,10 @@ export const bytes: Bytes = new Bytes();
  * Type definitions for Option codec
  *
  * @example
+ * ```ts
  * // Value<string> is string | null
  * type V = Option.Value<string>;
+ * ```
  */
 export declare namespace Option {
 	/**
@@ -598,11 +648,13 @@ export declare namespace Option {
  * @template T - The inner value type
  *
  * @example
+ * ```ts
  * const maybeU8 = new Option(u8);
  * Array.from(maybeU8.encode(null));        // [0x00]
  * Array.from(maybeU8.encode(7));           // [0x01, 0x07]
  * maybeU8.decode(new Uint8Array([0]))      // null
  * maybeU8.decode(new Uint8Array([1, 9]))   // 9
+ * ```
  */
 export class Option<T> extends Codec<Option.Value<T>> {
 	private readonly codec: Codec<T>;
@@ -638,8 +690,10 @@ export class Option<T> extends Codec<Option.Value<T>> {
  * Type definitions for Tuple codec
  *
  * @example
+ * ```ts
  * // Infer<[U8, Str]> -> [number, string]
  * type T = Tuple.Infer<[U8, Str]>;
+ * ```
  */
 export declare namespace Tuple {
 	/**
@@ -670,10 +724,12 @@ export declare namespace Tuple {
  * @template T - Tuple element types
  *
  * @example
+ * ```ts
  * // [u8, str]: first byte is u8, then varint length + UTF-8 for str
  * const t = new Tuple([u8, str] as const);
  * const enc = t.encode([5, "hi"]);   // [0x05, 0x02, 0x68, 0x69]
  * t.decode(enc);                     // [5, "hi"]
+ * ```
  */
 export class Tuple<const T extends readonly unknown[]> extends Codec<T> {
 	public readonly codecs: Tuple.Codecs<T>;
@@ -743,8 +799,10 @@ export class Tuple<const T extends readonly unknown[]> extends Codec<T> {
  * Type definitions for Struct codec
  *
  * @example
+ * ```ts
  * // Struct.Infer<{ id: U32, name: Str }> -> { id: number, name: string }
  * type S = Struct.Infer<{ id: U32, name: Str }>;
+ * ```
  */
 export declare namespace Struct {
 	/**
@@ -774,16 +832,20 @@ export declare namespace Struct {
  * @template T - Record mapping field names to codecs
  *
  * @example
+ * ```ts
  * // Definition order: id (u32) then name (str)
  * const User = new Struct({ id: u32, name: str } as const);
  * const bin = User.encode({ id: 42, name: "Ada" });
  * // Decodes back to the same object
  * User.decode(bin); // { id: 42, name: "Ada" }
+ * ```
  *
  * @example
+ * ```ts
  * // Reordering fields changes the binary layout
  * const User2 = new Struct({ name: str, id: u32 } as const);
  * // User.encode(...) is NOT compatible with User2.decode(...)
+ * ```
  */
 export class Struct<
 	const T extends Readonly<Record<string, unknown>>,
@@ -822,8 +884,10 @@ export class Struct<
  * Type definitions for Vector codec
  *
  * @example
+ * ```ts
  * // Vector.Infer<U16> -> number[]
  * type V = Vector.Infer<U16>;
+ * ```
  */
 export declare namespace Vector {
 	/**
@@ -849,16 +913,20 @@ export declare namespace Vector {
  * @template T - Element type
  *
  * @example
+ * ```ts
  * // Fixed-stride elements
  * const nums = new Vector(u16);
  * const b = nums.encode([1, 513]);         // [0x01,0x00, 0x01,0x02]
  * nums.decode(b);                           // [1, 513]
+ * ```
  *
  * @example
+ * ```ts
  * // Variable-stride elements
  * const words = new Vector(str);
  * const wb = words.encode(["a", "bc"]);    // [0x01, 'a', 0x02, 'b', 'c']
  * words.decode(wb);                         // ["a", "bc"]
+ * ```
  */
 export class Vector<T> extends Codec<Vector.Value<T>> {
 	public readonly stride = -1;
@@ -927,8 +995,10 @@ export class Vector<T> extends Codec<Vector.Value<T>> {
  * Type definitions for Enum codec
  *
  * @example
+ * ```ts
  * // Value<{ A: number, B: string }> -> { kind: "A", value: number } | ...
  * type E = Enum.Value<{ A: number, B: string }>;
+ * ```
  */
 export declare namespace Enum {
 	/**
@@ -968,9 +1038,11 @@ export declare namespace Enum {
  * @template T - Record mapping variant names to codecs
  *
  * @example
+ * ```ts
  * const MyEnum = new Enum({ A: u8, B: str } as const);
  * const b = MyEnum.encode({ kind: "B", value: "ok" });
  * const v = MyEnum.decode(b); // { kind: "B", value: "ok" }
+ * ```
  */
 export class Enum<
 	const T extends Readonly<Record<string, unknown>>,
@@ -1011,8 +1083,10 @@ export class Enum<
  * Type definitions for Mapping codec
  *
  * @example
+ * ```ts
  * // Infer<Str, U8> -> Map<string, number>
  * type M = Mapping.Infer<Str, U8>;
+ * ```
  */
 export declare namespace Mapping {
 	/**
@@ -1040,10 +1114,12 @@ export declare namespace Mapping {
  * @template V - Value type
  *
  * @example
+ * ```ts
  * const Dict = new Mapping(str, u8);
  * const map = new Map<string, number>([["x", 1], ["y", 2]]);
  * const b = Dict.encode(map);
  * const out = Dict.decode(b);   // Map { "x" => 1, "y" => 2 }
+ * ```
  */
 export class Mapping<K, V> extends Codec<Mapping.Value<K, V>> {
 	public readonly stride = -1;

@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-namespace no-explicit-any
 // LEB128-style varint (safe up to Number.MAX_SAFE_INTEGER)
 export function encodeVarInt(value: number): Uint8Array {
 	if (value < 0 || !Number.isSafeInteger(value)) {
@@ -36,7 +35,7 @@ export function decodeVarInt(
 	throw new Error("Incomplete VarInt");
 }
 
-export namespace Codec {
+export declare namespace Codec {
 	export type Infer<T> = T extends Codec<infer U> ? U : never;
 }
 
@@ -308,9 +307,9 @@ export class Bytes extends Codec<Uint8Array> {
 
 export const bytes: Bytes = new Bytes();
 
-export namespace Option {
+export declare namespace Option {
 	export type Value<T> = T | null;
-	export type Infer<T extends Codec<any>> = Codec.Infer<T> | null;
+	export type Infer<T extends Codec<unknown>> = Codec.Infer<T> | null;
 }
 export class Option<T> extends Codec<Option.Value<T>> {
 	private readonly codec: Codec<T>;
@@ -342,17 +341,19 @@ export class Option<T> extends Codec<Option.Value<T>> {
 	}
 }
 
-export namespace Tuple {
-	export type Value<T extends readonly any[] | any[]> = T;
-	export type Infer<T extends readonly Codec<any>[] | Codec<any>[]> = {
+export declare namespace Tuple {
+	export type Infer<T extends readonly Codec<unknown>[]> = {
 		[K in keyof T]: Codec.Infer<T[K]>;
 	};
+	export type Codecs<T extends readonly unknown[]> =
+		| { readonly [I in keyof T]: Codec<T[I]> }
+		| { -readonly [I in keyof T]: Codec<T[I]> };
 }
-export class Tuple<T extends readonly any[] | any[]> extends Codec<T> {
-	public readonly codecs: { [I in keyof T]: Codec<T[I]> };
+export class Tuple<const T extends readonly unknown[]> extends Codec<T> {
+	public readonly codecs: Tuple.Codecs<T>;
 	public readonly stride: number;
 
-	constructor(codecs: { [I in keyof T]: Codec<T[I]> }) {
+	constructor(codecs: Tuple.Codecs<T>) {
 		super();
 		this.codecs = codecs;
 		this.stride = 0;
@@ -367,7 +368,7 @@ export class Tuple<T extends readonly any[] | any[]> extends Codec<T> {
 
 	// if a codec has fixed stride, dont add varint overhead.
 	// if a codec has null stride, add varint overhead.
-	public encode(value: Tuple.Value<T>): Uint8Array {
+	public encode(value: T): Uint8Array {
 		const parts: Uint8Array[] = [];
 		for (let i = 0; i < this.codecs.length; i++) {
 			const codec = this.codecs[i]!;
@@ -391,7 +392,7 @@ export class Tuple<T extends readonly any[] | any[]> extends Codec<T> {
 		return combined;
 	}
 
-	public decode(data: Uint8Array): Tuple.Value<T> {
+	public decode(data: Uint8Array): T {
 		const result: unknown[] = [];
 		let offset = 0;
 		for (let i = 0; i < this.codecs.length; i++) {
@@ -412,46 +413,50 @@ export class Tuple<T extends readonly any[] | any[]> extends Codec<T> {
 	}
 }
 
-export namespace Struct {
-	export type Value<T extends Record<string, any>> = T;
-	export type Infer<T extends Record<string, Codec<any>>> = {
+export declare namespace Struct {
+	export type Infer<T extends Readonly<Record<string, Codec<unknown>>>> = {
 		[K in keyof T]: Codec.Infer<T[K]>;
 	};
+	export type Codecs<T extends Readonly<Record<string, unknown>>> =
+		| { readonly [K in keyof T]: Codec<T[K]> }
+		| { -readonly [K in keyof T]: Codec<T[K]> };
 }
-export class Struct<T extends Record<string, any>> extends Codec<T> {
+export class Struct<
+	const T extends Readonly<Record<string, unknown>>,
+> extends Codec<T> {
 	public readonly stride: number;
-	public readonly shape: { [K in keyof T]: Codec<T[K]> };
+	public readonly shape: Struct.Codecs<T>;
 
 	private readonly keys: (keyof T)[];
-	private readonly tuple: Tuple<any[]>;
+	private readonly tuple: Tuple<T[keyof T][]>;
 
-	constructor(shape: { [K in keyof T]: Codec<T[K]> }) {
+	constructor(shape: Struct.Codecs<T>) {
 		super();
 		this.shape = shape;
-		this.keys = Object.keys(shape) as (keyof T)[]; // definition order
-		this.tuple = new Tuple(this.keys.map((key) => shape[key]));
+		this.keys = Object.keys(shape) as Extract<keyof T, string>[]; // definition order
+		this.tuple = new Tuple(this.keys.map((key) => shape[key])) as never;
 		this.stride = this.tuple.stride;
 	}
 
-	public encode(value: Struct.Value<T>): Uint8Array {
+	public encode(value: T): Uint8Array {
 		const tupleValue = this.keys.map((key) => value[key]);
 		return this.tuple.encode(tupleValue);
 	}
 
-	public decode(data: Uint8Array): Struct.Value<T> {
+	public decode(data: Uint8Array): T {
 		const tupleValue = this.tuple.decode(data);
-		const result: Partial<Struct.Value<T>> = {};
+		const result: Partial<T> = {};
 		for (let i = 0; i < this.keys.length; i++) {
 			const key = this.keys[i]!;
 			result[key] = tupleValue[i]!;
 		}
-		return result as Struct.Value<T>;
+		return result as T;
 	}
 }
 
-export namespace Vector {
+export declare namespace Vector {
 	export type Value<T> = T[];
-	export type Infer<T extends Codec<any>> = Codec.Infer<T>[];
+	export type Infer<T extends Codec<unknown>> = Codec.Infer<T>[];
 }
 export class Vector<T> extends Codec<Vector.Value<T>> {
 	public readonly stride = -1;
@@ -516,22 +521,25 @@ export class Vector<T> extends Codec<Vector.Value<T>> {
 	}
 }
 
-export namespace Enum {
-	export type Value<T extends Record<string, any>> = {
+export declare namespace Enum {
+	export type Value<T extends Readonly<Record<string, unknown>>> = {
 		[K in keyof T]: { kind: K; value: T[K] };
 	}[keyof T];
-	export type Infer<T extends Record<string, Codec<any>>> = {
+	export type Infer<T extends Readonly<Record<string, Codec<unknown>>>> = {
 		[K in keyof T]: { kind: K; value: Codec.Infer<T[K]> };
 	}[keyof T];
+	export type Codecs<T extends Readonly<Record<string, unknown>>> =
+		| { readonly [K in keyof T]: Codec<T[K]> }
+		| { -readonly [K in keyof T]: Codec<T[K]> };
 }
-export class Enum<T extends Record<string, any>> extends Codec<Enum.Value<T>> {
+export class Enum<
+	const T extends Readonly<Record<string, unknown>>,
+> extends Codec<Enum.Value<T>> {
 	public readonly stride = -1;
-	public readonly variants: { [K in keyof T]: Codec<T[K]> };
+	public readonly variants: Enum.Codecs<T>;
 	private readonly keys: (keyof T)[];
 
-	constructor(
-		variants: { [K in keyof T]: Codec<T[K]> },
-	) {
+	constructor(variants: Enum.Codecs<T>) {
 		super();
 		this.variants = variants;
 		this.keys = Object.keys(variants).sort() as (keyof T)[];
@@ -543,7 +551,7 @@ export class Enum<T extends Record<string, any>> extends Codec<Enum.Value<T>> {
 			throw new Error(`Invalid enum variant: ${String(value.kind)}`);
 		}
 		const codec = this.variants[value.kind]!;
-		const encodedValue = codec.encode(value.value);
+		const encodedValue = codec.encode(value.value as never);
 		return new Uint8Array([index, ...encodedValue]);
 	}
 
@@ -559,9 +567,9 @@ export class Enum<T extends Record<string, any>> extends Codec<Enum.Value<T>> {
 	}
 }
 
-export namespace Mapping {
+export declare namespace Mapping {
 	export type Value<K, V> = Map<K, V>;
-	export type Infer<K extends Codec<any>, V extends Codec<any>> = Map<
+	export type Infer<K extends Codec<unknown>, V extends Codec<unknown>> = Map<
 		Codec.Infer<K>,
 		Codec.Infer<V>
 	>;

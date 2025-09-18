@@ -809,15 +809,15 @@ export declare namespace Struct {
 	 * Infers the JavaScript object type from a record of codecs
 	 */
 	export type Infer<T extends Readonly<Record<string, Codec<unknown>>>> = {
-		[K in Extract<keyof T, string>]: Codec.Infer<T[K]>;
+		[K in (keyof T)]: Codec.Infer<T[K]>;
 	};
 
 	/**
 	 * Maps struct fields to their corresponding codecs
 	 */
 	export type Codecs<T extends Readonly<Record<string, unknown>>> =
-		| { readonly [K in Extract<keyof T, string>]: Codec<T[K]> }
-		| { -readonly [K in Extract<keyof T, string>]: Codec<T[K]> };
+		| { readonly [K in (keyof T)]: Codec<T[K]> }
+		| { -readonly [K in (keyof T)]: Codec<T[K]> };
 }
 
 /**
@@ -853,13 +853,13 @@ export class Struct<
 	public readonly stride: number;
 	public readonly shape: Struct.Codecs<T>;
 
-	private readonly keys: (Extract<keyof T, string>)[];
-	private readonly tuple: Tuple<T[Extract<keyof T, string>][]>;
+	private readonly keys: (keyof T)[];
+	private readonly tuple: Tuple<T[(keyof T)][]>;
 
 	constructor(shape: Struct.Codecs<T>) {
 		super();
 		this.shape = shape;
-		this.keys = Object.keys(shape) as Extract<keyof T, string>[]; // definition order
+		this.keys = Object.keys(shape) as (keyof T)[]; // definition order
 		this.tuple = new Tuple(this.keys.map((key) => shape[key])) as never;
 		this.stride = this.tuple.stride;
 	}
@@ -1005,22 +1005,22 @@ export declare namespace Enum {
 	 * Tagged union type representing an enum variant
 	 */
 	export type Value<T extends Readonly<Record<string, unknown>>> = {
-		[K in Extract<keyof T, string>]: { kind: K; value: T[K] };
-	}[Extract<keyof T, string>];
+		[K in (keyof T)]: { kind: K; value: T[K] };
+	}[(keyof T)];
 
 	/**
 	 * Infers the JavaScript tagged union type from a record of codecs
 	 */
 	export type Infer<T extends Readonly<Record<string, Codec<unknown>>>> = {
-		[K in Extract<keyof T, string>]: { kind: K; value: Codec.Infer<T[K]> };
-	}[Extract<keyof T, string>];
+		[K in (keyof T)]: { kind: K; value: Codec.Infer<T[K]> };
+	}[(keyof T)];
 
 	/**
 	 * Maps enum variants to their corresponding codecs
 	 */
 	export type Codecs<T extends Readonly<Record<string, unknown>>> =
-		| { readonly [K in Extract<keyof T, string>]: Codec<T[K]> }
-		| { -readonly [K in Extract<keyof T, string>]: Codec<T[K]> };
+		| { readonly [K in (keyof T)]: Codec<T[K]> }
+		| { -readonly [K in (keyof T)]: Codec<T[K]> };
 }
 
 /**
@@ -1049,13 +1049,13 @@ export class Enum<
 > extends Codec<Enum.Value<T>> {
 	public readonly stride = -1;
 	public readonly variants: Enum.Codecs<T>;
-	private readonly keys: (Extract<keyof T, string>)[];
+	private readonly keys: (keyof T)[];
 
 	constructor(variants: Enum.Codecs<T>) {
 		super();
 		this.variants = variants;
 		this.keys = Object.keys(variants)
-			.sort() as (Extract<keyof T, string>)[];
+			.sort() as (keyof T)[];
 	}
 
 	public encode(value: Enum.Value<T>): Uint8Array {

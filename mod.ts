@@ -606,11 +606,27 @@ export const str: Str = new Str();
  * ```
  */
 export class Bytes extends Codec<Uint8Array> {
-	public readonly stride = -1;
+	public readonly stride: number;
+
+	constructor(size: number = -1) {
+		super();
+		this.stride = size;
+	}
+
 	public encode(value: Uint8Array): Uint8Array {
+		if (this.stride >= 0 && value.length !== this.stride) {
+			throw new RangeError(
+				`Expected byte array of length ${this.stride}, got ${value.length}`,
+			);
+		}
 		return value;
 	}
 	public decode(data: Uint8Array): Uint8Array {
+		if (this.stride >= 0 && data.length !== this.stride) {
+			throw new RangeError(
+				`Expected byte array of length ${this.stride}, got ${data.length}`,
+			);
+		}
 		return data;
 	}
 }

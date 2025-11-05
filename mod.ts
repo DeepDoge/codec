@@ -5,7 +5,7 @@
  * - Every codec extends Codec<T> with encode/decode and a stride:
  *   - stride >= 0: fixed-size encoding (bytes)
  *   - stride < 0: variable-size encoding
- * - Numbers use big-endian encoding (DataView BE).
+ * - Numbers use little-endian encoding (DataView).
  * - Variable-length fields are prefixed with unsigned LEB128 (varint) length
  *   when nested inside Tuple/Struct/Vector/Mapping as needed.
  *
@@ -297,11 +297,11 @@ export class U8 extends Codec<number> {
 export const u8: U8 = new U8();
 
 /**
- * Codec for signed 16-bit integers (int16), big-endian.
+ * Codec for signed 16-bit integers (int16).
  *
  * @example
  * ```ts
- * const b = i16.encode(-2);           // [0xFF, 0xFE] in BE
+ * const b = i16.encode(-2);           // [0xFE, 0xFF]
  * i16.decode(b) === -2;               // true
  * ```
  */
@@ -311,7 +311,7 @@ export class I16 extends Codec<number> {
 	public encode(value: number): Uint8Array {
 		const arr = new Uint8Array(2);
 		const view = new DataView(arr.buffer);
-		view.setInt16(0, value); // Big-endian (default)
+		view.setInt16(0, value, true);
 		return arr;
 	}
 
@@ -321,18 +321,18 @@ export class I16 extends Codec<number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getInt16(0); // Big-endian (default)
+		return view.getInt16(0, true);
 	}
 }
 /** Singleton instance of I16 codec */
 export const i16: I16 = new I16();
 
 /**
- * Codec for unsigned 16-bit integers (uint16), big-endian.
+ * Codec for unsigned 16-bit integers (uint16).
  *
  * @example
  * ```ts
- * const b = u16.encode(513);          // [0x02, 0x01] in BE
+ * const b = u16.encode(513);          // [0x01, 0x02]
  * u16.decode(b) === 513;              // true
  * ```
  */
@@ -342,7 +342,7 @@ export class U16 extends Codec<number> {
 	public encode(value: number): Uint8Array {
 		const arr = new Uint8Array(2);
 		const view = new DataView(arr.buffer);
-		view.setUint16(0, value); // Big-endian (default)
+		view.setUint16(0, value, true);
 		return arr;
 	}
 
@@ -352,14 +352,14 @@ export class U16 extends Codec<number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getUint16(0); // Big-endian (default)
+		return view.getUint16(0, true);
 	}
 }
 /** Singleton instance of U16 codec */
 export const u16: U16 = new U16();
 
 /**
- * Codec for signed 32-bit integers (int32), big-endian.
+ * Codec for signed 32-bit integers (int32).
  *
  * @example
  * ```ts
@@ -373,7 +373,7 @@ export class I32 extends Codec<number> {
 	public encode(value: number): Uint8Array {
 		const arr = new Uint8Array(4);
 		const view = new DataView(arr.buffer);
-		view.setInt32(0, value); // Big-endian (default)
+		view.setInt32(0, value, true);
 		return arr;
 	}
 
@@ -383,14 +383,14 @@ export class I32 extends Codec<number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getInt32(0); // Big-endian (default)
+		return view.getInt32(0, true);
 	}
 }
 /** Singleton instance of I32 codec */
 export const i32: I32 = new I32();
 
 /**
- * Codec for unsigned 32-bit integers (uint32), big-endian.
+ * Codec for unsigned 32-bit integers (uint32).
  *
  * @example
  * ```ts
@@ -404,7 +404,7 @@ export class U32 extends Codec<number> {
 	public encode(value: number): Uint8Array {
 		const arr = new Uint8Array(4);
 		const view = new DataView(arr.buffer);
-		view.setUint32(0, value); // Big-endian (default)
+		view.setUint32(0, value, true);
 		return arr;
 	}
 
@@ -414,14 +414,14 @@ export class U32 extends Codec<number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getUint32(0); // Big-endian (default)
+		return view.getUint32(0, true);
 	}
 }
 /** Singleton instance of U32 codec */
 export const u32: U32 = new U32();
 
 /**
- * Codec for signed 64-bit integers (bigint), big-endian.
+ * Codec for signed 64-bit integers (bigint).
  *
  * @example
  * ```ts
@@ -435,7 +435,7 @@ export class I64 extends Codec<bigint> {
 	public encode(value: bigint): Uint8Array {
 		const arr = new Uint8Array(8);
 		const view = new DataView(arr.buffer);
-		view.setBigInt64(0, value); // Big-endian (default)
+		view.setBigInt64(0, value, true);
 		return arr;
 	}
 
@@ -445,14 +445,14 @@ export class I64 extends Codec<bigint> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getBigInt64(0); // Big-endian (default)
+		return view.getBigInt64(0, true);
 	}
 }
 /** Singleton instance of I64 codec */
 export const i64: I64 = new I64();
 
 /**
- * Codec for unsigned 64-bit integers (bigint), big-endian.
+ * Codec for unsigned 64-bit integers (bigint).
  *
  * @example
  * ```ts
@@ -466,7 +466,7 @@ export class U64 extends Codec<bigint> {
 	public encode(value: bigint): Uint8Array {
 		const arr = new Uint8Array(8);
 		const view = new DataView(arr.buffer);
-		view.setBigUint64(0, value); // Big-endian (default)
+		view.setBigUint64(0, value, true);
 		return arr;
 	}
 
@@ -476,14 +476,14 @@ export class U64 extends Codec<bigint> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getBigUint64(0); // Big-endian (default)
+		return view.getBigUint64(0, true);
 	}
 }
 /** Singleton instance of U64 codec */
 export const u64: U64 = new U64();
 
 /**
- * Codec for 32-bit floating point numbers (float32), big-endian.
+ * Codec for 32-bit floating point numbers (float32).
  *
  * @example
  * ```ts
@@ -497,7 +497,7 @@ export class F32 extends Codec<number> {
 	public encode(value: number): Uint8Array {
 		const arr = new Uint8Array(4);
 		const view = new DataView(arr.buffer);
-		view.setFloat32(0, value); // Big-endian (default)
+		view.setFloat32(0, value, true);
 		return arr;
 	}
 
@@ -507,14 +507,14 @@ export class F32 extends Codec<number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getFloat32(0); // Big-endian (default)
+		return view.getFloat32(0, true);
 	}
 }
 /** Singleton instance of F32 codec */
 export const f32: F32 = new F32();
 
 /**
- * Codec for 64-bit floating point numbers (float64), big-endian.
+ * Codec for 64-bit floating point numbers (float64).
  *
  * @example
  * ```ts
@@ -528,7 +528,7 @@ export class F64 extends Codec<number> {
 	public encode(value: number): Uint8Array {
 		const arr = new Uint8Array(8);
 		const view = new DataView(arr.buffer);
-		view.setFloat64(0, value); // Big-endian (default)
+		view.setFloat64(0, value, true);
 		return arr;
 	}
 
@@ -538,7 +538,7 @@ export class F64 extends Codec<number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getFloat64(0); // Big-endian (default)
+		return view.getFloat64(0, true);
 	}
 }
 /** Singleton instance of F64 codec */

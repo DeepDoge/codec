@@ -6,15 +6,20 @@
  *   - stride >= 0: fixed-size encoding (bytes)
  *   - stride < 0: variable-size encoding
  * - Numbers use little-endian encoding (DataView).
- * - Variable-length fields are prefixed with unsigned LEB128 (varint) length
- *   when nested inside Tuple/Struct/Vector/Mapping as needed.
+ * - Variable-length types encode their own size using unsigned LEB128 (varint) prefix.
+ * - Composite types (Tuple, Struct, Vector, etc.) use getSize() to determine boundaries
+ *   without adding redundant length prefixes.
  *
  * Layout semantics:
- * - Tuple: concatenates each element. Variable-size elements are varint length-prefixed.
+ * - Primitive types (u8, i32, f64, etc.): fixed-size, use stride.
+ * - Str: varint length prefix + UTF-8 bytes.
+ * - Bytes (variable): varint length prefix + raw bytes.
+ * - Bytes (fixed): raw bytes only, size known from stride.
+ * - Tuple: concatenates each element (no wrapper prefix). Fixed-size elements use stride,
+ *   variable-size elements include their own size info.
  * - Struct: stored exactly as a Tuple in DEFINITION ORDER (order matters).
- * - Vector:
- *   - Fixed-stride element: elements are concatenated (count = totalBytes/stride).
- *   - Variable-stride element: each element is varint length-prefixed.
+ * - Vector: varint count prefix (number of items) + concatenated elements.
+ *   Elements determine their own boundaries via stride or getSize().
  * - Enum: 1 byte variant index (sorted by variant name), followed by payload.
  * - Option: 0x00 for null, 0x01 + payload for present.
  * - Mapping: Vector of Tuple [key, value].
@@ -30,7 +35,7 @@
  *
  * @example
  * ```ts
- * // Tuple: [u8, str] -> first a byte, then varint length + UTF-8
+ * // Tuple: [u8, str] -> first a byte, then str with varint length
  * import { u8, str, Tuple } from "@nomadshiba/codec";
  * const T = new Tuple([u8, str] as const);
  * const bytes = T.encode([7, "hi"]); // [0x07, 0x02, 0x68, 0x69]
@@ -81,8 +86,8 @@
  *
  * Notes
  * - VarInt here is unsigned LEB128 for non-negative JS numbers.
- * - This module does not add container-level length prefixes automatically;
- *   boundaries are determined by stride and varint rules described above.
+ * - Self-delimiting types (Str, variable Bytes, Vector) encode their own size.
+ * - Composite types use getSize() to efficiently skip over encoded data without decoding.
  *
  * @module
  */
@@ -228,6 +233,25 @@ export abstract class Codec<T> {
 	 * @returns Decoded value
 	 */
 	public abstract decode(data: Uint8Array): T;
+
+	/**
+	 * Get the size in bytes of the encoded data without decoding it.
+	 * For fixed-size codecs (stride >= 0), returns the stride.
+	 * For variable-size codecs (stride < 0), must be overridden to read
+	 * the encoded size information (e.g., varint length prefix).
+	 *
+	 * @param data - Binary data to measure
+	 * @returns Size in bytes
+	 * @throws {Error} If stride < 0 and not overridden
+	 */
+	public getSize(_data: Uint8Array): number {
+		if (this.stride < 0) {
+			throw new Error(
+				`getSize() must be implemented for variable-size codec: ${this.constructor.name}`,
+			);
+		}
+		return this.stride;
+	}
 }
 
 /**
@@ -570,12 +594,11 @@ export const bool: Bool = new Bool();
 
 /**
  * Codec for UTF-8 encoded strings.
- * Variable length. No length prefix is added by this codec itself.
- * Use inside Tuple/Vector/etc. to delineate boundaries (via varint length).
+ * Variable length. Encoded with varint length prefix.
  *
  * @example
  * ```ts
- * const raw = str.encode("hi");       // [0x68, 0x69]
+ * const raw = str.encode("hi");       // [0x02, 0x68, 0x69]
  * str.decode(raw) === "hi";           // true
  * ```
  */
@@ -585,11 +608,23 @@ export class Str extends Codec<string> {
 	private readonly decoder = new TextDecoder();
 
 	public encode(value: string): Uint8Array {
-		return this.encoder.encode(value);
+		const utf8 = this.encoder.encode(value);
+		const lengthPrefix = encodeVarInt(utf8.length);
+		const result = new Uint8Array(lengthPrefix.length + utf8.length);
+		result.set(lengthPrefix, 0);
+		result.set(utf8, lengthPrefix.length);
+		return result;
 	}
 
 	public decode(data: Uint8Array): string {
-		return this.decoder.decode(data);
+		const { value: length, bytesRead } = decodeVarInt(data);
+		const utf8 = data.subarray(bytesRead, bytesRead + length);
+		return this.decoder.decode(utf8);
+	}
+
+	public override getSize(data: Uint8Array): number {
+		const { value: length, bytesRead } = decodeVarInt(data);
+		return bytesRead + length;
 	}
 }
 /** Singleton instance of Str codec */
@@ -597,12 +632,13 @@ export const str: Str = new Str();
 
 /**
  * Codec for raw byte arrays.
- * Variable length. Pass-through of provided bytes.
+ * If size is specified (>= 0), fixed length without prefix.
+ * If size is -1 (default), variable length with varint prefix.
  *
  * @example
  * ```ts
- * const b = bytes.encode(new Uint8Array([1,2,3]));
- * bytes.decode(b);                    // Uint8Array([1,2,3])
+ * const b = bytes.encode(new Uint8Array([1,2,3])); // [0x03, 0x01, 0x02, 0x03]
+ * bytes.decode(b);                                  // Uint8Array([1,2,3])
  * ```
  */
 export class Bytes extends Codec<Uint8Array> {
@@ -614,20 +650,43 @@ export class Bytes extends Codec<Uint8Array> {
 	}
 
 	public encode(value: Uint8Array): Uint8Array {
-		if (this.stride >= 0 && value.length !== this.stride) {
-			throw new RangeError(
-				`Expected byte array of length ${this.stride}, got ${value.length}`,
-			);
+		if (this.stride >= 0) {
+			if (value.length !== this.stride) {
+				throw new RangeError(
+					`Expected byte array of length ${this.stride}, got ${value.length}`,
+				);
+			}
+			return value;
+		} else {
+			const lengthPrefix = encodeVarInt(value.length);
+			const result = new Uint8Array(lengthPrefix.length + value.length);
+			result.set(lengthPrefix, 0);
+			result.set(value, lengthPrefix.length);
+			return result;
 		}
-		return value;
 	}
+
 	public decode(data: Uint8Array): Uint8Array {
-		if (this.stride >= 0 && data.length !== this.stride) {
-			throw new RangeError(
-				`Expected byte array of length ${this.stride}, got ${data.length}`,
-			);
+		if (this.stride >= 0) {
+			if (data.length !== this.stride) {
+				throw new RangeError(
+					`Expected byte array of length ${this.stride}, got ${data.length}`,
+				);
+			}
+			return data;
+		} else {
+			const { value: length, bytesRead } = decodeVarInt(data);
+			return data.subarray(bytesRead, bytesRead + length);
 		}
-		return data;
+	}
+
+	public override getSize(data: Uint8Array): number {
+		if (this.stride >= 0) {
+			return this.stride;
+		} else {
+			const { value: length, bytesRead } = decodeVarInt(data);
+			return bytesRead + length;
+		}
 	}
 }
 /** Singleton instance of Bytes codec */
@@ -700,6 +759,14 @@ export class Option<T> extends Codec<Option.Value<T>> {
 			return this.codec.decode(data.subarray(1));
 		}
 	}
+
+	public override getSize(data: Uint8Array): number {
+		if (data[0] === 0) {
+			return 1; // just the null tag
+		} else {
+			return 1 + this.codec.getSize(data.subarray(1));
+		}
+	}
 }
 
 /**
@@ -730,18 +797,17 @@ export declare namespace Tuple {
 /**
  * Codec for fixed-length tuples of potentially different types.
  *
- * Encoding (no overall length):
- * - For each element in order:
- *   - If element codec has fixed stride (>= 0): append raw bytes
- *   - If variable stride (< 0): prefix with VarInt length, then append bytes
+ * Encoding (no length prefixes added by Tuple itself):
+ * - For each element in order: append raw bytes from element's encode()
+ * - Elements with variable stride must encode their own size info
  *
- * Decoding reads each element in order using stride or varint length.
+ * Decoding reads each element in order using stride or getSize().
  *
  * @template T - Tuple element types
  *
  * @example
  * ```ts
- * // [u8, str]: first byte is u8, then varint length + UTF-8 for str
+ * // [u8, str]: first byte is u8, then str with its own varint length
  * const t = new Tuple([u8, str] as const);
  * const enc = t.encode([5, "hi"]);   // [0x05, 0x02, 0x68, 0x69]
  * t.decode(enc);                     // [5, "hi"]
@@ -764,18 +830,11 @@ export class Tuple<const T extends readonly unknown[]> extends Codec<T> {
 		}
 	}
 
-	// if a codec has fixed stride, dont add varint overhead.
-	// if a codec has null stride, add varint overhead.
-	// the last item doesn't need varint prefix since bytes already end.
 	public encode(value: T): Uint8Array {
 		const parts: Uint8Array[] = [];
 		for (let i = 0; i < this.codecs.length; i++) {
 			const codec = this.codecs[i]!;
 			const part = codec.encode(value[i]!);
-			const isLast = i === this.codecs.length - 1;
-			if (codec.stride < 0 && !isLast) {
-				parts.push(encodeVarInt(part.length));
-			}
 			parts.push(part);
 		}
 
@@ -797,25 +856,24 @@ export class Tuple<const T extends readonly unknown[]> extends Codec<T> {
 		let offset = 0;
 		for (let i = 0; i < this.codecs.length; i++) {
 			const codec = this.codecs[i]!;
-			const isLast = i === this.codecs.length - 1;
-			let length = codec.stride;
-			if (length < 0) {
-				if (isLast) {
-					// Last item: consume all remaining bytes
-					length = data.length - offset;
-				} else {
-					const { value, bytesRead } = decodeVarInt(
-						data.subarray(offset),
-					);
-					length = value;
-					offset += bytesRead;
-				}
-			}
-			const part = data.subarray(offset, offset + length);
+			const size = codec.getSize(data.subarray(offset));
+			const part = data.subarray(offset, offset + size);
 			result[i] = codec.decode(part);
-			offset += length;
+			offset += size;
 		}
 		return result as never;
+	}
+
+	public override getSize(data: Uint8Array): number {
+		if (this.stride >= 0) {
+			return this.stride;
+		}
+		let offset = 0;
+		for (const codec of this.codecs) {
+			const size = codec.getSize(data.subarray(offset));
+			offset += size;
+		}
+		return offset;
 	}
 }
 
@@ -902,6 +960,10 @@ export class Struct<
 		}
 		return result as T;
 	}
+
+	public override getSize(data: Uint8Array): number {
+		return this.tuple.getSize(data);
+	}
 }
 
 /**
@@ -929,10 +991,8 @@ export declare namespace Vector {
  * Codec for variable-length arrays of the same element type.
  *
  * Encoding:
- * - If element codec has fixed stride: elements are concatenated with no length
- *   prefix (count is implied by total bytes / stride)
- * - If variable stride: each element is prefixed with a VarInt length
- * No array length prefix is written by this codec.
+ * - Varint count prefix (number of items)
+ * - Elements concatenated (each element knows its own size via stride or getSize())
  *
  * @template T - Element type
  *
@@ -940,7 +1000,7 @@ export declare namespace Vector {
  * ```ts
  * // Fixed-stride elements
  * const nums = new Vector(u16);
- * const b = nums.encode([1, 513]);         // [0x01,0x00, 0x01,0x02]
+ * const b = nums.encode([1, 513]);         // [0x02, 0x01,0x00, 0x01,0x02]
  * nums.decode(b);                           // [1, 513]
  * ```
  *
@@ -948,7 +1008,7 @@ export declare namespace Vector {
  * ```ts
  * // Variable-stride elements
  * const words = new Vector(str);
- * const wb = words.encode(["a", "bc"]);    // [0x01, 'a', 0x02, 'b', 'c']
+ * const wb = words.encode(["a", "bc"]);    // [0x02, 0x01, 'a', 0x02, 'b', 'c']
  * words.decode(wb);                         // ["a", "bc"]
  * ```
  */
@@ -962,56 +1022,59 @@ export class Vector<T> extends Codec<Vector.Value<T>> {
 	}
 
 	public encode(value: Vector.Value<T>): Uint8Array {
-		if (this.codec.stride >= 0) {
-			const parts = new Uint8Array(value.length * this.codec.stride);
-			for (let i = 0; i < value.length; i++) {
-				const part = this.codec.encode(value[i]!);
-				parts.set(part, i * this.codec.stride);
-			}
-			return parts;
-		} else {
-			const parts: Uint8Array[] = [];
-			for (const item of value) {
-				const part = this.codec.encode(item);
-				parts.push(encodeVarInt(part.length));
-				parts.push(part);
-			}
+		const parts: Uint8Array[] = [];
 
-			const combinedLength = parts.reduce(
-				(sum, part) => sum + part.length,
-				0,
-			);
-			const combined = new Uint8Array(combinedLength);
-			let offset = 0;
-			for (const part of parts) {
-				combined.set(part, offset);
-				offset += part.length;
-			}
-			return combined;
+		for (const item of value) {
+			const part = this.codec.encode(item);
+			parts.push(part);
 		}
+
+		const combinedLength = parts.reduce(
+			(sum, part) => sum + part.length,
+			0,
+		);
+		const elementsData = new Uint8Array(combinedLength);
+		let offset = 0;
+		for (const part of parts) {
+			elementsData.set(part, offset);
+			offset += part.length;
+		}
+
+		// Prepend count
+		const countPrefix = encodeVarInt(value.length);
+		const result = new Uint8Array(
+			countPrefix.length + elementsData.length,
+		);
+		result.set(countPrefix, 0);
+		result.set(elementsData, countPrefix.length);
+		return result;
 	}
 
 	public decode(data: Uint8Array): Vector.Value<T> {
+		const { value: count, bytesRead } = decodeVarInt(data);
 		const result: T[] = [];
-		let offset = 0;
-		if (this.codec.stride >= 0) {
-			while (offset + this.codec.stride <= data.length) {
-				const part = data.subarray(offset, offset + this.codec.stride);
-				result.push(this.codec.decode(part));
-				offset += this.codec.stride;
-			}
-		} else {
-			while (offset < data.length) {
-				const { value: length, bytesRead } = decodeVarInt(
-					data.subarray(offset),
-				);
-				offset += bytesRead;
-				const part = data.subarray(offset, offset + length);
-				result.push(this.codec.decode(part));
-				offset += length;
-			}
+		let offset = bytesRead;
+
+		for (let i = 0; i < count; i++) {
+			const size = this.codec.getSize(data.subarray(offset));
+			const part = data.subarray(offset, offset + size);
+			result.push(this.codec.decode(part));
+			offset += size;
 		}
+
 		return result;
+	}
+
+	public override getSize(data: Uint8Array): number {
+		const { value: count, bytesRead } = decodeVarInt(data);
+		let offset = bytesRead;
+
+		for (let i = 0; i < count; i++) {
+			const size = this.codec.getSize(data.subarray(offset));
+			offset += size;
+		}
+
+		return offset;
 	}
 }
 
@@ -1101,6 +1164,16 @@ export class Enum<
 		const codec = this.variants[key]!;
 		const value = codec.decode(data.subarray(1));
 		return { kind: key, value } as never;
+	}
+
+	public override getSize(data: Uint8Array): number {
+		const index = data[0]!;
+		if (index >= this.keys.length) {
+			throw new Error(`Invalid enum index: ${index}`);
+		}
+		const key = this.keys[index]!;
+		const codec = this.variants[key]!;
+		return 1 + codec.getSize(data.subarray(1));
 	}
 }
 

@@ -236,12 +236,12 @@ Deno.test("Tuple - mixed stride elements", () => {
     assertEquals(t.stride, -1);
 });
 
-Deno.test("Tuple - last item optimization (no varint)", () => {
-    // Last variable-stride item should not have varint prefix
+Deno.test("Tuple - all items self-delimit", () => {
+    // All variable-stride items now include their own size info
     const t = new Tuple([u8, str] as const);
     const encoded = t.encode([5, "hi"]);
-    // Should be: [0x05, 0x68, 0x69] (no varint for "hi" since it's last)
-    assertEquals(Array.from(encoded), [0x05, 0x68, 0x69]);
+    // Should be: [0x05, 0x02, 0x68, 0x69] (str has varint prefix)
+    assertEquals(Array.from(encoded), [0x05, 0x02, 0x68, 0x69]);
 });
 
 Deno.test("Tuple - multiple variable items", () => {
@@ -250,14 +250,14 @@ Deno.test("Tuple - multiple variable items", () => {
     const encoded = t.encode(val);
     const decoded = t.decode(encoded);
     assertEquals(decoded, val);
-    // First two should have varint, last shouldn't
-    // [0x01, 'a', 0x02, 'b', 'c', 'd', 'e', 'f']
+    // All items have varint: [0x01, 'a', 0x02, 'b', 'c', 0x03, 'd', 'e', 'f']
     assertEquals(Array.from(encoded), [
         0x01,
         0x61,
         0x02,
         0x62,
         0x63,
+        0x03,
         0x64,
         0x65,
         0x66,

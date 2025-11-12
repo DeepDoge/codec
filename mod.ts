@@ -971,13 +971,9 @@ export class Vector<T> extends Codec<Vector.Value<T>> {
 			return parts;
 		} else {
 			const parts: Uint8Array[] = [];
-			for (let i = 0; i < value.length; i++) {
-				const item = value[i]!;
+			for (const item of value) {
 				const part = this.codec.encode(item);
-				const isLast = i === value.length - 1;
-				if (!isLast) {
-					parts.push(encodeVarInt(part.length));
-				}
+				parts.push(encodeVarInt(part.length));
 				parts.push(part);
 			}
 
@@ -1006,28 +1002,10 @@ export class Vector<T> extends Codec<Vector.Value<T>> {
 			}
 		} else {
 			while (offset < data.length) {
-				let length: number;
-				const remainingBytes = data.length - offset;
-
-				// Try to read varint
-				try {
-					const { value: len, bytesRead } = decodeVarInt(
-						data.subarray(offset),
-					);
-					// Check if consuming this varint + its payload would leave us exactly at the end
-					// or with more data (meaning there are more items)
-					if (offset + bytesRead + len <= data.length) {
-						length = len;
-						offset += bytesRead;
-					} else {
-						// Varint points beyond available data, so this must be raw last item
-						length = remainingBytes;
-					}
-				} catch {
-					// No valid varint, consume remaining as last item
-					length = remainingBytes;
-				}
-
+				const { value: length, bytesRead } = decodeVarInt(
+					data.subarray(offset),
+				);
+				offset += bytesRead;
 				const part = data.subarray(offset, offset + length);
 				result.push(this.codec.decode(part));
 				offset += length;

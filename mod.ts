@@ -766,12 +766,14 @@ export class Tuple<const T extends readonly unknown[]> extends Codec<T> {
 
 	// if a codec has fixed stride, dont add varint overhead.
 	// if a codec has null stride, add varint overhead.
+	// the last item doesn't need varint prefix since bytes already end.
 	public encode(value: T): Uint8Array {
 		const parts: Uint8Array[] = [];
 		for (let i = 0; i < this.codecs.length; i++) {
 			const codec = this.codecs[i]!;
 			const part = codec.encode(value[i]!);
-			if (codec.stride < 0) {
+			const isLast = i === this.codecs.length - 1;
+			if (codec.stride < 0 && !isLast) {
 				parts.push(encodeVarInt(part.length));
 			}
 			parts.push(part);
@@ -795,13 +797,19 @@ export class Tuple<const T extends readonly unknown[]> extends Codec<T> {
 		let offset = 0;
 		for (let i = 0; i < this.codecs.length; i++) {
 			const codec = this.codecs[i]!;
+			const isLast = i === this.codecs.length - 1;
 			let length = codec.stride;
 			if (length < 0) {
-				const { value, bytesRead } = decodeVarInt(
-					data.subarray(offset),
-				);
-				length = value;
-				offset += bytesRead;
+				if (isLast) {
+					// Last item: consume all remaining bytes
+					length = data.length - offset;
+				} else {
+					const { value, bytesRead } = decodeVarInt(
+						data.subarray(offset),
+					);
+					length = value;
+					offset += bytesRead;
+				}
 			}
 			const part = data.subarray(offset, offset + length);
 			result[i] = codec.decode(part);
@@ -963,9 +971,13 @@ export class Vector<T> extends Codec<Vector.Value<T>> {
 			return parts;
 		} else {
 			const parts: Uint8Array[] = [];
-			for (const item of value) {
+			for (let i = 0; i < value.length; i++) {
+				const item = value[i]!;
 				const part = this.codec.encode(item);
-				parts.push(encodeVarInt(part.length));
+				const isLast = i === value.length - 1;
+				if (!isLast) {
+					parts.push(encodeVarInt(part.length));
+				}
 				parts.push(part);
 			}
 
@@ -994,10 +1006,28 @@ export class Vector<T> extends Codec<Vector.Value<T>> {
 			}
 		} else {
 			while (offset < data.length) {
-				const { value: length, bytesRead } = decodeVarInt(
-					data.subarray(offset),
-				);
-				offset += bytesRead;
+				let length: number;
+				const remainingBytes = data.length - offset;
+
+				// Try to read varint
+				try {
+					const { value: len, bytesRead } = decodeVarInt(
+						data.subarray(offset),
+					);
+					// Check if consuming this varint + its payload would leave us exactly at the end
+					// or with more data (meaning there are more items)
+					if (offset + bytesRead + len <= data.length) {
+						length = len;
+						offset += bytesRead;
+					} else {
+						// Varint points beyond available data, so this must be raw last item
+						length = remainingBytes;
+					}
+				} catch {
+					// No valid varint, consume remaining as last item
+					length = remainingBytes;
+				}
+
 				const part = data.subarray(offset, offset + length);
 				result.push(this.codec.decode(part));
 				offset += length;

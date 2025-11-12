@@ -30,7 +30,7 @@
  * // Primitives
  * import { u32, str } from "@nomadshiba/codec";
  * const b = u32.encode(42);
- * u32.decode(b); // 42
+ * u32.decode(b); // [42, 4]
  * ```
  *
  * @example
@@ -39,7 +39,7 @@
  * import { u8, str, Tuple } from "@nomadshiba/codec";
  * const T = new Tuple([u8, str] as const);
  * const bytes = T.encode([7, "hi"]); // [0x07, 0x02, 0x68, 0x69]
- * T.decode(bytes); // [7, "hi"]
+ * T.decode(bytes); // [[7, "hi"], 4]
  * ```
  *
  * @example
@@ -48,7 +48,7 @@
  * import { u32, str, Struct } from "@nomadshiba/codec";
  * const User = new Struct({ id: u32, name: str } as const);
  * const bin = User.encode({ id: 1, name: "Ada" });
- * User.decode(bin); // { id: 1, name: "Ada" }
+ * User.decode(bin); // [{ id: 1, name: "Ada" }, size]
  * ```
  *
  * @example
@@ -56,10 +56,10 @@
  * // Vector and Mapping
  * import { Vector, Mapping, u16, str } from "@nomadshiba/codec";
  * const Numbers = new Vector(u16);
- * Numbers.decode(Numbers.encode([1, 513])); // [1, 513]
+ * Numbers.decode(Numbers.encode([1, 513])); // [[1, 513], size]
  * const Dict = new Mapping(str, u16);
  * const out = Dict.decode(Dict.encode(new Map([["x", 1], ["y", 2]])));
- * // Map { "x" => 1, "y" => 2 }
+ * // [Map { "x" => 1, "y" => 2 }, size]
  * ```
  *
  * @example
@@ -67,10 +67,10 @@
  * // Enum and Option
  * import { Enum, Option, u8, str } from "@nomadshiba/codec";
  * const MaybeU8 = new Option(u8);
- * MaybeU8.decode(MaybeU8.encode(5)); // 5
+ * MaybeU8.decode(MaybeU8.encode(5)); // [5, 2]
  * const MyEnum = new Enum({ A: u8, B: str } as const);
  * const v = MyEnum.decode(MyEnum.encode({ kind: "B", value: "ok" }));
- * // { kind: "B", value: "ok" }
+ * // [{ kind: "B", value: "ok" }, size]
  * ```
  *
  * @example
@@ -208,7 +208,10 @@ export declare namespace Codec {
  * class DateCodec extends Codec<Date> {
  *   readonly stride = 8;
  *   encode(d: Date) { return u64.encode(BigInt(d.getTime())); }
- *   decode(b: Uint8Array) { return new Date(Number(u64.decode(b))); }
+ *   decode(b: Uint8Array) {
+ *     const value = new Date(Number(u64.decode(b)[0]));
+ *     return [value, 8];
+ *   }
  * }
  * ```
  */
@@ -230,28 +233,9 @@ export abstract class Codec<T> {
 	 * Decode a binary representation to a value
 	 *
 	 * @param data - Binary data to decode
-	 * @returns Decoded value
+	 * @returns Tuple of [decoded value, bytes consumed]
 	 */
-	public abstract decode(data: Uint8Array): T;
-
-	/**
-	 * Get the size in bytes of the encoded data without decoding it.
-	 * For fixed-size codecs (stride >= 0), returns the stride.
-	 * For variable-size codecs (stride < 0), must be overridden to read
-	 * the encoded size information (e.g., varint length prefix).
-	 *
-	 * @param data - Binary data to measure
-	 * @returns Size in bytes
-	 * @throws {Error} If stride < 0 and not overridden
-	 */
-	public getSize(_data: Uint8Array): number {
-		if (this.stride < 0) {
-			throw new Error(
-				`getSize() must be implemented for variable-size codec: ${this.constructor.name}`,
-			);
-		}
-		return this.stride;
-	}
+	public abstract decode(data: Uint8Array): [T, number];
 }
 
 /**
@@ -275,13 +259,13 @@ export class I8 extends Codec<number> {
 		return arr;
 	}
 
-	public decode(data: Uint8Array): number {
+	public decode(data: Uint8Array): [number, number] {
 		const view = new DataView(
 			data.buffer,
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getInt8(0);
+		return [view.getInt8(0), 1];
 	}
 }
 /** Singleton instance of I8 codec */
@@ -308,13 +292,13 @@ export class U8 extends Codec<number> {
 		return arr;
 	}
 
-	public decode(data: Uint8Array): number {
+	public decode(data: Uint8Array): [number, number] {
 		const view = new DataView(
 			data.buffer,
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getUint8(0);
+		return [view.getUint8(0), 1];
 	}
 }
 /** Singleton instance of U8 codec */
@@ -339,13 +323,13 @@ export class I16 extends Codec<number> {
 		return arr;
 	}
 
-	public decode(data: Uint8Array): number {
+	public decode(data: Uint8Array): [number, number] {
 		const view = new DataView(
 			data.buffer,
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getInt16(0, true);
+		return [view.getInt16(0, true), 2];
 	}
 }
 /** Singleton instance of I16 codec */
@@ -370,13 +354,13 @@ export class U16 extends Codec<number> {
 		return arr;
 	}
 
-	public decode(data: Uint8Array): number {
+	public decode(data: Uint8Array): [number, number] {
 		const view = new DataView(
 			data.buffer,
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getUint16(0, true);
+		return [view.getUint16(0, true), 2];
 	}
 }
 /** Singleton instance of U16 codec */
@@ -401,13 +385,13 @@ export class I32 extends Codec<number> {
 		return arr;
 	}
 
-	public decode(data: Uint8Array): number {
+	public decode(data: Uint8Array): [number, number] {
 		const view = new DataView(
 			data.buffer,
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getInt32(0, true);
+		return [view.getInt32(0, true), 4];
 	}
 }
 /** Singleton instance of I32 codec */
@@ -432,13 +416,13 @@ export class U32 extends Codec<number> {
 		return arr;
 	}
 
-	public decode(data: Uint8Array): number {
+	public decode(data: Uint8Array): [number, number] {
 		const view = new DataView(
 			data.buffer,
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getUint32(0, true);
+		return [view.getUint32(0, true), 4];
 	}
 }
 /** Singleton instance of U32 codec */
@@ -463,13 +447,13 @@ export class I64 extends Codec<bigint> {
 		return arr;
 	}
 
-	public decode(data: Uint8Array): bigint {
+	public decode(data: Uint8Array): [bigint, number] {
 		const view = new DataView(
 			data.buffer,
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getBigInt64(0, true);
+		return [view.getBigInt64(0, true), 8];
 	}
 }
 /** Singleton instance of I64 codec */
@@ -494,13 +478,13 @@ export class U64 extends Codec<bigint> {
 		return arr;
 	}
 
-	public decode(data: Uint8Array): bigint {
+	public decode(data: Uint8Array): [bigint, number] {
 		const view = new DataView(
 			data.buffer,
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getBigUint64(0, true);
+		return [view.getBigUint64(0, true), 8];
 	}
 }
 /** Singleton instance of U64 codec */
@@ -525,13 +509,13 @@ export class F32 extends Codec<number> {
 		return arr;
 	}
 
-	public decode(data: Uint8Array): number {
+	public decode(data: Uint8Array): [number, number] {
 		const view = new DataView(
 			data.buffer,
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getFloat32(0, true);
+		return [view.getFloat32(0, true), 4];
 	}
 }
 /** Singleton instance of F32 codec */
@@ -556,13 +540,13 @@ export class F64 extends Codec<number> {
 		return arr;
 	}
 
-	public decode(data: Uint8Array): number {
+	public decode(data: Uint8Array): [number, number] {
 		const view = new DataView(
 			data.buffer,
 			data.byteOffset,
 			data.byteLength,
 		);
-		return view.getFloat64(0, true);
+		return [view.getFloat64(0, true), 8];
 	}
 }
 /** Singleton instance of F64 codec */
@@ -585,8 +569,8 @@ export class Bool extends Codec<boolean> {
 		return new Uint8Array([value ? 1 : 0]);
 	}
 
-	public decode(data: Uint8Array): boolean {
-		return data[0] !== 0;
+	public decode(data: Uint8Array): [boolean, number] {
+		return [data[0] !== 0, 1];
 	}
 }
 /** Singleton instance of Bool codec */
@@ -616,15 +600,11 @@ export class Str extends Codec<string> {
 		return result;
 	}
 
-	public decode(data: Uint8Array): string {
+	public decode(data: Uint8Array): [string, number] {
 		const { value: length, bytesRead } = decodeVarInt(data);
 		const utf8 = data.subarray(bytesRead, bytesRead + length);
-		return this.decoder.decode(utf8);
-	}
-
-	public override getSize(data: Uint8Array): number {
-		const { value: length, bytesRead } = decodeVarInt(data);
-		return bytesRead + length;
+		const decoded = this.decoder.decode(utf8);
+		return [decoded, bytesRead + length];
 	}
 }
 /** Singleton instance of Str codec */
@@ -666,26 +646,18 @@ export class Bytes extends Codec<Uint8Array> {
 		}
 	}
 
-	public decode(data: Uint8Array): Uint8Array {
+	public decode(data: Uint8Array): [Uint8Array, number] {
 		if (this.stride >= 0) {
-			if (data.length !== this.stride) {
+			if (data.length < this.stride) {
 				throw new RangeError(
-					`Expected byte array of length ${this.stride}, got ${data.length}`,
+					`Expected at least ${this.stride} bytes, got ${data.length}`,
 				);
 			}
-			return data;
+			return [data.subarray(0, this.stride), this.stride];
 		} else {
 			const { value: length, bytesRead } = decodeVarInt(data);
-			return data.subarray(bytesRead, bytesRead + length);
-		}
-	}
-
-	public override getSize(data: Uint8Array): number {
-		if (this.stride >= 0) {
-			return this.stride;
-		} else {
-			const { value: length, bytesRead } = decodeVarInt(data);
-			return bytesRead + length;
+			const decoded = data.subarray(bytesRead, bytesRead + length);
+			return [decoded, bytesRead + length];
 		}
 	}
 }
@@ -752,19 +724,12 @@ export class Option<T> extends Codec<Option.Value<T>> {
 		}
 	}
 
-	public decode(data: Uint8Array): Option.Value<T> {
+	public decode(data: Uint8Array): [Option.Value<T>, number] {
 		if (data[0] === 0) {
-			return null;
+			return [null, 1];
 		} else {
-			return this.codec.decode(data.subarray(1));
-		}
-	}
-
-	public override getSize(data: Uint8Array): number {
-		if (data[0] === 0) {
-			return 1; // just the null tag
-		} else {
-			return 1 + this.codec.getSize(data.subarray(1));
+			const [value, size] = this.codec.decode(data.subarray(1));
+			return [value, 1 + size];
 		}
 	}
 }
@@ -851,29 +816,16 @@ export class Tuple<const T extends readonly unknown[]> extends Codec<T> {
 		return combined;
 	}
 
-	public decode(data: Uint8Array): T {
+	public decode(data: Uint8Array): [T, number] {
 		const result: unknown[] = [];
 		let offset = 0;
 		for (let i = 0; i < this.codecs.length; i++) {
 			const codec = this.codecs[i]!;
-			const size = codec.getSize(data.subarray(offset));
-			const part = data.subarray(offset, offset + size);
-			result[i] = codec.decode(part);
+			const [value, size] = codec.decode(data.subarray(offset));
+			result[i] = value;
 			offset += size;
 		}
-		return result as never;
-	}
-
-	public override getSize(data: Uint8Array): number {
-		if (this.stride >= 0) {
-			return this.stride;
-		}
-		let offset = 0;
-		for (const codec of this.codecs) {
-			const size = codec.getSize(data.subarray(offset));
-			offset += size;
-		}
-		return offset;
+		return [result as never, offset];
 	}
 }
 
@@ -951,18 +903,14 @@ export class Struct<
 		return this.tuple.encode(tupleValue);
 	}
 
-	public decode(data: Uint8Array): T {
-		const tupleValue = this.tuple.decode(data);
+	public decode(data: Uint8Array): [T, number] {
+		const [tupleValue, size] = this.tuple.decode(data);
 		const result: Partial<T> = {};
 		for (let i = 0; i < this.keys.length; i++) {
 			const key = this.keys[i]!;
 			result[key] = tupleValue[i]!;
 		}
-		return result as T;
-	}
-
-	public override getSize(data: Uint8Array): number {
-		return this.tuple.getSize(data);
+		return [result as T, size];
 	}
 }
 
@@ -1050,31 +998,18 @@ export class Vector<T> extends Codec<Vector.Value<T>> {
 		return result;
 	}
 
-	public decode(data: Uint8Array): Vector.Value<T> {
+	public decode(data: Uint8Array): [Vector.Value<T>, number] {
 		const { value: count, bytesRead } = decodeVarInt(data);
 		const result: T[] = [];
 		let offset = bytesRead;
 
 		for (let i = 0; i < count; i++) {
-			const size = this.codec.getSize(data.subarray(offset));
-			const part = data.subarray(offset, offset + size);
-			result.push(this.codec.decode(part));
+			const [value, size] = this.codec.decode(data.subarray(offset));
+			result.push(value);
 			offset += size;
 		}
 
-		return result;
-	}
-
-	public override getSize(data: Uint8Array): number {
-		const { value: count, bytesRead } = decodeVarInt(data);
-		let offset = bytesRead;
-
-		for (let i = 0; i < count; i++) {
-			const size = this.codec.getSize(data.subarray(offset));
-			offset += size;
-		}
-
-		return offset;
+		return [result, offset];
 	}
 }
 
@@ -1155,25 +1090,15 @@ export class Enum<
 		return new Uint8Array([index, ...encodedValue]);
 	}
 
-	public decode(data: Uint8Array): Enum.Value<T> {
+	public decode(data: Uint8Array): [Enum.Value<T>, number] {
 		const index = data[0]!;
 		if (index >= this.keys.length) {
 			throw new Error(`Invalid enum index: ${index}`);
 		}
 		const key = this.keys[index]!;
 		const codec = this.variants[key]!;
-		const value = codec.decode(data.subarray(1));
-		return { kind: key, value } as never;
-	}
-
-	public override getSize(data: Uint8Array): number {
-		const index = data[0]!;
-		if (index >= this.keys.length) {
-			throw new Error(`Invalid enum index: ${index}`);
-		}
-		const key = this.keys[index]!;
-		const codec = this.variants[key]!;
-		return 1 + codec.getSize(data.subarray(1));
+		const [value, size] = codec.decode(data.subarray(1));
+		return [{ kind: key, value } as never, 1 + size];
 	}
 }
 
@@ -1233,8 +1158,8 @@ export class Mapping<K, V> extends Codec<Mapping.Value<K, V>> {
 		return this.#entriesCodec.encode(Array.from(value.entries()));
 	}
 
-	public decode(data: Uint8Array): Mapping.Value<K, V> {
-		const entries = this.#entriesCodec.decode(data);
-		return new Map(entries);
+	public decode(data: Uint8Array): [Mapping.Value<K, V>, number] {
+		const [entries, size] = this.#entriesCodec.decode(data);
+		return [new Map(entries), size];
 	}
 }

@@ -1,5 +1,5 @@
 import { Codec } from "./codec.ts";
-import { U8 } from "./primitives.ts";
+import { U8Codec } from "./primitives.ts";
 import { varint } from "./varint.ts";
 
 /**
@@ -41,7 +41,7 @@ export declare namespace Option {
  * maybeU8.decode(new Uint8Array([1, 9]));   // [9, 2]
  * ```
  */
-export class Option<T> extends Codec<Option.Value<T>> {
+export class OptionCodec<T> extends Codec<Option.Value<T>> {
 	private readonly codec: Codec<T>;
 	public readonly stride = -1;
 
@@ -116,7 +116,7 @@ export declare namespace Tuple {
  * t.decode(enc);                     // [[5, "hi"], 4]
  * ```
  */
-export class Tuple<const T extends readonly unknown[]> extends Codec<T> {
+export class TupleCodec<const T extends readonly unknown[]> extends Codec<T> {
 	public readonly codecs: Tuple.Codecs<T>;
 	public readonly stride: number;
 
@@ -219,19 +219,19 @@ export declare namespace Struct {
  * // User.encode(...) is NOT compatible with User2.decode(...)
  * ```
  */
-export class Struct<const T extends Readonly<Record<string, unknown>>>
+export class StructCodec<const T extends Readonly<Record<string, unknown>>>
 	extends Codec<T> {
 	public readonly stride: number;
 	public readonly shape: Struct.Codecs<T>;
 
 	private readonly keys: (keyof T)[];
-	private readonly tuple: Tuple<T[(keyof T)][]>;
+	private readonly tuple: TupleCodec<T[(keyof T)][]>;
 
 	constructor(shape: Struct.Codecs<T>) {
 		super();
 		this.shape = shape;
 		this.keys = Object.keys(shape) as (keyof T)[];
-		this.tuple = new Tuple(this.keys.map((key) => shape[key])) as never;
+		this.tuple = new TupleCodec(this.keys.map((key) => shape[key])) as never;
 		this.stride = this.tuple.stride;
 	}
 
@@ -312,7 +312,7 @@ export interface VectorOptions<T> {
  * words.decode(wb);                         // [["a", "bc"], 6]
  * ```
  */
-export class Vector<T> extends Codec<Vector.Value<T>> {
+export class VectorCodec<T> extends Codec<Vector.Value<T>> {
 	public readonly stride = -1;
 	readonly #countCodec: Codec<number>;
 	readonly #codec: Codec<T>;
@@ -441,7 +441,7 @@ export interface EnumOptions {
  * const MyEnum = new Enum({ A: u8, B: str } as const, { indexCodec: u32 });
  * ```
  */
-export class Enum<const T extends Readonly<Record<string, unknown>>>
+export class EnumCodec<const T extends Readonly<Record<string, unknown>>>
 	extends Codec<Enum.Value<T>> {
 	public readonly stride = -1;
 	public readonly variants: Enum.Codecs<T>;
@@ -452,7 +452,7 @@ export class Enum<const T extends Readonly<Record<string, unknown>>>
 		super();
 		this.variants = variants;
 		this.keys = Object.keys(variants).sort() as (keyof T)[];
-		this.#indexCodec = options?.indexCodec ?? new U8();
+		this.#indexCodec = options?.indexCodec ?? new U8Codec();
 	}
 
 	public encode(value: Enum.Value<T>): Uint8Array {
@@ -538,9 +538,9 @@ export interface MappingOptions {
  * const Dict = new Mapping(str, u8, { countCodec: u32 });
  * ```
  */
-export class Mapping<K, V> extends Codec<Mapping.Value<K, V>> {
+export class MappingCodec<K, V> extends Codec<Mapping.Value<K, V>> {
 	public readonly stride = -1;
-	readonly #entriesCodec: Vector<[K, V]>;
+	readonly #entriesCodec: VectorCodec<[K, V]>;
 
 	constructor(
 		keyCodec: Codec<K>,
@@ -548,8 +548,8 @@ export class Mapping<K, V> extends Codec<Mapping.Value<K, V>> {
 		options?: MappingOptions,
 	) {
 		super();
-		this.#entriesCodec = new Vector({
-			codec: new Tuple([keyCodec, valueCodec]),
+		this.#entriesCodec = new VectorCodec({
+			codec: new TupleCodec([keyCodec, valueCodec]),
 			countCodec: options?.countCodec,
 		});
 	}

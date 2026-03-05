@@ -28,7 +28,7 @@ import { Codec } from "./codec.ts";
  * v.encode(300);                // [0xAC, 0x02]
  * ```
  */
-export class VarInt extends Codec<number> {
+export class VarIntCodec extends Codec<number> {
 	public readonly stride = -1;
 
 	public encode(value: number): Uint8Array {
@@ -69,4 +69,4 @@ export class VarInt extends Codec<number> {
 }
 
 /** Singleton instance of VarInt codec */
-export const varint: VarInt = new VarInt();
+export const varint: VarIntCodec = new VarIntCodec();

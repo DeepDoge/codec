@@ -2,8 +2,18 @@
 
 Composable binary codecs for TypeScript/JavaScript.
 
-## Breaking Changes in 0.1.0
+## Breaking Changes
 
+### 0.2.0
+- **Class names changed**: All codec classes now have a "Codec" suffix:
+  - `I8` → `I8Codec`, `U8` → `U8Codec`, `I16` → `I16Codec`, etc.
+  - `Str` → `StrCodec`, `Bytes` → `BytesCodec`
+  - `Option` → `OptionCodec`, `Tuple` → `TupleCodec`, `Struct` → `StructCodec`
+  - `Vector` → `VectorCodec`, `Enum` → `EnumCodec`, `Mapping` → `MappingCodec`
+  - `VarInt` → `VarIntCodec`
+  - Singleton instances remain unchanged (`i8`, `u8`, `str`, `varint`, etc.)
+
+### 0.1.0
 - **Default endianness changed**: Previously the default was little-endian (LE), now the default is big-endian (BE). Use `*LE` variants for little-endian encoding.
 - **VarInt API changed**: Removed `encodeVarInt` and `decodeVarInt` exports. Use the `varint` codec instead:
   ```typescript
@@ -22,14 +32,14 @@ deno add jsr:@nomadshiba/codec
 ## Quick Start
 
 ```typescript
-import { u32, str, Struct, Vector } from "@nomadshiba/codec";
+import { u32, str, StructCodec, VectorCodec } from "@nomadshiba/codec";
 
 // Encode a number
 const bytes = u32.encode(42);  // Uint8Array(4)
 const [value, size] = u32.decode(bytes);  // [42, 4]
 
 // Define a struct
-const User = new Struct({ id: u32, name: str } as const);
+const User = new StructCodec({ id: u32, name: str } as const);
 const user = { id: 1, name: "Ada" };
 const encoded = User.encode(user);
 const [decoded] = User.decode(encoded);  // { id: 1, name: "Ada" }
@@ -69,25 +79,25 @@ Every codec extends `Codec<T>` with:
 UTF-8 strings with varint length prefix:
 
 ```typescript
-import { str, Str, u32 } from "@nomadshiba/codec";
+import { str, StrCodec, u32 } from "@nomadshiba/codec";
 
 str.encode("hello");  // [0x05, 'h', 'e', 'l', 'l', 'o']
 
 // Custom length codec
-const strU32 = new Str({ lengthCodec: u32 });
+const strU32 = new StrCodec({ lengthCodec: u32 });
 ```
 
 ### Bytes
 Raw byte arrays:
 
 ```typescript
-import { bytes, Bytes } from "@nomadshiba/codec";
+import { bytes, BytesCodec } from "@nomadshiba/codec";
 
 // Variable-length (varint prefix)
 bytes.encode(new Uint8Array([1, 2, 3]));
 
 // Fixed-length (no prefix)
-const fixed4 = new Bytes(4);
+const fixed4 = new BytesCodec(4);
 fixed4.encode(new Uint8Array([1, 2, 3, 4]));
 ```
 
@@ -97,9 +107,9 @@ fixed4.encode(new Uint8Array([1, 2, 3, 4]));
 Nullable values:
 
 ```typescript
-import { Option, u8 } from "@nomadshiba/codec";
+import { OptionCodec, u8 } from "@nomadshiba/codec";
 
-const maybeU8 = new Option(u8);
+const maybeU8 = new OptionCodec(u8);
 maybeU8.encode(null);     // [0x00]
 maybeU8.encode(7);        // [0x01, 0x07]
 ```
@@ -108,9 +118,9 @@ maybeU8.encode(7);        // [0x01, 0x07]
 Fixed-length heterogeneous arrays:
 
 ```typescript
-import { Tuple, u8, str } from "@nomadshiba/codec";
+import { TupleCodec, u8, str } from "@nomadshiba/codec";
 
-const t = new Tuple([u8, str] as const);
+const t = new TupleCodec([u8, str] as const);
 t.encode([7, "hi"]);    // [0x07, 0x02, 'h', 'i']
 ```
 
@@ -118,9 +128,9 @@ t.encode([7, "hi"]);    // [0x07, 0x02, 'h', 'i']
 Objects with named fields (definition order matters):
 
 ```typescript
-import { Struct, u32, str } from "@nomadshiba/codec";
+import { StructCodec, u32, str } from "@nomadshiba/codec";
 
-const User = new Struct({ id: u32, name: str } as const);
+const User = new StructCodec({ id: u32, name: str } as const);
 User.encode({ id: 42, name: "Ada" });
 ```
 
@@ -128,22 +138,22 @@ User.encode({ id: 42, name: "Ada" });
 Variable-length arrays:
 
 ```typescript
-import { Vector, u16, u32 } from "@nomadshiba/codec";
+import { VectorCodec, u16, u32 } from "@nomadshiba/codec";
 
 // Default varint count
-const nums = new Vector(u16);
+const nums = new VectorCodec(u16);
 
 // Custom count codec
-const numsU32 = new Vector({ codec: u16, countCodec: u32 });
+const numsU32 = new VectorCodec({ codec: u16, countCodec: u32 });
 ```
 
 ### Enum
 Tagged unions:
 
 ```typescript
-import { Enum, u8, str } from "@nomadshiba/codec";
+import { EnumCodec, u8, str } from "@nomadshiba/codec";
 
-const Event = new Enum({
+const Event = new EnumCodec({
   Click: u8,
   Message: str
 } as const);
@@ -156,13 +166,13 @@ Event.encode({ kind: "Message", value: "hello" });
 Key-value maps:
 
 ```typescript
-import { Mapping, str, u8, u32 } from "@nomadshiba/codec";
+import { MappingCodec, str, u8, u32 } from "@nomadshiba/codec";
 
-const Dict = new Mapping(str, u8);
+const Dict = new MappingCodec(str, u8);
 Dict.encode(new Map([["x", 1], ["y", 2]]));
 
 // Custom count codec
-const DictU32 = new Mapping(str, u8, { countCodec: u32 });
+const DictU32 = new MappingCodec(str, u8, { countCodec: u32 });
 ```
 
 ## Custom Codecs
@@ -191,10 +201,10 @@ class DateCodec extends Codec<Date> {
 - **Default endianness changed**: Previously the default was little-endian (LE), now the default is big-endian (BE). Use `*LE` variants for little-endian encoding.
 - **VarInt API changed**: Removed `encodeVarInt` and `decodeVarInt` exports. Use the `VarInt` codec instead:
   ```typescript
-  import { VarInt } from "@nomadshiba/codec";
+  import { VarIntCodec } from "@nomadshiba/codec";
   
-  const bytes = VarInt.encode(123);
-  const [value, size] = VarInt.decode(bytes);
+  const bytes = VarIntCodec.encode(123);
+  const [value, size] = VarIntCodec.decode(bytes);
   ```
 
 ## License

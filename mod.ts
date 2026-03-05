@@ -35,8 +35,8 @@
  * @example
  * ```ts
  * // Tuple: [u8, str] -> first a byte, then str with varint length
- * import { u8, str, Tuple } from "@nomadshiba/codec";
- * const T = new Tuple([u8, str] as const);
+ * import { u8, str, TupleCodec } from "@nomadshiba/codec";
+ * const T = new TupleCodec([u8, str] as const);
  * const bytes = T.encode([7, "hi"]); // [0x07, 0x02, 0x68, 0x69]
  * T.decode(bytes); // [[7, "hi"], 4]
  * ```
@@ -44,8 +44,8 @@
  * @example
  * ```ts
  * // Struct: DEFINITION ORDER MATTERS (serialized exactly as a tuple)
- * import { u32, str, Struct } from "@nomadshiba/codec";
- * const User = new Struct({ id: u32, name: str } as const);
+ * import { u32, str, StructCodec } from "@nomadshiba/codec";
+ * const User = new StructCodec({ id: u32, name: str } as const);
  * const bin = User.encode({ id: 1, name: "Ada" });
  * User.decode(bin); // [{ id: 1, name: "Ada" }, size]
  * ```
@@ -53,10 +53,10 @@
  * @example
  * ```ts
  * // Vector and Mapping
- * import { Vector, Mapping, u16, str } from "@nomadshiba/codec";
- * const Numbers = new Vector(u16);
+ * import { VectorCodec, MappingCodec, u16, str } from "@nomadshiba/codec";
+ * const Numbers = new VectorCodec(u16);
  * Numbers.decode(Numbers.encode([1, 513])); // [[1, 513], size]
- * const Dict = new Mapping(str, u16);
+ * const Dict = new MappingCodec(str, u16);
  * const out = Dict.decode(Dict.encode(new Map([["x", 1], ["y", 2]])));
  * // [Map { "x" => 1, "y" => 2 }, size]
  * ```
@@ -64,10 +64,10 @@
  * @example
  * ```ts
  * // Enum and Option
- * import { Enum, Option, u8, str } from "@nomadshiba/codec";
- * const MaybeU8 = new Option(u8);
+ * import { EnumCodec, OptionCodec, u8, str } from "@nomadshiba/codec";
+ * const MaybeU8 = new OptionCodec(u8);
  * MaybeU8.decode(MaybeU8.encode(5)); // [5, 2]
- * const MyEnum = new Enum({ A: u8, B: str } as const);
+ * const MyEnum = new EnumCodec({ A: u8, B: str } as const);
  * const v = MyEnum.decode(MyEnum.encode({ kind: "B", value: "ok" }));
  * // [{ kind: "B", value: "ok" }, size]
  * ```
@@ -98,53 +98,60 @@ export { Codec } from "./codec.ts";
 // VarInt (LEB128 encoding for non-negative integers)
 export {
 	/** VarInt codec class */
-	VarInt,
+	VarIntCodec,
 	/** Singleton instance of VarInt codec */
 	varint,
 } from "./varint.ts";
 
 // Primitives (big-endian default, little-endian variants available)
 export {
-	Bool,
+	BoolCodec,
 	bool,
-	F32,
+	F32Codec,
 	f32,
 	f32LE,
-	F64,
+	F64Codec,
 	f64,
 	f64LE,
-	I16,
+	I16Codec,
 	i16,
 	// Little-endian singleton instances
 	i16LE,
-	I32,
+	I32Codec,
 	i32,
 	i32LE,
-	I64,
+	I64Codec,
 	i64,
 	i64LE,
-	I8,
+	I8Codec,
 	i8,
-	U16,
+	U16Codec,
 	u16,
 	u16LE,
-	U32,
+	U32Codec,
 	u32,
 	u32LE,
-	U64,
+	U64Codec,
 	u64,
 	u64LE,
-	U8,
+	U8Codec,
 	u8,
 } from "./primitives.ts";
 export type { PrimitiveOptions } from "./primitives.ts";
 
 // Bytes & Strings
-export { Bytes, bytes, Str, str } from "./bytes.ts";
+export { BytesCodec, bytes, StrCodec, str } from "./bytes.ts";
 export type { BytesOptions, StrOptions } from "./bytes.ts";
 
 // Composites
-export { Enum, Mapping, Option, Struct, Tuple, Vector } from "./composites.ts";
+export {
+	EnumCodec,
+	MappingCodec,
+	OptionCodec,
+	StructCodec,
+	TupleCodec,
+	VectorCodec,
+} from "./composites.ts";
 export type {
 	EnumOptions,
 	MappingOptions,

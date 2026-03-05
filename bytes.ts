@@ -24,7 +24,7 @@ export interface StrOptions {
  * const strU32 = new Str({ lengthCodec: u32 });
  * ```
  */
-export class Str extends Codec<string> {
+export class StrCodec extends Codec<string> {
 	public readonly stride = -1;
 	readonly #lengthCodec: Codec<number>;
 	readonly #encoder = new TextEncoder();
@@ -52,7 +52,7 @@ export class Str extends Codec<string> {
 	}
 }
 /** Singleton instance of Str codec (uses varint for length) */
-export const str: Str = new Str();
+export const str: StrCodec = new StrCodec();
 
 /**
  * Options for Bytes codec.
@@ -82,7 +82,7 @@ export interface BytesOptions {
  * const bytesU32 = new Bytes({ lengthCodec: u32 });
  * ```
  */
-export class Bytes extends Codec<Uint8Array> {
+export class BytesCodec extends Codec<Uint8Array> {
 	public readonly stride: number;
 	readonly #lengthCodec: Codec<number>;
 
@@ -125,4 +125,4 @@ export class Bytes extends Codec<Uint8Array> {
 	}
 }
 /** Singleton instance of Bytes codec (variable-length, uses varint) */
-export const bytes: Bytes = new Bytes();
+export const bytes: BytesCodec = new BytesCodec();

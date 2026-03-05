@@ -3,55 +3,63 @@ import {
     bool,
     Bytes,
     bytes,
-    decodeVarInt,
-    encodeVarInt,
     Enum,
     f32,
+    f32LE,
     f64,
+    f64LE,
     i16,
+    i16LE,
     i32,
+    i32LE,
     i64,
+    i64LE,
     i8,
     Mapping,
     Option,
+    Str,
     str,
     Struct,
     Tuple,
     u16,
+    u16LE,
     u32,
+    u32LE,
     u64,
+    u64LE,
     u8,
+    varint,
     Vector,
 } from "./mod.ts";
 
 // VarInt Tests
-Deno.test("encodeVarInt - small numbers", () => {
-    assertEquals(Array.from(encodeVarInt(0)), [0x00]);
-    assertEquals(Array.from(encodeVarInt(127)), [0x7F]);
+Deno.test("varint - small numbers", () => {
+    assertEquals(Array.from(varint.encode(0)), [0x00]);
+    assertEquals(Array.from(varint.encode(127)), [0x7F]);
 });
 
-Deno.test("encodeVarInt - multi-byte", () => {
-    assertEquals(Array.from(encodeVarInt(128)), [0x80, 0x01]);
-    assertEquals(Array.from(encodeVarInt(300)), [0xAC, 0x02]);
+Deno.test("varint - multi-byte", () => {
+    assertEquals(Array.from(varint.encode(128)), [0x80, 0x01]);
+    assertEquals(Array.from(varint.encode(300)), [0xAC, 0x02]);
 });
 
-Deno.test("encodeVarInt - invalid input", () => {
-    assertThrows(() => encodeVarInt(-1), RangeError);
-    assertThrows(() => encodeVarInt(1.5), RangeError);
+Deno.test("varint - invalid input", () => {
+    assertThrows(() => varint.encode(-1), RangeError);
+    assertThrows(() => varint.encode(1.5), RangeError);
 });
 
-Deno.test("decodeVarInt - roundtrip", () => {
+Deno.test("varint - roundtrip", () => {
     const testValues = [0, 1, 127, 128, 255, 256, 300, 16383, 16384, 2097151];
     for (const val of testValues) {
-        const encoded = encodeVarInt(val);
-        const { value, bytesRead } = decodeVarInt(encoded);
+        const encoded = varint.encode(val);
+        const [value, bytesRead] = varint.decode(encoded);
         assertEquals(value, val);
         assertEquals(bytesRead, encoded.length);
     }
 });
 
-Deno.test("decodeVarInt - incomplete", () => {
-    assertThrows(() => decodeVarInt(new Uint8Array([0x80])), Error);
+Deno.test("varint - incomplete", () => {
+    assertThrows(() => varint.decode(new Uint8Array([0x80])), Error);
 });
 
 // Primitive Number Codecs
@@ -157,6 +165,99 @@ Deno.test("f64 - roundtrip", () => {
     assertEquals(f64.stride, 8);
 });
 
+// Little-endian variant tests
+Deno.test("i16LE - roundtrip", () => {
+    const testValues = [-32768, -2, 0, 2, 32767];
+    for (const val of testValues) {
+        const [decoded] = i16LE.decode(i16LE.encode(val));
+        assertEquals(decoded, val);
+    }
+    assertEquals(i16LE.stride, 2);
+    // Verify little-endian encoding
+    const encoded = i16LE.encode(513);
+    assertEquals(Array.from(encoded), [0x01, 0x02]); // LE: 0x0201 = 513
+});
+
+Deno.test("u16LE - roundtrip", () => {
+    const testValues = [0, 255, 256, 513, 65535];
+    for (const val of testValues) {
+        const [decoded] = u16LE.decode(u16LE.encode(val));
+        assertEquals(decoded, val);
+    }
+    assertEquals(u16LE.stride, 2);
+    // Verify little-endian encoding differs from big-endian
+    const encodedLE = u16LE.encode(513);
+    const encodedBE = u16.encode(513);
+    assertEquals(Array.from(encodedLE), [0x01, 0x02]);
+    assertEquals(Array.from(encodedBE), [0x02, 0x01]);
+});
+
+Deno.test("i32LE - roundtrip", () => {
+    const testValues = [-2147483648, -123456, 0, 123456, 2147483647];
+    for (const val of testValues) {
+        const [decoded] = i32LE.decode(i32LE.encode(val));
+        assertEquals(decoded, val);
+    }
+    assertEquals(i32LE.stride, 4);
+});
+
+Deno.test("u32LE - roundtrip", () => {
+    const testValues = [0, 255, 65536, 16777216, 4294967295];
+    for (const val of testValues) {
+        const [decoded] = u32LE.decode(u32LE.encode(val));
+        assertEquals(decoded, val);
+    }
+    assertEquals(u32LE.stride, 4);
+});
+
+Deno.test("i64LE - roundtrip", () => {
+    const testValues = [
+        -9223372036854775808n,
+        -123n,
+        0n,
+        123n,
+        9223372036854775807n,
+    ];
+    for (const val of testValues) {
+        const [decoded] = i64LE.decode(i64LE.encode(val));
+        assertEquals(decoded, val);
+    }
+    assertEquals(i64LE.stride, 8);
+});
+
+Deno.test("u64LE - roundtrip", () => {
+    const testValues = [
+        0n,
+        255n,
+        65536n,
+        9007199254740991n,
+        18446744073709551615n,
+    ];
+    for (const val of testValues) {
+        const [decoded] = u64LE.decode(u64LE.encode(val));
+        assertEquals(decoded, val);
+    }
+    assertEquals(u64LE.stride, 8);
+});
+
+Deno.test("f32LE - roundtrip", () => {
+    const testValues = [0, -1.5, 1.5, 3.14159, -3.14159];
+    for (const val of testValues) {
+        const [decoded] = f32LE.decode(f32LE.encode(Math.fround(val)));
+        assertEquals(decoded, Math.fround(val));
+    }
+    assertEquals(f32LE.stride, 4);
+});
+
+Deno.test("f64LE - roundtrip", () => {
+    const testValues = [0, -1.5, 1.5, 3.141592653589793, -3.141592653589793];
+    for (const val of testValues) {
+        const [decoded] = f64LE.decode(f64LE.encode(val));
+        assertEquals(decoded, val);
+    }
+    assertEquals(f64LE.stride, 8);
+});
+
 // Bool Codec
 Deno.test("bool - roundtrip", () => {
     const [t] = bool.decode(bool.encode(true));
@@ -176,6 +277,17 @@ Deno.test("str - roundtrip", () => {
         assertEquals(decoded, val);
     }
     assertEquals(str.stride, -1);
+});
+
+Deno.test("str - custom length codec (u32)", () => {
+    const strU32 = new Str({ lengthCodec: u32 });
+    const [decoded] = strU32.decode(strU32.encode("hello"));
+    assertEquals(decoded, "hello");
+    // u32 length prefix is 4 bytes, varint would be 1 byte for "hello" (5)
+    const encodedU32 = strU32.encode("hi");
+    const encodedVarint = str.encode("hi");
+    assertEquals(encodedU32.length, 4 + 2); // 4 byte length + 2 bytes for "hi"
+    assertEquals(encodedVarint.length, 1 + 2); // 1 byte varint + 2 bytes for "hi"
 });
 
 // Bytes Codec
@@ -203,6 +315,18 @@ Deno.test("bytes - roundtrip fixed size", () => {
 Deno.test("bytes - fixed size error", () => {
     const fixedBytes = new Bytes(4);
     assertThrows(() => fixedBytes.encode(new Uint8Array([1, 2])), RangeError);
+});
+
+Deno.test("bytes - custom length codec (u32)", () => {
+    const bytesU32 = new Bytes(-1, { lengthCodec: u32 });
+    const val = new Uint8Array([1, 2, 3]);
+    const [decoded] = bytesU32.decode(bytesU32.encode(val));
+    assertEquals(Array.from(decoded), Array.from(val));
+    // u32 length prefix is 4 bytes, varint would be 1 byte
+    const encodedU32 = bytesU32.encode(val);
+    const encodedVarint = bytes.encode(val);
+    assertEquals(encodedU32.length, 4 + 3); // 4 byte length + 3 bytes data
+    assertEquals(encodedVarint.length, 1 + 3); // 1 byte varint + 3 bytes data
 });
 
 // Option Codec
@@ -356,6 +480,19 @@ Deno.test("Vector - nested vectors", () => {
     assertEquals(decoded, val);
 });
 
+Deno.test("Vector - custom count codec (u32)", () => {
+    const numsU32 = new Vector({ codec: u16, countCodec: u32 });
+    const val = [1, 513, 1000];
+    const [decoded] = numsU32.decode(numsU32.encode(val));
+    assertEquals(decoded, val);
+    // u32 count prefix is 4 bytes, varint would be 1 byte for 3 items
+    const encodedU32 = numsU32.encode(val);
+    assertEquals(encodedU32[0], 0); // First byte of u32(3) is 0
+    assertEquals(encodedU32[1], 0);
+    assertEquals(encodedU32[2], 0);
+    assertEquals(encodedU32[3], 3); // Last byte has the value 3
+});
+
 // Enum Codec
 Deno.test("Enum - simple variants", () => {
     const MyEnum = new Enum({ A: u8, B: str } as const);
@@ -411,6 +548,26 @@ Deno.test("Enum - complex payloads", () => {
     assertEquals(decodedDeleted, deleted);
 });
 
+Deno.test("Enum - custom index codec (u32)", () => {
+    const MyEnum = new Enum({ A: u8, B: str } as const, { indexCodec: u32 });
+
+    const valA = { kind: "A" as const, value: 5 };
+    const [decodedA] = MyEnum.decode(MyEnum.encode(valA));
+    assertEquals(decodedA, valA);
+
+    const valB = { kind: "B" as const, value: "ok" };
+    const [decodedB] = MyEnum.decode(MyEnum.encode(valB));
+    assertEquals(decodedB, valB);
+
+    // u32 index is 4 bytes, u8 would be 1 byte
+    const encodedA = MyEnum.encode(valA);
+    assertEquals(encodedA[0], 0); // First 3 bytes are 0
+    assertEquals(encodedA[1], 0);
+    assertEquals(encodedA[2], 0);
+    assertEquals(encodedA[3], 0); // A is index 0
+    assertEquals(encodedA[4], 5); // Payload follows
+});
+
 // Mapping Codec
 Deno.test("Mapping - simple", () => {
     const Dict = new Mapping(str, u8);
@@ -436,6 +593,19 @@ Deno.test("Mapping - complex types", () => {
     ]);
     const [decoded] = UserMap.decode(UserMap.encode(val));
     assertEquals(Array.from(decoded.entries()), Array.from(val.entries()));
+});
+
+Deno.test("Mapping - custom count codec (u32)", () => {
+    const DictU32 = new Mapping(str, u8, { countCodec: u32 });
+    const val = new Map([["x", 1], ["y", 2]]);
+    const [decoded] = DictU32.decode(DictU32.encode(val));
+    assertEquals(Array.from(decoded.entries()), Array.from(val.entries()));
+    // u32 count prefix is 4 bytes, varint would be 1 byte for 2 entries
+    const encodedU32 = DictU32.encode(val);
+    assertEquals(encodedU32[0], 0); // First 3 bytes are 0
+    assertEquals(encodedU32[1], 0);
+    assertEquals(encodedU32[2], 0);
+    assertEquals(encodedU32[3], 2); // Count is 2
 });
 
 // Complex Integration Tests

@@ -2,6 +2,17 @@
 
 Composable binary codecs for TypeScript/JavaScript.
 
+## Breaking Changes in 0.1.0
+
+- **Default endianness changed**: Previously the default was little-endian (LE), now the default is big-endian (BE). Use `*LE` variants for little-endian encoding.
+- **VarInt API changed**: Removed `encodeVarInt` and `decodeVarInt` exports. Use the `VarInt` codec instead:
+  ```typescript
+  import { VarInt } from "@nomadshiba/codec";
+
+  const bytes = VarInt.encode(123);
+  const [value, size] = VarInt.decode(bytes);
+  ```
+
 ## Installation
 
 ```bash
@@ -174,6 +185,17 @@ class DateCodec extends Codec<Date> {
   }
 }
 ```
+
+## Breaking Changes in 0.1.0
+
+- **Default endianness changed**: Previously the default was little-endian (LE), now the default is big-endian (BE). Use `*LE` variants for little-endian encoding.
+- **VarInt API changed**: Removed `encodeVarInt` and `decodeVarInt` exports. Use the `VarInt` codec instead:
+  ```typescript
+  import { VarInt } from "@nomadshiba/codec";
+  
+  const bytes = VarInt.encode(123);
+  const [value, size] = VarInt.decode(bytes);
+  ```
 
 ## License
 

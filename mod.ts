@@ -23,66 +23,6 @@
  * - Option: 0x00 for null, 0x01 + payload for present.
  * - Mapping: Vector of Tuple [key, value].
  *
- * Quickstart
- * @example
- * ```ts
- * // Primitives
- * import { u32, str } from "@nomadshiba/codec";
- * const b = u32.encode(42);
- * u32.decode(b); // [42, 4]
- * ```
- *
- * @example
- * ```ts
- * // Tuple: [u8, str] -> first a byte, then str with varint length
- * import { u8, str, TupleCodec } from "@nomadshiba/codec";
- * const T = new TupleCodec([u8, str] as const);
- * const bytes = T.encode([7, "hi"]); // [0x07, 0x02, 0x68, 0x69]
- * T.decode(bytes); // [[7, "hi"], 4]
- * ```
- *
- * @example
- * ```ts
- * // Struct: DEFINITION ORDER MATTERS (serialized exactly as a tuple)
- * import { u32, str, StructCodec } from "@nomadshiba/codec";
- * const User = new StructCodec({ id: u32, name: str } as const);
- * const bin = User.encode({ id: 1, name: "Ada" });
- * User.decode(bin); // [{ id: 1, name: "Ada" }, size]
- * ```
- *
- * @example
- * ```ts
- * // Vector and Mapping
- * import { VectorCodec, MappingCodec, u16, str } from "@nomadshiba/codec";
- * const Numbers = new VectorCodec(u16);
- * Numbers.decode(Numbers.encode([1, 513])); // [[1, 513], size]
- * const Dict = new MappingCodec(str, u16);
- * const out = Dict.decode(Dict.encode(new Map([["x", 1], ["y", 2]])));
- * // [Map { "x" => 1, "y" => 2 }, size]
- * ```
- *
- * @example
- * ```ts
- * // Enum and Option
- * import { EnumCodec, OptionCodec, u8, str } from "@nomadshiba/codec";
- * const MaybeU8 = new OptionCodec(u8);
- * MaybeU8.decode(MaybeU8.encode(5)); // [5, 2]
- * const MyEnum = new EnumCodec({ A: u8, B: str } as const);
- * const v = MyEnum.decode(MyEnum.encode({ kind: "B", value: "ok" }));
- * // [{ kind: "B", value: "ok" }, size]
- * ```
- *
- * @example
- * ```ts
- * // Custom codec: Date as u64 milliseconds since epoch
- * import { Codec, u64 } from "@nomadshiba/codec";
- * class DateCodec extends Codec<Date> {
- *   readonly stride = 8;
- *   encode(d: Date) { return u64.encode(BigInt(d.getTime())); }
- *   decode(b: Uint8Array) { return [new Date(Number(u64.decode(b)[0])), 8]; }
- * }
- * ```
- *
  * Notes
  * - VarInt here is unsigned LEB128 for non-negative JS numbers.
  * - Self-delimiting types (Str, variable Bytes, Vector) encode their own size.

@@ -4,7 +4,7 @@ Composable binary codecs for TypeScript/JavaScript.
 
 ## Breaking Changes
 
-### 0.2.0
+### 0.1.0
 - **Class names changed**: All codec classes now have a "Codec" suffix:
   - `I8` → `I8Codec`, `U8` → `U8Codec`, `I16` → `I16Codec`, etc.
   - `Str` → `StrCodec`, `Bytes` → `BytesCodec`
@@ -12,8 +12,6 @@ Composable binary codecs for TypeScript/JavaScript.
   - `Vector` → `VectorCodec`, `Enum` → `EnumCodec`, `Mapping` → `MappingCodec`
   - `VarInt` → `VarIntCodec`
   - Singleton instances remain unchanged (`i8`, `u8`, `str`, `varint`, etc.)
-
-### 0.1.0
 - **Default endianness changed**: Previously the default was little-endian (LE), now the default is big-endian (BE). Use `*LE` variants for little-endian encoding.
 - **VarInt API changed**: Removed `encodeVarInt` and `decodeVarInt` exports. Use the `varint` codec instead:
   ```typescript
@@ -195,17 +193,6 @@ class DateCodec extends Codec<Date> {
   }
 }
 ```
-
-## Breaking Changes in 0.1.0
-
-- **Default endianness changed**: Previously the default was little-endian (LE), now the default is big-endian (BE). Use `*LE` variants for little-endian encoding.
-- **VarInt API changed**: Removed `encodeVarInt` and `decodeVarInt` exports. Use the `VarInt` codec instead:
-  ```typescript
-  import { VarIntCodec } from "@nomadshiba/codec";
-  
-  const bytes = VarIntCodec.encode(123);
-  const [value, size] = VarIntCodec.decode(bytes);
-  ```
 
 ## License
 

@@ -9,9 +9,6 @@ Composable binary codecs for TypeScript/JavaScript.
 - **Class names changed**: All codec classes now have a "Codec" suffix:
   - `I8` → `I8Codec`, `U8` → `U8Codec`, `I16` → `I16Codec`, etc.
   - `Str` → `StrCodec`, `Bytes` → `BytesCodec`
-  - `Option` → `OptionCodec`, `Tuple` → `TupleCodec`, `Struct` → `StructCodec`
-  - `Vector` → `VectorCodec`, `Enum` → `EnumCodec`, `Mapping` → `MappingCodec`
-  - `VarInt` → `VarIntCodec`
   - Singleton instances remain unchanged (`i8`, `u8`, `str`, `varint`, etc.)
 - **Default endianness changed**: Previously the default was little-endian (LE),
   now the default is big-endian (BE). Use `*LE` variants for little-endian

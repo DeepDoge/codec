@@ -17,14 +17,14 @@ import { Codec } from "./codec.ts";
  *
  * @example
  * ```ts
- * import { VarInt, varint } from "@nomadshiba/codec";
+ * import { VarIntCodec, VarInt } from "@nomadshiba/codec";
  *
  * // Using singleton instance
- * const b = varint.encode(300);  // [0xAC, 0x02]
- * varint.decode(b);             // [300, 2]
+ * const b = VarInt.encode(300);  // [0xAC, 0x02]
+ * VarInt.decode(b);             // [300, 2]
  *
  * // Creating a new instance
- * const v = new VarInt();
+ * const v = new VarIntCodec();
  * v.encode(300);                // [0xAC, 0x02]
  * ```
  */
@@ -69,4 +69,4 @@ export class VarIntCodec extends Codec<number> {
 }
 
 /** Singleton instance of VarInt codec */
-export const varint: VarIntCodec = new VarIntCodec();
+export const VarInt: VarIntCodec = new VarIntCodec();

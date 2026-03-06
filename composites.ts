@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { Codec } from "./codec.ts";
 import { U8Codec } from "./primitives.ts";
-import { varint } from "./varint.ts";
+import { VarInt } from "./varint.ts";
 
 export type OptionGeneric = Codec<any>;
 export type OptionValue<T extends OptionGeneric> = Codec.Infer<T> | null;
@@ -202,7 +202,9 @@ export type ArrayValue<T extends ArrayGeneric> = Codec.Infer<T>[];
 /**
  * Options for Vector codec.
  */
-export type ArrayOptions = {
+export type ArrayOptions<T extends ArrayGeneric> = {
+	/** Codec for encoding array elements */
+	codec: T;
 	/** Codec for encoding the count prefix. Default is varint. */
 	countCodec?: Codec<number>;
 };
@@ -242,10 +244,10 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
 	readonly #countCodec: Codec<number>;
 	readonly #codec: T;
 
-	constructor(codec: T, options?: ArrayOptions) {
+	constructor(options: ArrayOptions<T>) {
 		super();
-		this.#codec = codec;
-		this.#countCodec = options?.countCodec ?? varint;
+		this.#codec = options.codec;
+		this.#countCodec = options.countCodec ?? VarInt;
 	}
 
 	public get codec(): Codec<T> {
@@ -301,7 +303,9 @@ export type EnumValue<T extends StructGeneric> = {
 /**
  * Options for Enum codec.
  */
-export type EnumOptions = {
+export type EnumOptions<T extends EnumGeneric> = {
+	/** Record mapping variant names to codecs */
+	variants: T;
 	/** Codec for encoding the variant index. Default is u8 (1 byte). */
 	indexCodec?: Codec<number>;
 };
@@ -341,11 +345,11 @@ export class EnumCodec<const T extends EnumGeneric>
 	readonly #indexCodec: Codec<number>;
 	private readonly keys: (keyof T)[];
 
-	constructor(variants: T, options?: EnumOptions) {
+	constructor(options: EnumOptions<T>) {
 		super();
-		this.variants = variants;
-		this.keys = Object.keys(variants).sort() as (keyof T)[];
-		this.#indexCodec = options?.indexCodec ?? new U8Codec();
+		this.variants = options.variants;
+		this.keys = Object.keys(this.variants).sort() as (keyof T)[];
+		this.#indexCodec = options.indexCodec ?? new U8Codec();
 	}
 
 	public encode(value: EnumValue<T>): Uint8Array {
@@ -383,7 +387,9 @@ export type MappingValue<T extends MappingGeneric> = Map<
 /**
  * Options for Mapping codec.
  */
-export type MappingOptions = {
+export type MappingOptions<T extends MappingGeneric> = {
+	/** Tuple of [keyCodec, valueCodec] */
+	codecs: T;
 	/** Codec for encoding the entry count. Default is varint. */
 	countCodec?: Codec<number>;
 };
@@ -395,13 +401,12 @@ export type MappingOptions = {
  * - If [key,value] is fixed-stride: entries are concatenated (count implied)
  * - If variable: each entry is prefixed with a VarInt length (via Tuple rules)
  *
- * @template K - Key type
- * @template V - Value type
+ * @template T - Tuple of [keyCodec, valueCodec]
  *
  * @example
  * ```ts
  * // Default: varint count
- * const Dict = new Mapping(str, u8);
+ * const Dict = new MappingCodec({ codecs: [str, u8] });
  * const map = new Map<string, number>([["x", 1], ["y", 2]]);
  * const b = Dict.encode(map);
  * const out = Dict.decode(b);   // [Map { "x" => 1, "y" => 2 }, size]
@@ -410,7 +415,7 @@ export type MappingOptions = {
  * ```ts
  * // Custom count codec
  * import { u32 } from "./primitives.ts";
- * const Dict = new Mapping(str, u8, { countCodec: u32 });
+ * const Dict = new MappingCodec({ codecs: [str, u8], countCodec: u32 });
  * ```
  */
 export class MappingCodec<const T extends MappingGeneric>
@@ -418,19 +423,19 @@ export class MappingCodec<const T extends MappingGeneric>
 	public readonly stride = -1;
 	readonly #entriesCodec: ArrayCodec<TupleCodec<[T[0], T[1]]>>;
 
-	constructor(codecs: T, options?: MappingOptions) {
+	constructor(options: MappingOptions<[T[0], T[1]]>) {
 		super();
-		this.#entriesCodec = new ArrayCodec(
-			new TupleCodec([codecs[0], codecs[1]]),
-			options,
-		);
+		this.#entriesCodec = new ArrayCodec({
+			codec: new TupleCodec(options.codecs),
+			countCodec: options.countCodec,
+		});
 	}
 
-	public encode(value: MappingValue<T>): Uint8Array {
+	public encode(value: MappingValue<[T[0], T[1]]>): Uint8Array {
 		return this.#entriesCodec.encode(value.entries().toArray());
 	}
 
-	public decode(data: Uint8Array): [MappingValue<T>, number] {
+	public decode(data: Uint8Array): [MappingValue<[T[0], T[1]]>, number] {
 		const [entries, size] = this.#entriesCodec.decode(data);
 		return [new Map(entries), size];
 	}

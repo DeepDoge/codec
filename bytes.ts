@@ -1,5 +1,5 @@
 import { Codec } from "./codec.ts";
-import { varint } from "./varint.ts";
+import { VarInt } from "./varint.ts";
 
 /**
  * Options for Str codec.
@@ -32,7 +32,7 @@ export class StringCodec extends Codec<string> {
 
 	constructor(options?: StringOptions) {
 		super();
-		this.#lengthCodec = options?.lengthCodec ?? varint;
+		this.#lengthCodec = options?.lengthCodec ?? VarInt;
 	}
 
 	public encode(value: string): Uint8Array {
@@ -87,7 +87,7 @@ export class BytesCodec extends Codec<Uint8Array> {
 	constructor(size: number = -1, options?: BytesOptions) {
 		super();
 		this.stride = size;
-		this.#lengthCodec = options?.lengthCodec ?? varint;
+		this.#lengthCodec = options?.lengthCodec ?? VarInt;
 	}
 
 	public encode(value: Uint8Array): Uint8Array {

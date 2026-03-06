@@ -15,8 +15,8 @@ export type NumericOptions = {
  *
  * @example
  * ```ts
- * const b = i8.encode(-5);            // [0xFB]
- * i8.decode(b);                        // [-5, 1]
+ * I8.encode(-5);            // [0xFB]
+ * I8.decode(b);                        // [-5, 1]
  * ```
  */
 export class I8Codec extends Codec<number> {
@@ -39,7 +39,7 @@ export class I8Codec extends Codec<number> {
 	}
 }
 /** Singleton instance of I8 codec */
-export const i8: I8Codec = new I8Codec();
+export const I8: I8Codec = new I8Codec();
 
 /**
  * Codec for unsigned 8-bit integers (uint8).
@@ -48,8 +48,8 @@ export const i8: I8Codec = new I8Codec();
  *
  * @example
  * ```ts
- * const b = u8.encode(255);           // [0xFF]
- * u8.decode(b);                        // [255, 1]
+ * U8.encode(255);           // [0xFF]
+ * U8.decode(b);                        // [255, 1]
  * ```
  */
 export class U8Codec extends Codec<number> {
@@ -72,7 +72,7 @@ export class U8Codec extends Codec<number> {
 	}
 }
 /** Singleton instance of U8 codec */
-export const u8: U8Codec = new U8Codec();
+export const U8: U8Codec = new U8Codec();
 
 /**
  * Codec for signed 16-bit integers (int16).
@@ -81,8 +81,8 @@ export const u8: U8Codec = new U8Codec();
  * @example
  * ```ts
  * // Big-endian (default)
- * const b = new I16().encode(-2);     // [0xFF, 0xFE]
- * new I16().decode(b);                // [-2, 2]
+ * new I16Codec().encode(-2);     // [0xFF, 0xFE]
+ * new I16Codec().decode(b);                // [-2, 2]
  *
  * // Little-endian
  * const le = new I16({ endian: "le" }).encode(-2);  // [0xFE, 0xFF]
@@ -114,7 +114,7 @@ export class I16Codec extends Codec<number> {
 	}
 }
 /** Singleton instance of I16 codec (big-endian) */
-export const i16: I16Codec = new I16Codec();
+export const I16: I16Codec = new I16Codec();
 
 /**
  * Codec for unsigned 16-bit integers (uint16).
@@ -123,8 +123,8 @@ export const i16: I16Codec = new I16Codec();
  * @example
  * ```ts
  * // Big-endian (default)
- * const b = new U16().encode(513);     // [0x02, 0x01]
- * new U16().decode(b);                // [513, 2]
+ * new U16Codec().encode(513);     // [0x02, 0x01]
+ * new U16Codec().decode(b);                // [513, 2]
  *
  * // Little-endian
  * const le = new U16({ endian: "le" }).encode(513);  // [0x01, 0x02]
@@ -156,7 +156,7 @@ export class U16Codec extends Codec<number> {
 	}
 }
 /** Singleton instance of U16 codec (big-endian) */
-export const u16: U16Codec = new U16Codec();
+export const U16: U16Codec = new U16Codec();
 
 /**
  * Codec for signed 32-bit integers (int32).
@@ -165,8 +165,8 @@ export const u16: U16Codec = new U16Codec();
  * @example
  * ```ts
  * // Big-endian (default)
- * const b = new I32().encode(-123456); // 4 bytes
- * new I32().decode(b);                // [-123456, 4]
+ * new I32Codec().encode(-123456); // 4 bytes
+ * new I32Codec().decode(b);                // [-123456, 4]
  *
  * // Little-endian
  * const le = new I32({ endian: "le" }).encode(-123456);
@@ -198,7 +198,7 @@ export class I32Codec extends Codec<number> {
 	}
 }
 /** Singleton instance of I32 codec (big-endian) */
-export const i32: I32Codec = new I32Codec();
+export const I32: I32Codec = new I32Codec();
 
 /**
  * Codec for unsigned 32-bit integers (uint32).
@@ -207,8 +207,8 @@ export const i32: I32Codec = new I32Codec();
  * @example
  * ```ts
  * // Big-endian (default)
- * const b = new U32().encode(4294967295 >>> 1);
- * new U32().decode(b);                // [value, 4]
+ * new U32Codec().encode(4294967295 >>> 1);
+ * new U32Codec().decode(b);                // [value, 4]
  *
  * // Little-endian
  * const le = new U32({ endian: "le" }).encode(4294967295 >>> 1);
@@ -240,7 +240,7 @@ export class U32Codec extends Codec<number> {
 	}
 }
 /** Singleton instance of U32 codec (big-endian) */
-export const u32: U32Codec = new U32Codec();
+export const U32: U32Codec = new U32Codec();
 
 /**
  * Codec for signed 64-bit integers (bigint).
@@ -249,8 +249,8 @@ export const u32: U32Codec = new U32Codec();
  * @example
  * ```ts
  * // Big-endian (default)
- * const b = new I64().encode(-123n);
- * new I64().decode(b);                // [-123n, 8]
+ * new I64Codec().encode(-123n);
+ * new I64Codec().decode(b);                // [-123n, 8]
  *
  * // Little-endian
  * const le = new I64({ endian: "le" }).encode(-123n);
@@ -282,7 +282,7 @@ export class I64Codec extends Codec<bigint> {
 	}
 }
 /** Singleton instance of I64 codec (big-endian) */
-export const i64: I64Codec = new I64Codec();
+export const I64: I64Codec = new I64Codec();
 
 /**
  * Codec for unsigned 64-bit integers (bigint).
@@ -291,8 +291,8 @@ export const i64: I64Codec = new I64Codec();
  * @example
  * ```ts
  * // Big-endian (default)
- * const b = new U64().encode(9007199254740991n);
- * new U64().decode(b);                // [9007199254740991n, 8]
+ * new U64Codec().encode(9007199254740991n);
+ * new U64Codec().decode(b);                // [9007199254740991n, 8]
  *
  * // Little-endian
  * const le = new U64({ endian: "le" }).encode(9007199254740991n);
@@ -324,7 +324,7 @@ export class U64Codec extends Codec<bigint> {
 	}
 }
 /** Singleton instance of U64 codec (big-endian) */
-export const u64: U64Codec = new U64Codec();
+export const U64: U64Codec = new U64Codec();
 
 /**
  * Codec for 32-bit floating point numbers (float32).
@@ -333,8 +333,8 @@ export const u64: U64Codec = new U64Codec();
  * @example
  * ```ts
  * // Big-endian (default)
- * const b = new F32().encode(Math.fround(1.5));
- * new F32().decode(b);                // [~1.5, 4]
+ * new F32Codec().encode(Math.fround(1.5));
+ * new F32Codec().decode(b);                // [~1.5, 4]
  *
  * // Little-endian
  * const le = new F32({ endian: "le" }).encode(Math.fround(1.5));
@@ -366,7 +366,7 @@ export class F32Codec extends Codec<number> {
 	}
 }
 /** Singleton instance of F32 codec (big-endian) */
-export const f32: F32Codec = new F32Codec();
+export const F32: F32Codec = new F32Codec();
 
 /**
  * Codec for 64-bit floating point numbers (float64).
@@ -375,8 +375,8 @@ export const f32: F32Codec = new F32Codec();
  * @example
  * ```ts
  * // Big-endian (default)
- * const b = new F64().encode(1.2345);
- * new F64().decode(b);                // [1.2345, 8]
+ * new F64Codec().encode(1.2345);
+ * new F64Codec().decode(b);                // [1.2345, 8]
  *
  * // Little-endian
  * const le = new F64({ endian: "le" }).encode(1.2345);
@@ -408,7 +408,7 @@ export class F64Codec extends Codec<number> {
 	}
 }
 /** Singleton instance of F64 codec (big-endian) */
-export const f64: F64Codec = new F64Codec();
+export const F64: F64Codec = new F64Codec();
 
 /**
  * Codec for boolean values.
@@ -416,8 +416,8 @@ export const f64: F64Codec = new F64Codec();
  *
  * @example
  * ```ts
- * const b = bool.encode(true);        // [0x01]
- * bool.decode(b);                     // [true, 1]
+ * Bool.encode(true);        // [0x01]
+ * Bool.decode(b);                     // [true, 1]
  * ```
  */
 export class BoolCodec extends Codec<boolean> {
@@ -432,7 +432,7 @@ export class BoolCodec extends Codec<boolean> {
 	}
 }
 /** Singleton instance of Bool codec */
-export const bool: BoolCodec = new BoolCodec();
+export const Bool: BoolCodec = new BoolCodec();
 
 // Little-endian singleton instances for convenience
 
@@ -440,70 +440,70 @@ export const bool: BoolCodec = new BoolCodec();
  * Singleton instance of I16 codec (little-endian).
  * @example
  * ```ts
- * i16LE.encode(-2);  // [0xFE, 0xFF]
+ * I16LE.encode(-2);  // [0xFE, 0xFF]
  * ```
  */
-export const i16LE: I16Codec = new I16Codec({ endian: "le" });
+export const I16LE: I16Codec = new I16Codec({ endian: "le" });
 
 /**
  * Singleton instance of U16 codec (little-endian).
  * @example
  * ```ts
- * u16LE.encode(513);  // [0x01, 0x02]
+ * U16LE.encode(513);  // [0x01, 0x02]
  * ```
  */
-export const u16LE: U16Codec = new U16Codec({ endian: "le" });
+export const U16LE: U16Codec = new U16Codec({ endian: "le" });
 
 /**
  * Singleton instance of I32 codec (little-endian).
  * @example
  * ```ts
- * i32LE.encode(-123456);
+ * I32LE.encode(-123456);
  * ```
  */
-export const i32LE: I32Codec = new I32Codec({ endian: "le" });
+export const I32LE: I32Codec = new I32Codec({ endian: "le" });
 
 /**
  * Singleton instance of U32 codec (little-endian).
  * @example
  * ```ts
- * u32LE.encode(4294967295 >>> 1);
+ * U32LE.encode(4294967295 >>> 1);
  * ```
  */
-export const u32LE: U32Codec = new U32Codec({ endian: "le" });
+export const U32LE: U32Codec = new U32Codec({ endian: "le" });
 
 /**
  * Singleton instance of I64 codec (little-endian).
  * @example
  * ```ts
- * i64LE.encode(-123n);
+ * I64LE.encode(-123n);
  * ```
  */
-export const i64LE: I64Codec = new I64Codec({ endian: "le" });
+export const I64LE: I64Codec = new I64Codec({ endian: "le" });
 
 /**
  * Singleton instance of U64 codec (little-endian).
  * @example
  * ```ts
- * u64LE.encode(9007199254740991n);
+ * U64LE.encode(9007199254740991n);
  * ```
  */
-export const u64LE: U64Codec = new U64Codec({ endian: "le" });
+export const U64LE: U64Codec = new U64Codec({ endian: "le" });
 
 /**
  * Singleton instance of F32 codec (little-endian).
  * @example
  * ```ts
- * f32LE.encode(Math.fround(1.5));
+ * F32LE.encode(Math.fround(1.5));
  * ```
  */
-export const f32LE: F32Codec = new F32Codec({ endian: "le" });
+export const F32LE: F32Codec = new F32Codec({ endian: "le" });
 
 /**
  * Singleton instance of F64 codec (little-endian).
  * @example
  * ```ts
- * f64LE.encode(1.2345);
+ * F64LE.encode(1.2345);
  * ```
  */
-export const f64LE: F64Codec = new F64Codec({ endian: "le" });
+export const F64LE: F64Codec = new F64Codec({ endian: "le" });

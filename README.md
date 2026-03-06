@@ -17,33 +17,25 @@ deno add jsr:@nomadshiba/codec
 
 ## Breaking Changes
 
-**Note for users upgrading:** This library changed significantly in v0.1.0. See
-[MIGRATION.md](./MIGRATION.md) for detailed migration guides.
+**Note for users upgrading:** This library changed significantly in v0.1.0.
 
-- **Default endianness**: Changed from little-endian to big-endian
-- **VarInt API**: Use `varint` singleton instead of
-  `encodeVarInt`/`decodeVarInt` functions
-- **Removed singletons**: `str` and `bytes` removed, use `new StringCodec()` and
-  `new BytesCodec()`
-- **Class names**: All classes now have `Codec` suffix (e.g., `I8` → `I8Codec`)
-
----
+See [MIGRATION.md](./MIGRATION.md) for detailed migration guides.
 
 ## Quick Start
 
 ```ts
-import { StringCodec, StructCodec, u32 } from "@nomadshiba/codec";
+import { StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
 
 const str = new StringCodec();
 
 // Encode a number
-const encoded = u32.encode(42); // Uint8Array(4)
+const encoded = U32.encode(42); // Uint8Array(4)
 
 // Decode a number
-const [value, bytesRead] = u32.decode(encoded); // [42, 4]
+const [value, bytesRead] = U32.decode(encoded); // [42, 4]
 
 // Define a struct
-const User = new StructCodec({ id: u32, name: str });
+const User = new StructCodec({ id: U32, name: str });
 
 const user = { id: 1, name: "Ada" };
 const userBytes = User.encode(user);
@@ -70,18 +62,18 @@ All codecs extend `Codec<T>` and implement:
 
 | Codec          | Type    | Size     | Description             |
 | -------------- | ------- | -------- | ----------------------- |
-| `i8`           | number  | 1        | Signed 8-bit integer    |
-| `u8`           | number  | 1        | Unsigned 8-bit integer  |
-| `i16`, `i16LE` | number  | 2        | Signed 16-bit (BE/LE)   |
-| `u16`, `u16LE` | number  | 2        | Unsigned 16-bit (BE/LE) |
-| `i32`, `i32LE` | number  | 4        | Signed 32-bit (BE/LE)   |
-| `u32`, `u32LE` | number  | 4        | Unsigned 32-bit (BE/LE) |
-| `i64`, `i64LE` | bigint  | 8        | Signed 64-bit (BE/LE)   |
-| `u64`, `u64LE` | bigint  | 8        | Unsigned 64-bit (BE/LE) |
-| `f32`, `f32LE` | number  | 4        | 32-bit float (BE/LE)    |
-| `f64`, `f64LE` | number  | 8        | 64-bit float (BE/LE)    |
-| `bool`         | boolean | 1        | Boolean (`0x00`/`0x01`) |
-| `varint`       | number  | variable | Unsigned LEB128         |
+| `I8`           | number  | 1        | Signed 8-bit integer    |
+| `U8`           | number  | 1        | Unsigned 8-bit integer  |
+| `I16`, `I16LE` | number  | 2        | Signed 16-bit (BE/LE)   |
+| `U16`, `U16LE` | number  | 2        | Unsigned 16-bit (BE/LE) |
+| `I32`, `I32LE` | number  | 4        | Signed 32-bit (BE/LE)   |
+| `U32`, `U32LE` | number  | 4        | Unsigned 32-bit (BE/LE) |
+| `I64`, `I64LE` | bigint  | 8        | Signed 64-bit (BE/LE)   |
+| `U64`, `U64LE` | bigint  | 8        | Unsigned 64-bit (BE/LE) |
+| `F32`, `F32LE` | number  | 4        | 32-bit float (BE/LE)    |
+| `F64`, `F64LE` | number  | 8        | 64-bit float (BE/LE)    |
+| `Bool`         | boolean | 1        | Boolean (`0x00`/`0x01`) |
+| `VarInt`       | number  | variable | Unsigned LEB128         |
 
 ---
 
@@ -92,13 +84,13 @@ All codecs extend `Codec<T>` and implement:
 UTF-8 strings with a length prefix.
 
 ```ts
-import { StringCodec, u32 } from "@nomadshiba/codec";
+import { StringCodec, U32 } from "@nomadshiba/codec";
 
 const str = new StringCodec();
 str.encode("hello"); // [0x05, 'h', 'e', 'l', 'l', 'o']
 
 // Custom length codec
-const strU32 = new StringCodec({ lengthCodec: u32 });
+const strU32 = new StringCodec({ lengthCodec: U32 });
 ```
 
 ---
@@ -128,9 +120,9 @@ fixed4.encode(new Uint8Array([1, 2, 3, 4]));
 Nullable values with a presence byte.
 
 ```ts
-import { OptionCodec, u8 } from "@nomadshiba/codec";
+import { OptionCodec, U8 } from "@nomadshiba/codec";
 
-const maybeU8 = new OptionCodec(u8);
+const maybeU8 = new OptionCodec(U8);
 
 maybeU8.encode(null); // [0x00]
 maybeU8.encode(7); // [0x01, 0x07]
@@ -145,10 +137,10 @@ Format: `0x00` = null, `0x01` = value follows.
 Fixed-length arrays with mixed types.
 
 ```ts
-import { StringCodec, TupleCodec, u8 } from "@nomadshiba/codec";
+import { StringCodec, TupleCodec, U8 } from "@nomadshiba/codec";
 
 const str = new StringCodec();
-const t = new TupleCodec([u8, str]);
+const t = new TupleCodec([U8, str]);
 
 t.encode([7, "hi"]); // [0x07, 0x02, 'h', 'i']
 ```
@@ -160,10 +152,10 @@ t.encode([7, "hi"]); // [0x07, 0x02, 'h', 'i']
 Objects with named fields. Order matches definition.
 
 ```ts
-import { StringCodec, StructCodec, u32 } from "@nomadshiba/codec";
+import { StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
 
 const str = new StringCodec();
-const User = new StructCodec({ id: u32, name: str });
+const User = new StructCodec({ id: U32, name: str });
 
 User.encode({ id: 42, name: "Ada" });
 ```
@@ -175,13 +167,13 @@ User.encode({ id: 42, name: "Ada" });
 Variable-length arrays with a count prefix.
 
 ```ts
-import { ArrayCodec, u16, u32 } from "@nomadshiba/codec";
+import { ArrayCodec, U16, U32 } from "@nomadshiba/codec";
 
 // Default: varint count
-const nums = new ArrayCodec(u16);
+const nums = new ArrayCodec({ codec: U16 });
 
 // Custom count codec
-const numsU32 = new ArrayCodec(u16, { countCodec: u32 });
+const numsU32 = new ArrayCodec({ codec: U16, countCodec: U32 });
 ```
 
 ---
@@ -191,12 +183,14 @@ const numsU32 = new ArrayCodec(u16, { countCodec: u32 });
 Tagged unions.
 
 ```ts
-import { EnumCodec, StringCodec, u8 } from "@nomadshiba/codec";
+import { EnumCodec, StringCodec, U8 } from "@nomadshiba/codec";
 
 const str = new StringCodec();
 const Event = new EnumCodec({
-  Click: u8,
-  Message: str,
+  variants: {
+    Click: U8,
+    Message: str,
+  },
 });
 
 Event.encode({ kind: "Click", value: 5 });
@@ -210,10 +204,10 @@ Event.encode({ kind: "Message", value: "hello" });
 Key–value maps.
 
 ```ts
-import { MappingCodec, StringCodec, u32, u8 } from "@nomadshiba/codec";
+import { MappingCodec, StringCodec, U32, U8 } from "@nomadshiba/codec";
 
 const str = new StringCodec();
-const Dict = new MappingCodec([str, u8]);
+const Dict = new MappingCodec({ codecs: [str, U8] });
 
 Dict.encode(
   new Map([
@@ -223,7 +217,7 @@ Dict.encode(
 );
 
 // Custom count codec
-const DictU32 = new MappingCodec([str, u8], { countCodec: u32 });
+const DictU32 = new MappingCodec({ codecs: [str, U8], countCodec: U32 });
 ```
 
 ---
@@ -233,17 +227,17 @@ const DictU32 = new MappingCodec([str, u8], { countCodec: u32 });
 Extend `Codec<T>` to create your own.
 
 ```ts
-import { Codec, u64 } from "@nomadshiba/codec";
+import { Codec, U64 } from "@nomadshiba/codec";
 
 class DateCodec extends Codec<Date> {
   readonly stride = 8;
 
   encode(d: Date): Uint8Array {
-    return u64.encode(BigInt(d.getTime()));
+    return U64.encode(BigInt(d.getTime()));
   }
 
   decode(data: Uint8Array): [Date, number] {
-    const [ms] = u64.decode(data);
+    const [ms] = U64.decode(data);
     return [new Date(Number(ms)), 8];
   }
 }
@@ -258,7 +252,7 @@ See [MIGRATION.md](./MIGRATION.md) for detailed migration guides.
 ### 0.1.0
 
 - **Default endianness**: Changed from LE to BE
-- **VarInt API**: Use `varint` singleton instead of
+- **VarInt API**: Use `VarInt` singleton instead of
   `encodeVarInt`/`decodeVarInt`
 - **Removed singletons**: `str` and `bytes` removed, use constructors
 - **Class names**: All classes now have `Codec` suffix (e.g., `I8` → `I8Codec`)

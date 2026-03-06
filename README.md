@@ -107,7 +107,7 @@ const bytes = new BytesCodec();
 bytes.encode(new Uint8Array([1, 2, 3]));
 
 // Fixed-length (no prefix)
-const fixed4 = new BytesCodec(4);
+const fixed4 = new BytesCodec({ size: 4 });
 fixed4.encode(new Uint8Array([1, 2, 3, 4]));
 ```
 

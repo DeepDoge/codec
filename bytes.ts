@@ -59,26 +59,31 @@ export class StringCodec extends Codec<string> {
  * Options for Bytes codec.
  */
 export type BytesOptions = {
-	/** Codec for encoding the length prefix when size is -1. Default is varint. */
+	/**
+	 * Fixed size in bytes. If specified (>= 0), fixed length without prefix.
+	 * If not specified (default), variable length with length prefix (varint by default).
+	 */
+	size?: number;
+	/** Codec for encoding the length prefix when size is not specified. Default is varint. */
 	lengthCodec?: Codec<number>;
 };
 
 /**
  * Codec for raw byte arrays.
  * If size is specified (>= 0), fixed length without prefix.
- * If size is -1 (default), variable length with length prefix (varint by default).
+ * If size is -1 or not specified (default), variable length with length prefix (varint by default).
  *
  * @example
  * ```ts
  * import { BytesCodec } from "@nomadshiba/codec";
- * 
+ *
  * // Variable-length bytes (uses varint for length by default)
  * const bytes = new BytesCodec();
  * const b = bytes.encode(new Uint8Array([1, 2, 3])); // [0x03, 0x01, 0x02, 0x03]
  * bytes.decode(b);                                    // [Uint8Array([1,2,3]), 4]
  *
  * // Fixed-length bytes (no prefix)
- * const fixed4 = new BytesCodec(4);
+ * const fixed4 = new BytesCodec({ size: 4 });
  * fixed4.encode(new Uint8Array([1, 2, 3, 4]));       // [0x01, 0x02, 0x03, 0x04]
  * ```
  */
@@ -86,9 +91,9 @@ export class BytesCodec extends Codec<Uint8Array> {
 	public readonly stride: number;
 	readonly #lengthCodec: Codec<number>;
 
-	constructor(size: number = -1, options?: BytesOptions) {
+	constructor(options?: BytesOptions) {
 		super();
-		this.stride = size;
+		this.stride = options?.size ?? -1;
 		this.#lengthCodec = options?.lengthCodec ?? VarInt;
 	}
 

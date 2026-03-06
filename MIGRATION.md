@@ -163,6 +163,24 @@ type User = StructValue<typeof userCodec>; // { id: number, name: string }
 
 ---
 
+### BytesCodec Constructor Signature Changed
+
+`BytesCodec` now takes size inside an options object instead of as a positional parameter.
+
+**Migration:**
+
+```ts
+// Before
+import { BytesCodec } from "@nomadshiba/codec";
+const fixed4 = new BytesCodec(4);
+
+// After
+import { BytesCodec } from "@nomadshiba/codec";
+const fixed4 = new BytesCodec({ size: 4 });
+```
+
+---
+
 ### MappingCodec Constructor Signature Changed
 
 `MappingCodec` now takes a tuple of `[keyCodec, valueCodec]` instead of separate

@@ -11,7 +11,7 @@ import { varint } from "./varint.ts";
  * type V = Option.Value<string>;
  * ```
  */
-export declare namespace Option {
+export declare namespace OptionCodec {
 	/**
 	 * Value that can be either of type T or null
 	 */
@@ -41,7 +41,7 @@ export declare namespace Option {
  * maybeU8.decode(new Uint8Array([1, 9]));   // [9, 2]
  * ```
  */
-export class OptionCodec<T> extends Codec<Option.Value<T>> {
+export class OptionCodec<T> extends Codec<OptionCodec.Value<T>> {
 	private readonly codec: Codec<T>;
 	public readonly stride = -1;
 
@@ -50,7 +50,7 @@ export class OptionCodec<T> extends Codec<Option.Value<T>> {
 		this.codec = codec;
 	}
 
-	public encode(value: Option.Value<T>): Uint8Array {
+	public encode(value: OptionCodec.Value<T>): Uint8Array {
 		if (value === null) {
 			return new Uint8Array([0]);
 		} else {
@@ -62,7 +62,7 @@ export class OptionCodec<T> extends Codec<Option.Value<T>> {
 		}
 	}
 
-	public decode(data: Uint8Array): [Option.Value<T>, number] {
+	public decode(data: Uint8Array): [OptionCodec.Value<T>, number] {
 		if (data[0] === 0) {
 			return [null, 1];
 		} else {
@@ -81,7 +81,7 @@ export class OptionCodec<T> extends Codec<Option.Value<T>> {
  * type T = Tuple.Infer<[U8, Str]>;
  * ```
  */
-export declare namespace Tuple {
+export declare namespace TupleCodec {
 	/**
 	 * Infers the JavaScript tuple type from an array of codecs
 	 */
@@ -117,10 +117,10 @@ export declare namespace Tuple {
  * ```
  */
 export class TupleCodec<const T extends readonly unknown[]> extends Codec<T> {
-	public readonly codecs: Tuple.Codecs<T>;
+	public readonly codecs: TupleCodec.Codecs<T>;
 	public readonly stride: number;
 
-	constructor(codecs: Tuple.Codecs<T>) {
+	constructor(codecs: TupleCodec.Codecs<T>) {
 		super();
 		this.codecs = codecs;
 		this.stride = 0;
@@ -176,7 +176,7 @@ export class TupleCodec<const T extends readonly unknown[]> extends Codec<T> {
  * type S = Struct.Infer<{ id: U32, name: Str }>;
  * ```
  */
-export declare namespace Struct {
+export declare namespace StructCodec {
 	/**
 	 * Infers the JavaScript object type from a record of codecs
 	 */
@@ -222,16 +222,18 @@ export declare namespace Struct {
 export class StructCodec<const T extends Readonly<Record<string, unknown>>>
 	extends Codec<T> {
 	public readonly stride: number;
-	public readonly shape: Struct.Codecs<T>;
+	public readonly shape: StructCodec.Codecs<T>;
 
 	private readonly keys: (keyof T)[];
 	private readonly tuple: TupleCodec<T[(keyof T)][]>;
 
-	constructor(shape: Struct.Codecs<T>) {
+	constructor(shape: StructCodec.Codecs<T>) {
 		super();
 		this.shape = shape;
 		this.keys = Object.keys(shape) as (keyof T)[];
-		this.tuple = new TupleCodec(this.keys.map((key) => shape[key])) as never;
+		this.tuple = new TupleCodec(
+			this.keys.map((key) => shape[key]),
+		) as never;
 		this.stride = this.tuple.stride;
 	}
 
@@ -260,7 +262,7 @@ export class StructCodec<const T extends Readonly<Record<string, unknown>>>
  * type V = Vector.Infer<U16>;
  * ```
  */
-export declare namespace Vector {
+export declare namespace ArrayCodec {
 	/**
 	 * Array of values of type T
 	 */
@@ -312,7 +314,7 @@ export type ArrayOptions<T> = {
  * words.decode(wb);                         // [["a", "bc"], 6]
  * ```
  */
-export class ArrayCodec<T> extends Codec<Vector.Value<T>> {
+export class ArrayCodec<T> extends Codec<ArrayCodec.Value<T>> {
 	public readonly stride = -1;
 	readonly #countCodec: Codec<number>;
 	readonly #codec: Codec<T>;
@@ -332,7 +334,7 @@ export class ArrayCodec<T> extends Codec<Vector.Value<T>> {
 		return this.#codec;
 	}
 
-	public encode(value: Vector.Value<T>): Uint8Array {
+	public encode(value: ArrayCodec.Value<T>): Uint8Array {
 		const parts: Uint8Array[] = [];
 
 		for (const item of value) {
@@ -358,7 +360,7 @@ export class ArrayCodec<T> extends Codec<Vector.Value<T>> {
 		return result;
 	}
 
-	public decode(data: Uint8Array): [Vector.Value<T>, number] {
+	public decode(data: Uint8Array): [ArrayCodec.Value<T>, number] {
 		const [count, bytesRead] = this.#countCodec.decode(data);
 		const result: T[] = [];
 		let offset = bytesRead;
@@ -382,7 +384,7 @@ export class ArrayCodec<T> extends Codec<Vector.Value<T>> {
  * type E = Enum.Value<{ A: number, B: string }>;
  * ```
  */
-export declare namespace Enum {
+export declare namespace EnumCodec {
 	/**
 	 * Tagged union type representing an enum variant
 	 */
@@ -442,20 +444,20 @@ export type EnumOptions = {
  * ```
  */
 export class EnumCodec<const T extends Readonly<Record<string, unknown>>>
-	extends Codec<Enum.Value<T>> {
+	extends Codec<EnumCodec.Value<T>> {
 	public readonly stride = -1;
-	public readonly variants: Enum.Codecs<T>;
+	public readonly variants: EnumCodec.Codecs<T>;
 	readonly #indexCodec: Codec<number>;
 	private readonly keys: (keyof T)[];
 
-	constructor(variants: Enum.Codecs<T>, options?: EnumOptions) {
+	constructor(variants: EnumCodec.Codecs<T>, options?: EnumOptions) {
 		super();
 		this.variants = variants;
 		this.keys = Object.keys(variants).sort() as (keyof T)[];
 		this.#indexCodec = options?.indexCodec ?? new U8Codec();
 	}
 
-	public encode(value: Enum.Value<T>): Uint8Array {
+	public encode(value: EnumCodec.Value<T>): Uint8Array {
 		const index = this.keys.indexOf(value.kind);
 		if (index === -1) {
 			throw new Error(`Invalid enum variant: ${String(value.kind)}`);
@@ -469,7 +471,7 @@ export class EnumCodec<const T extends Readonly<Record<string, unknown>>>
 		return result;
 	}
 
-	public decode(data: Uint8Array): [Enum.Value<T>, number] {
+	public decode(data: Uint8Array): [EnumCodec.Value<T>, number] {
 		const [index, indexSize] = this.#indexCodec.decode(data);
 		if (index >= this.keys.length) {
 			throw new Error(`Invalid enum index: ${index}`);
@@ -490,7 +492,7 @@ export class EnumCodec<const T extends Readonly<Record<string, unknown>>>
  * type M = Mapping.Infer<Str, U8>;
  * ```
  */
-export declare namespace Mapping {
+export declare namespace MappingCodec {
 	/**
 	 * Map from keys of type K to values of type V
 	 */
@@ -538,7 +540,7 @@ export type MappingOptions = {
  * const Dict = new Mapping(str, u8, { countCodec: u32 });
  * ```
  */
-export class MappingCodec<K, V> extends Codec<Mapping.Value<K, V>> {
+export class MappingCodec<K, V> extends Codec<MappingCodec.Value<K, V>> {
 	public readonly stride = -1;
 	readonly #entriesCodec: ArrayCodec<[K, V]>;
 
@@ -554,11 +556,11 @@ export class MappingCodec<K, V> extends Codec<Mapping.Value<K, V>> {
 		});
 	}
 
-	public encode(value: Mapping.Value<K, V>): Uint8Array {
+	public encode(value: MappingCodec.Value<K, V>): Uint8Array {
 		return this.#entriesCodec.encode(Array.from(value.entries()));
 	}
 
-	public decode(data: Uint8Array): [Mapping.Value<K, V>, number] {
+	public decode(data: Uint8Array): [MappingCodec.Value<K, V>, number] {
 		const [entries, size] = this.#entriesCodec.decode(data);
 		return [new Map(entries), size];
 	}

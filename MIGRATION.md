@@ -138,7 +138,8 @@ instances:
 // Before
 import { StructCodec, TupleCodec } from "@nomadshiba/codec";
 
-const pointCodec = new TupleCodec([U8, u16]);
+const str = new StringCodec();
+const pointCodec = new TupleCodec([U8, U16]);
 type Point = TupleCodec.Infer<[U8Codec, U16Codec]>; // [number, number]
 
 const userCodec = new StructCodec({ id: U32, name: str });
@@ -152,9 +153,10 @@ import {
   TupleValue,
 } from "@nomadshiba/codec";
 
-const pointCodec = new TupleCodec([U8, u16]);
+const pointCodec = new TupleCodec([U8, U16]);
 type Point = TupleValue<typeof pointCodec>; // [number, number]
 
+const str = new StringCodec();
 const userCodec = new StructCodec({ id: U32, name: str });
 type User = StructValue<typeof userCodec>; // { id: number, name: string }
 ```
@@ -170,10 +172,10 @@ arguments.
 
 ```ts
 // Before
-import { MappingCodec, StringCodec, u8 } from "@nomadshiba/codec";
-const Dict = new MappingCodec(new StringCodec(), u8);
+import { MappingCodec, StringCodec, U8 } from "@nomadshiba/codec";
+const Dict = new MappingCodec(new StringCodec(), U8);
 
 // After
-import { MappingCodec, StringCodec, u8 } from "@nomadshiba/codec";
-const Dict = new MappingCodec({ codecs: [new StringCodec(), u8] });
+import { MappingCodec, StringCodec, U8 } from "@nomadshiba/codec";
+const Dict = new MappingCodec({ codecs: [new StringCodec(), U8] });
 ```

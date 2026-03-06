@@ -17,11 +17,13 @@ export type OptionValue<T extends OptionGeneric> = Codec.Infer<T> | null;
  *
  * @example
  * ```ts
- * const maybeU8 = new Option(u8);
- * Array.from(maybeU8.encode(null));        // [0x00]
- * Array.from(maybeU8.encode(7));           // [0x01, 0x07]
- * maybeU8.decode(new Uint8Array([0]));      // [null, 1]
- * maybeU8.decode(new Uint8Array([1, 9]));   // [9, 2]
+ * import { OptionCodec, U8 } from "@nomadshiba/codec";
+ *
+ * const maybeU8 = new OptionCodec(U8);
+ * maybeU8.encode(null);                // [0x00]
+ * maybeU8.encode(7);                   // [0x01, 0x07]
+ * maybeU8.decode(new Uint8Array([0]));   // [null, 1]
+ * maybeU8.decode(new Uint8Array([1, 9])); // [9, 2]
  * ```
  */
 export class OptionCodec<T extends OptionGeneric>
@@ -74,10 +76,13 @@ export type TupleValue<T extends TupleGeneric> = {
  *
  * @example
  * ```ts
- * // [u8, str]: first byte is u8, then str with its own varint length
- * const t = new Tuple([u8, str] as const);
- * const enc = t.encode([5, "hi"]);   // [0x05, 0x02, 0x68, 0x69]
- * t.decode(enc);                     // [[5, "hi"], 4]
+ * import { StringCodec, TupleCodec, U8 } from "@nomadshiba/codec";
+ *
+ * const str = new StringCodec();
+ * // [U8, str]: first byte is U8, then str with its own varint length
+ * const t = new TupleCodec([U8, str]);
+ * const enc = t.encode([5, "hi"]);    // [0x05, 0x02, 0x68, 0x69]
+ * t.decode(enc);                      // [[5, "hi"], 4]
  * ```
  */
 export class TupleCodec<const T extends TupleGeneric>
@@ -150,8 +155,11 @@ export type StructValue<T extends StructGeneric> = {
  *
  * @example
  * ```ts
- * // Definition order: id (u32) then name (str)
- * const User = new Struct({ id: u32, name: str } as const);
+ * import { StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
+ *
+ * const str = new StringCodec();
+ * // Definition order: id (U32) then name (str)
+ * const User = new StructCodec({ id: U32, name: str } as const);
  * const bin = User.encode({ id: 42, name: "Ada" });
  * // Decodes back to the same object
  * User.decode(bin); // [{ id: 42, name: "Ada" }, size]
@@ -159,8 +167,11 @@ export type StructValue<T extends StructGeneric> = {
  *
  * @example
  * ```ts
+ * import { StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
+ *
+ * const str = new StringCodec();
  * // Reordering fields changes the binary layout
- * const User2 = new Struct({ name: str, id: u32 } as const);
+ * const User2 = new StructCodec({ name: str, id: U32 } as const);
  * // User.encode(...) is NOT compatible with User2.decode(...)
  * ```
  */
@@ -220,23 +231,31 @@ export type ArrayOptions<T extends ArrayGeneric> = {
  *
  * @example
  * ```ts
+ * import { ArrayCodec, U16 } from "@nomadshiba/codec";
+ *
  * // Default: varint count prefix
- * const nums = new Vector(u16);
- * const b = nums.encode([1, 513]);         // [0x02, 0x02, 0x01, 0x01, 0x02]
- * nums.decode(b);                         // [[1, 513], 5]
+ * const nums = new ArrayCodec({ codec: U16 });
+ * const b = nums.encode([1, 513]);    // [0x02, 0x02, 0x01, 0x01, 0x02]
+ * nums.decode(b);                     // [[1, 513], 5]
+ * ```
  *
  * @example
  * ```ts
- * // Custom count codec (e.g., u32 for fixed 4-byte count)
- * import { u32 } from "./primitives.ts";
- * const numsU32 = new Vector({ codec: u16, countCodec: u32 });
+ * import { ArrayCodec, U16, U32 } from "@nomadshiba/codec";
+ *
+ * // Custom count codec (e.g., U32 for fixed 4-byte count)
+ * const numsU32 = new ArrayCodec({ codec: U16, countCodec: U32 });
+ * ```
  *
  * @example
  * ```ts
+ * import { ArrayCodec, StringCodec } from "@nomadshiba/codec";
+ *
+ * const str = new StringCodec();
  * // Variable-stride elements
- * const words = new Vector(str);
- * const wb = words.encode(["a", "bc"]);    // [0x02, 0x01, 'a', 0x02, 'b', 'c']
- * words.decode(wb);                         // [["a", "bc"], 6]
+ * const words = new ArrayCodec({ codec: str });
+ * const wb = words.encode(["a", "bc"]); // [0x02, 0x01, 'a', 0x02, 'b', 'c']
+ * words.decode(wb);                      // [["a", "bc"], 6]
  * ```
  */
 export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
@@ -326,16 +345,31 @@ export type EnumOptions<T extends EnumGeneric> = {
  *
  * @example
  * ```ts
- * // Default: u8 for variant index
- * const MyEnum = new Enum({ A: u8, B: str } as const);
+ * import { EnumCodec, U8Codec, StringCodec } from "@nomadshiba/codec";
+ *
+ * const str = new StringCodec();
+ * const U8 = new U8Codec();
+ *
+ * // Default: U8 for variant index
+ * const MyEnum = new EnumCodec({
+ *   variants: { A: U8, B: str }
+ * });
  * const b = MyEnum.encode({ kind: "B", value: "ok" });
  * const v = MyEnum.decode(b); // [{ kind: "B", value: "ok" }, size]
+ * ```
  *
  * @example
  * ```ts
- * // Custom index codec (e.g., u32 for large enums)
- * import { u32 } from "./primitives.ts";
- * const MyEnum = new Enum({ A: u8, B: str } as const, { indexCodec: u32 });
+ * import { EnumCodec, U8Codec, StringCodec, U32 } from "@nomadshiba/codec";
+ *
+ * const str = new StringCodec();
+ * const U8 = new U8Codec();
+ *
+ * // Custom index codec (e.g., U32 for large enums)
+ * const MyEnum = new EnumCodec({
+ *   variants: { A: U8, B: str },
+ *   indexCodec: U32
+ * });
  * ```
  */
 export class EnumCodec<const T extends EnumGeneric>
@@ -405,17 +439,23 @@ export type MappingOptions<T extends MappingGeneric> = {
  *
  * @example
  * ```ts
+ * import { MappingCodec, StringCodec, U8 } from "@nomadshiba/codec";
+ *
+ * const str = new StringCodec();
  * // Default: varint count
- * const Dict = new MappingCodec({ codecs: [str, u8] });
+ * const Dict = new MappingCodec({ codecs: [str, U8] });
  * const map = new Map<string, number>([["x", 1], ["y", 2]]);
  * const b = Dict.encode(map);
  * const out = Dict.decode(b);   // [Map { "x" => 1, "y" => 2 }, size]
+ * ```
  *
  * @example
  * ```ts
+ * import { MappingCodec, StringCodec, U8, U32 } from "@nomadshiba/codec";
+ *
+ * const str = new StringCodec();
  * // Custom count codec
- * import { u32 } from "./primitives.ts";
- * const Dict = new MappingCodec({ codecs: [str, u8], countCodec: u32 });
+ * const Dict = new MappingCodec({ codecs: [str, U8], countCodec: U32 });
  * ```
  */
 export class MappingCodec<const T extends MappingGeneric>

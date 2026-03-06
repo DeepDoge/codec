@@ -15,13 +15,16 @@ export type StringOptions = {
  *
  * @example
  * ```ts
+ * import { StringCodec, U32 } from "@nomadshiba/codec";
+ *
+ * const str = new StringCodec();
+ *
  * // Default: varint length prefix
  * const raw = str.encode("hi");       // [0x02, 0x68, 0x69]
  * str.decode(raw);                    // ["hi", 3]
  *
- * // Custom length codec (e.g., u32 for fixed 4-byte length)
- * import { u32 } from "./primitives.ts";
- * const strU32 = new Str({ lengthCodec: u32 });
+ * // Custom length codec (e.g., U32 for fixed 4-byte length)
+ * const strU32 = new StringCodec({ lengthCodec: U32 });
  * ```
  */
 export class StringCodec extends Codec<string> {
@@ -67,17 +70,16 @@ export type BytesOptions = {
  *
  * @example
  * ```ts
+ * import { BytesCodec } from "@nomadshiba/codec";
+ * 
  * // Variable-length bytes (uses varint for length by default)
- * const b = bytes.encode(new Uint8Array([1,2,3])); // [0x03, 0x01, 0x02, 0x03]
- * bytes.decode(b);                                  // [Uint8Array([1,2,3]), 4]
+ * const bytes = new BytesCodec();
+ * const b = bytes.encode(new Uint8Array([1, 2, 3])); // [0x03, 0x01, 0x02, 0x03]
+ * bytes.decode(b);                                    // [Uint8Array([1,2,3]), 4]
  *
- * // Fixed-length bytes
- * const fixed4 = new Bytes(4);
- * fixed4.encode(new Uint8Array([1,2,3,4]));         // [0x01, 0x02, 0x03, 0x04]
- *
- * // Custom length codec
- * import { u32 } from "./primitives.ts";
- * const bytesU32 = new Bytes({ lengthCodec: u32 });
+ * // Fixed-length bytes (no prefix)
+ * const fixed4 = new BytesCodec(4);
+ * fixed4.encode(new Uint8Array([1, 2, 3, 4]));       // [0x01, 0x02, 0x03, 0x04]
  * ```
  */
 export class BytesCodec extends Codec<Uint8Array> {

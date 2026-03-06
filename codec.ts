@@ -13,8 +13,7 @@ export declare namespace Codec {
 	 *
 	 * @template T - The codec type
 	 */
-	export type Infer<T> = T extends Codec<infer _> ? ReturnType<T["decode"]>
-		: never;
+	export type Infer<T> = T extends Codec<infer U> ? U : never;
 }
 
 /**

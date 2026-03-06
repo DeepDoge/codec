@@ -119,3 +119,126 @@ import {
     varint,
 } from "@nomadshiba/codec";
 ```
+
+---
+
+### Composite Codec Type Changes
+
+Type inference has been significantly improved. The old namespace-based type helpers have been replaced with direct generic types that work with codec instances:
+
+| Before Pattern                 | After Pattern                    |
+| ------------------------------ | -------------------------------- |
+| `OptionCodec.Value<number>`    | `OptionValue<U8Codec>`           |
+| `OptionCodec.Infer<U8Codec>`   | `OptionValue<U8Codec>`           |
+| `TupleCodec.Infer<[U8, U16]>`  | `TupleValue<[U8Codec, U16Codec]>` |
+| `TupleCodec.Codecs<T>`         | `T` (direct inference)           |
+| `StructCodec.Infer<S>`         | `StructValue<S>`                 |
+| `StructCodec.Codecs<T>`        | `T` (direct inference)           |
+| `ArrayCodec.Value<string>`     | `ArrayValue<StringCodec>`        |
+| `ArrayCodec.Infer<StringCodec>`| `ArrayValue<StringCodec>`        |
+| `EnumCodec.Value<E>`           | `EnumValue<E>`                   |
+| `EnumCodec.Infer<E>`           | `EnumValue<E>`                   |
+| `EnumCodec.Codecs<T>`          | `T` (direct inference)           |
+| `MappingCodec.Value<K, V>`     | `MappingValue<[K, V]>`           |
+| `MappingCodec.Infer<K, V>`     | `MappingValue<[K, V]>`           |
+
+**Key changes:**
+
+1. Types now take codec instances (e.g., `U8Codec`) instead of the raw TypeScript types (e.g., `number`)
+2. `MappingCodec` now uses a tuple `[keyCodec, valueCodec]` for both the constructor and its type parameter
+3. Helper types are now flat exports rather than nested namespaces
+
+**Migration:**
+
+```ts
+// Before
+import { OptionCodec, TupleCodec, StructCodec, ArrayCodec, EnumCodec } from "@nomadshiba/codec";
+
+const maybeU8 = new OptionCodec(u8);
+type MaybeU8 = OptionCodec.Value<number>;  // number | null
+
+const pointCodec = new TupleCodec([u8, u16] as const);
+type Point = TupleCodec.Infer<[U8Codec, U16Codec]>;  // [number, number]
+
+const userCodec = new StructCodec({ id: u32, name: str } as const);
+type User = StructCodec.Infer<typeof userCodec.shape>;  // { id: number, name: string }
+
+const namesCodec = new ArrayCodec(str);
+type Names = ArrayCodec.Value<string>;  // string[]
+
+const eventCodec = new EnumCodec({ Click: u8, Message: str } as const);
+type Event = EnumCodec.Value<{ Click: number, Message: string }>;
+// { kind: "Click", value: number } | { kind: "Message", value: string }
+
+const dictCodec = new MappingCodec(str, u8);
+type Dict = MappingCodec.Value<string, number>;  // Map<string, number>
+
+// After
+import { 
+  OptionCodec, OptionValue,
+  TupleCodec, TupleValue, 
+  StructCodec, StructValue,
+  ArrayCodec, ArrayValue,
+  EnumCodec, EnumValue,
+  MappingCodec, MappingValue
+} from "@nomadshiba/codec";
+
+const maybeU8 = new OptionCodec(u8);
+type MaybeU8 = OptionValue<typeof maybeU8>;  // number | null
+
+const pointCodec = new TupleCodec([u8, u16]);
+type Point = TupleValue<typeof pointCodec>;  // [number, number]
+
+const userCodec = new StructCodec({ id: u32, name: str });
+type User = StructValue<typeof userCodec>;  // { id: number, name: string }
+
+const namesCodec = new ArrayCodec(str);
+type Names = ArrayValue<typeof namesCodec>;  // string[]
+
+const eventCodec = new EnumCodec({ Click: u8, Message: str });
+type Event = EnumValue<typeof eventCodec>;  
+// { kind: "Click", value: number } | { kind: "Message", value: string }
+
+const dictCodec = new MappingCodec([str, u8]);
+type Dict = MappingValue<typeof dictCodec>;  // Map<string, number>
+```
+
+---
+
+### MappingCodec Constructor Signature Changed
+
+`MappingCodec` now takes a tuple of `[keyCodec, valueCodec]` instead of separate arguments.
+
+**Migration:**
+
+```ts
+// Before
+import { MappingCodec, StringCodec, u8 } from "@nomadshiba/codec";
+const Dict = new MappingCodec(new StringCodec(), u8);
+
+// After
+import { MappingCodec, StringCodec, u8 } from "@nomadshiba/codec";
+const Dict = new MappingCodec([new StringCodec(), u8]);
+```
+
+---
+
+### `as const` No Longer Required
+
+TypeScript now infers types correctly without explicit `as const` assertions.
+
+**Migration:**
+
+```ts
+// Before
+import { TupleCodec, StructCodec, EnumCodec } from "@nomadshiba/codec";
+const t = new TupleCodec([u8, u16] as const);
+const s = new StructCodec({ id: u32, name: str } as const);
+const e = new EnumCodec({ A: u8, B: str } as const);
+
+// After
+import { TupleCodec, StructCodec, EnumCodec } from "@nomadshiba/codec";
+const t = new TupleCodec([u8, u16]);
+const s = new StructCodec({ id: u32, name: str });
+const e = new EnumCodec({ A: u8, B: str });
+```

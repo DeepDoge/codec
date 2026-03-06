@@ -43,7 +43,7 @@ const encoded = u32.encode(42); // Uint8Array(4)
 const [value, bytesRead] = u32.decode(encoded); // [42, 4]
 
 // Define a struct
-const User = new StructCodec({ id: u32, name: str } as const);
+const User = new StructCodec({ id: u32, name: str });
 
 const user = { id: 1, name: "Ada" };
 const userBytes = User.encode(user);
@@ -148,7 +148,7 @@ Fixed-length arrays with mixed types.
 import { StringCodec, TupleCodec, u8 } from "@nomadshiba/codec";
 
 const str = new StringCodec();
-const t = new TupleCodec([u8, str] as const);
+const t = new TupleCodec([u8, str]);
 
 t.encode([7, "hi"]); // [0x07, 0x02, 'h', 'i']
 ```
@@ -163,7 +163,7 @@ Objects with named fields. Order matches definition.
 import { StringCodec, StructCodec, u32 } from "@nomadshiba/codec";
 
 const str = new StringCodec();
-const User = new StructCodec({ id: u32, name: str } as const);
+const User = new StructCodec({ id: u32, name: str });
 
 User.encode({ id: 42, name: "Ada" });
 ```
@@ -194,12 +194,10 @@ Tagged unions.
 import { EnumCodec, StringCodec, u8 } from "@nomadshiba/codec";
 
 const str = new StringCodec();
-const Event = new EnumCodec(
-  {
-    Click: u8,
-    Message: str,
-  } as const,
-);
+const Event = new EnumCodec({
+  Click: u8,
+  Message: str,
+});
 
 Event.encode({ kind: "Click", value: 5 });
 Event.encode({ kind: "Message", value: "hello" });
@@ -215,7 +213,7 @@ Key–value maps.
 import { MappingCodec, StringCodec, u32, u8 } from "@nomadshiba/codec";
 
 const str = new StringCodec();
-const Dict = new MappingCodec(str, u8);
+const Dict = new MappingCodec([str, u8]);
 
 Dict.encode(
   new Map([
@@ -225,7 +223,7 @@ Dict.encode(
 );
 
 // Custom count codec
-const DictU32 = new MappingCodec(str, u8, { countCodec: u32 });
+const DictU32 = new MappingCodec([str, u8], { countCodec: u32 });
 ```
 
 ---

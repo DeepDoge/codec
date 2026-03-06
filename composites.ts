@@ -1,27 +1,10 @@
+// deno-lint-ignore-file no-explicit-any
 import { Codec } from "./codec.ts";
 import { U8Codec } from "./primitives.ts";
 import { varint } from "./varint.ts";
 
-/**
- * Type definitions for Option codec
- *
- * @example
- * ```ts
- * // Value<string> is string | null
- * type V = Option.Value<string>;
- * ```
- */
-export declare namespace OptionCodec {
-	/**
-	 * Value that can be either of type T or null
-	 */
-	export type Value<T> = T | null;
-
-	/**
-	 * Infers the JavaScript type from an Option codec
-	 */
-	export type Infer<T extends Codec<unknown>> = Codec.Infer<T> | null;
-}
+export type OptionGeneric = Codec<any>;
+export type OptionValue<T extends OptionGeneric> = Codec.Infer<T> | null;
 
 /**
  * Codec for optional values (present or null).
@@ -41,16 +24,17 @@ export declare namespace OptionCodec {
  * maybeU8.decode(new Uint8Array([1, 9]));   // [9, 2]
  * ```
  */
-export class OptionCodec<T> extends Codec<OptionCodec.Value<T>> {
-	private readonly codec: Codec<T>;
+export class OptionCodec<T extends OptionGeneric>
+	extends Codec<OptionValue<T>> {
+	private readonly codec: T;
 	public readonly stride = -1;
 
-	constructor(codec: Codec<T>) {
+	constructor(codec: T) {
 		super();
 		this.codec = codec;
 	}
 
-	public encode(value: OptionCodec.Value<T>): Uint8Array {
+	public encode(value: OptionValue<T>): Uint8Array {
 		if (value === null) {
 			return new Uint8Array([0]);
 		} else {
@@ -62,7 +46,7 @@ export class OptionCodec<T> extends Codec<OptionCodec.Value<T>> {
 		}
 	}
 
-	public decode(data: Uint8Array): [OptionCodec.Value<T>, number] {
+	public decode(data: Uint8Array): [OptionValue<T>, number] {
 		if (data[0] === 0) {
 			return [null, 1];
 		} else {
@@ -72,30 +56,10 @@ export class OptionCodec<T> extends Codec<OptionCodec.Value<T>> {
 	}
 }
 
-/**
- * Type definitions for Tuple codec
- *
- * @example
- * ```ts
- * // Infer<[U8, Str]> -> [number, string]
- * type T = Tuple.Infer<[U8, Str]>;
- * ```
- */
-export declare namespace TupleCodec {
-	/**
-	 * Infers the JavaScript tuple type from an array of codecs
-	 */
-	export type Infer<T extends readonly Codec<unknown>[]> = {
-		[K in keyof T]: Codec.Infer<T[K]>;
-	};
-
-	/**
-	 * Maps tuple elements to their corresponding codecs
-	 */
-	export type Codecs<T extends readonly unknown[]> =
-		| { readonly [I in keyof T]: Codec<T[I]> }
-		| { -readonly [I in keyof T]: Codec<T[I]> };
-}
+export type TupleGeneric = readonly Codec<any>[];
+export type TupleValue<T extends TupleGeneric> = {
+	-readonly [I in keyof T]: Codec.Infer<T[I]>;
+};
 
 /**
  * Codec for fixed-length tuples of potentially different types.
@@ -116,11 +80,12 @@ export declare namespace TupleCodec {
  * t.decode(enc);                     // [[5, "hi"], 4]
  * ```
  */
-export class TupleCodec<const T extends readonly unknown[]> extends Codec<T> {
-	public readonly codecs: TupleCodec.Codecs<T>;
+export class TupleCodec<const T extends TupleGeneric>
+	extends Codec<TupleValue<T>> {
+	public readonly codecs: T;
 	public readonly stride: number;
 
-	constructor(codecs: TupleCodec.Codecs<T>) {
+	constructor(codecs: T) {
 		super();
 		this.codecs = codecs;
 		this.stride = 0;
@@ -133,7 +98,7 @@ export class TupleCodec<const T extends readonly unknown[]> extends Codec<T> {
 		}
 	}
 
-	public encode(value: T): Uint8Array {
+	public encode(value: TupleValue<T>): Uint8Array {
 		const parts: Uint8Array[] = [];
 		for (let i = 0; i < this.codecs.length; i++) {
 			const codec = this.codecs[i]!;
@@ -154,7 +119,7 @@ export class TupleCodec<const T extends readonly unknown[]> extends Codec<T> {
 		return combined;
 	}
 
-	public decode(data: Uint8Array): [T, number] {
+	public decode(data: Uint8Array): [TupleValue<T>, number] {
 		const result: unknown[] = [];
 		let offset = 0;
 		for (let i = 0; i < this.codecs.length; i++) {
@@ -167,30 +132,10 @@ export class TupleCodec<const T extends readonly unknown[]> extends Codec<T> {
 	}
 }
 
-/**
- * Type definitions for Struct codec
- *
- * @example
- * ```ts
- * // Struct.Infer<{ id: U32, name: Str }> -> { id: number, name: string }
- * type S = Struct.Infer<{ id: U32, name: Str }>;
- * ```
- */
-export declare namespace StructCodec {
-	/**
-	 * Infers the JavaScript object type from a record of codecs
-	 */
-	export type Infer<T extends Readonly<Record<string, Codec<unknown>>>> = {
-		[K in (keyof T)]: Codec.Infer<T[K]>;
-	};
-
-	/**
-	 * Maps struct fields to their corresponding codecs
-	 */
-	export type Codecs<T extends Readonly<Record<string, unknown>>> =
-		| { readonly [K in (keyof T)]: Codec<T[K]> }
-		| { -readonly [K in (keyof T)]: Codec<T[K]> };
-}
+export type StructGeneric = { readonly [key: string]: Codec<any> };
+export type StructValue<T extends StructGeneric> = {
+	-readonly [K in keyof T]: Codec.Infer<T[K]>;
+};
 
 /**
  * Codec for structured objects with named fields.
@@ -219,60 +164,40 @@ export declare namespace StructCodec {
  * // User.encode(...) is NOT compatible with User2.decode(...)
  * ```
  */
-export class StructCodec<const T extends Readonly<Record<string, unknown>>>
-	extends Codec<T> {
+export class StructCodec<const T extends StructGeneric>
+	extends Codec<StructValue<T>> {
 	public readonly stride: number;
-	public readonly shape: StructCodec.Codecs<T>;
+	public readonly shape: T;
 
-	private readonly keys: (keyof T)[];
+	private readonly keys: Extract<keyof T, string>[];
 	private readonly tuple: TupleCodec<T[(keyof T)][]>;
 
-	constructor(shape: StructCodec.Codecs<T>) {
+	constructor(shape: T) {
 		super();
 		this.shape = shape;
-		this.keys = Object.keys(shape) as (keyof T)[];
-		this.tuple = new TupleCodec(
-			this.keys.map((key) => shape[key]),
-		) as never;
+		this.keys = Object.keys(shape) as typeof this.keys;
+		this.tuple = new TupleCodec(this.keys.map((key) => shape[key]));
 		this.stride = this.tuple.stride;
 	}
 
-	public encode(value: T): Uint8Array {
+	public encode(value: StructValue<T>): Uint8Array {
 		const tupleValue = this.keys.map((key) => value[key]);
 		return this.tuple.encode(tupleValue);
 	}
 
-	public decode(data: Uint8Array): [T, number] {
+	public decode(data: Uint8Array): [StructValue<T>, number] {
 		const [tupleValue, size] = this.tuple.decode(data);
-		const result: Partial<T> = {};
+		const result: Partial<StructValue<T>> = {};
 		for (let i = 0; i < this.keys.length; i++) {
 			const key = this.keys[i]!;
 			result[key] = tupleValue[i]!;
 		}
-		return [result as T, size];
+		return [result as StructValue<T>, size];
 	}
 }
 
-/**
- * Type definitions for Vector codec
- *
- * @example
- * ```ts
- * // Vector.Infer<U16> -> number[]
- * type V = Vector.Infer<U16>;
- * ```
- */
-export declare namespace ArrayCodec {
-	/**
-	 * Array of values of type T
-	 */
-	export type Value<T> = T[];
-
-	/**
-	 * Infers the JavaScript array type from a codec
-	 */
-	export type Infer<T extends Codec<unknown>> = Codec.Infer<T>[];
-}
+export type ArrayGeneric = Codec<any>;
+export type ArrayValue<T extends ArrayGeneric> = Codec.Infer<T>[];
 
 /**
  * Options for Vector codec.
@@ -312,12 +237,12 @@ export type ArrayOptions = {
  * words.decode(wb);                         // [["a", "bc"], 6]
  * ```
  */
-export class ArrayCodec<T> extends Codec<ArrayCodec.Value<T>> {
+export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
 	public readonly stride = -1;
 	readonly #countCodec: Codec<number>;
-	readonly #codec: Codec<T>;
+	readonly #codec: T;
 
-	constructor(codec: Codec<T>, options?: ArrayOptions) {
+	constructor(codec: T, options?: ArrayOptions) {
 		super();
 		this.#codec = codec;
 		this.#countCodec = options?.countCodec ?? varint;
@@ -327,7 +252,7 @@ export class ArrayCodec<T> extends Codec<ArrayCodec.Value<T>> {
 		return this.#codec;
 	}
 
-	public encode(value: ArrayCodec.Value<T>): Uint8Array {
+	public encode(value: ArrayValue<T>): Uint8Array {
 		const parts: Uint8Array[] = [];
 
 		for (const item of value) {
@@ -353,9 +278,9 @@ export class ArrayCodec<T> extends Codec<ArrayCodec.Value<T>> {
 		return result;
 	}
 
-	public decode(data: Uint8Array): [ArrayCodec.Value<T>, number] {
+	public decode(data: Uint8Array): [ArrayValue<T>, number] {
 		const [count, bytesRead] = this.#countCodec.decode(data);
-		const result: T[] = [];
+		const result: ArrayValue<T> = [];
 		let offset = bytesRead;
 
 		for (let i = 0; i < count; i++) {
@@ -368,37 +293,10 @@ export class ArrayCodec<T> extends Codec<ArrayCodec.Value<T>> {
 	}
 }
 
-/**
- * Type definitions for Enum codec
- *
- * @example
- * ```ts
- * // Value<{ A: number, B: string }> -> { kind: "A", value: number } | ...
- * type E = Enum.Value<{ A: number, B: string }>;
- * ```
- */
-export declare namespace EnumCodec {
-	/**
-	 * Tagged union type representing an enum variant
-	 */
-	export type Value<T extends Readonly<Record<string, unknown>>> = {
-		[K in (keyof T)]: { kind: K; value: T[K] };
-	}[(keyof T)];
-
-	/**
-	 * Infers the JavaScript tagged union type from a record of codecs
-	 */
-	export type Infer<T extends Readonly<Record<string, Codec<unknown>>>> = {
-		[K in (keyof T)]: { kind: K; value: Codec.Infer<T[K]> };
-	}[(keyof T)];
-
-	/**
-	 * Maps enum variants to their corresponding codecs
-	 */
-	export type Codecs<T extends Readonly<Record<string, unknown>>> =
-		| { readonly [K in (keyof T)]: Codec<T[K]> }
-		| { -readonly [K in (keyof T)]: Codec<T[K]> };
-}
+export type EnumGeneric = { readonly [key: string]: Codec<any> };
+export type EnumValue<T extends StructGeneric> = {
+	-readonly [K in keyof T]: { kind: K; value: Codec.Infer<T[K]> };
+}[keyof T];
 
 /**
  * Options for Enum codec.
@@ -436,21 +334,21 @@ export type EnumOptions = {
  * const MyEnum = new Enum({ A: u8, B: str } as const, { indexCodec: u32 });
  * ```
  */
-export class EnumCodec<const T extends Readonly<Record<string, unknown>>>
-	extends Codec<EnumCodec.Value<T>> {
+export class EnumCodec<const T extends EnumGeneric>
+	extends Codec<EnumValue<T>> {
 	public readonly stride = -1;
-	public readonly variants: EnumCodec.Codecs<T>;
+	public readonly variants: T;
 	readonly #indexCodec: Codec<number>;
 	private readonly keys: (keyof T)[];
 
-	constructor(variants: EnumCodec.Codecs<T>, options?: EnumOptions) {
+	constructor(variants: T, options?: EnumOptions) {
 		super();
 		this.variants = variants;
 		this.keys = Object.keys(variants).sort() as (keyof T)[];
 		this.#indexCodec = options?.indexCodec ?? new U8Codec();
 	}
 
-	public encode(value: EnumCodec.Value<T>): Uint8Array {
+	public encode(value: EnumValue<T>): Uint8Array {
 		const index = this.keys.indexOf(value.kind);
 		if (index === -1) {
 			throw new Error(`Invalid enum variant: ${String(value.kind)}`);
@@ -464,7 +362,7 @@ export class EnumCodec<const T extends Readonly<Record<string, unknown>>>
 		return result;
 	}
 
-	public decode(data: Uint8Array): [EnumCodec.Value<T>, number] {
+	public decode(data: Uint8Array): [EnumValue<T>, number] {
 		const [index, indexSize] = this.#indexCodec.decode(data);
 		if (index >= this.keys.length) {
 			throw new Error(`Invalid enum index: ${index}`);
@@ -476,29 +374,11 @@ export class EnumCodec<const T extends Readonly<Record<string, unknown>>>
 	}
 }
 
-/**
- * Type definitions for Mapping codec
- *
- * @example
- * ```ts
- * // Infer<Str, U8> -> Map<string, number>
- * type M = Mapping.Infer<Str, U8>;
- * ```
- */
-export declare namespace MappingCodec {
-	/**
-	 * Map from keys of type K to values of type V
-	 */
-	export type Value<K, V> = Map<K, V>;
-
-	/**
-	 * Infers the JavaScript Map type from key and value codecs
-	 */
-	export type Infer<K extends Codec<unknown>, V extends Codec<unknown>> = Map<
-		Codec.Infer<K>,
-		Codec.Infer<V>
-	>;
-}
+export type MappingGeneric = readonly [Codec<any>, Codec<any>];
+export type MappingValue<T extends MappingGeneric> = Map<
+	Codec.Infer<T[0]>,
+	Codec.Infer<T[1]>
+>;
 
 /**
  * Options for Mapping codec.
@@ -533,27 +413,24 @@ export type MappingOptions = {
  * const Dict = new Mapping(str, u8, { countCodec: u32 });
  * ```
  */
-export class MappingCodec<K, V> extends Codec<MappingCodec.Value<K, V>> {
+export class MappingCodec<const T extends MappingGeneric>
+	extends Codec<MappingValue<T>> {
 	public readonly stride = -1;
-	readonly #entriesCodec: ArrayCodec<[K, V]>;
+	readonly #entriesCodec: ArrayCodec<TupleCodec<[T[0], T[1]]>>;
 
-	constructor(
-		keyCodec: Codec<K>,
-		valueCodec: Codec<V>,
-		options?: MappingOptions,
-	) {
+	constructor(codecs: T, options?: MappingOptions) {
 		super();
 		this.#entriesCodec = new ArrayCodec(
-			new TupleCodec([keyCodec, valueCodec]),
-			{ countCodec: options?.countCodec },
+			new TupleCodec([codecs[0], codecs[1]]),
+			options,
 		);
 	}
 
-	public encode(value: MappingCodec.Value<K, V>): Uint8Array {
-		return this.#entriesCodec.encode(Array.from(value.entries()));
+	public encode(value: MappingValue<T>): Uint8Array {
+		return this.#entriesCodec.encode(value.entries().toArray());
 	}
 
-	public decode(data: Uint8Array): [MappingCodec.Value<K, V>, number] {
+	public decode(data: Uint8Array): [MappingValue<T>, number] {
 		const [entries, size] = this.#entriesCodec.decode(data);
 		return [new Map(entries), size];
 	}

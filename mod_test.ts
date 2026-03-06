@@ -1,5 +1,6 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import {
+    ArrayCodec,
     bool,
     BytesCodec,
     EnumCodec,
@@ -27,7 +28,6 @@ import {
     u64LE,
     u8,
     varint,
-    ArrayCodec,
 } from "./mod.ts";
 
 // VarInt Tests
@@ -271,7 +271,9 @@ Deno.test("bool - roundtrip", () => {
 Deno.test("string - roundtrip", () => {
     const testValues = ["", "hi", "hello world", "こんにちは", "🚀"];
     for (const val of testValues) {
-        const [decoded] = new StringCodec().decode(new StringCodec().encode(val));
+        const [decoded] = new StringCodec().decode(
+            new StringCodec().encode(val),
+        );
         assertEquals(decoded, val);
     }
     assertEquals(new StringCodec().stride, -1);
@@ -344,7 +346,7 @@ Deno.test("Option - present value", () => {
 });
 
 Deno.test("Option - with string", () => {
-    const opt = new OptionCodec(string);
+    const opt = new OptionCodec(new StringCodec());
     const [n] = opt.decode(opt.encode(null));
     assertEquals(n, null);
     const [s] = opt.decode(opt.encode("hello"));
@@ -361,7 +363,7 @@ Deno.test("Tuple - fixed stride elements", () => {
 });
 
 Deno.test("Tuple - variable stride elements", () => {
-    const t = new TupleCodec([u8, string] as const);
+    const t = new TupleCodec([u8, new StringCodec()] as const);
     const val: [number, string] = [7, "hi"];
     const [decoded] = t.decode(t.encode(val));
     assertEquals(decoded, val);
@@ -369,7 +371,7 @@ Deno.test("Tuple - variable stride elements", () => {
 });
 
 Deno.test("Tuple - mixed stride elements", () => {
-    const t = new TupleCodec([u32, string, u16] as const);
+    const t = new TupleCodec([u32, new StringCodec(), u16] as const);
     const val: [number, string, number] = [42, "test", 1000];
     const [decoded] = t.decode(t.encode(val));
     assertEquals(decoded, val);
@@ -378,14 +380,14 @@ Deno.test("Tuple - mixed stride elements", () => {
 
 Deno.test("Tuple - all items self-delimit", () => {
     // All variable-stride items now include their own size info
-    const t = new TupleCodec([u8, string] as const);
+    const t = new TupleCodec([u8, new StringCodec()] as const);
     const encoded = t.encode([5, "hi"]);
     // Should be: [0x05, 0x02, 0x68, 0x69] (string has varint prefix)
     assertEquals(Array.from(encoded), [0x05, 0x02, 0x68, 0x69]);
 });
 
 Deno.test("Tuple - multiple variable items", () => {
-    const t = new TupleCodec([string, string, string] as const);
+    const t = new TupleCodec([new StringCodec(), new StringCodec(), new StringCodec()] as const);
     const val: [string, string, string] = ["a", "bc", "def"];
     const encoded = t.encode(val);
     const [decoded] = t.decode(encoded);
@@ -406,7 +408,7 @@ Deno.test("Tuple - multiple variable items", () => {
 
 // Struct Codec
 Deno.test("Struct - simple", () => {
-    const User = new StructCodec({ id: u32, name: string } as const);
+    const User = new StructCodec({ id: u32, name: new StringCodec() } as const);
     const val = { id: 42, name: "Ada" };
     const [decoded] = User.decode(User.encode(val));
     assertEquals(decoded, val);
@@ -423,7 +425,7 @@ Deno.test("Struct - all fixed stride", () => {
 
 Deno.test("Struct - nested", () => {
     const Inner = new StructCodec({ value: u8 } as const);
-    const Outer = new StructCodec({ inner: Inner, label: string } as const);
+    const Outer = new StructCodec({ inner: Inner, label: new StringCodec() } as const);
     const val = { inner: { value: 5 }, label: "test" };
     const [decoded] = Outer.decode(Outer.encode(val));
     assertEquals(decoded, val);
@@ -458,14 +460,14 @@ Deno.test("Array - empty", () => {
 });
 
 Deno.test("Array - variable stride elements", () => {
-    const words = new ArrayCodec(string);
+    const words = new ArrayCodec(new StringCodec());
     const val = ["a", "bc", "def"];
     const [decoded] = words.decode(words.encode(val));
     assertEquals(decoded, val);
 });
 
 Deno.test("Array - single variable item", () => {
-    const words = new ArrayCodec(string);
+    const words = new ArrayCodec(new StringCodec());
     const [decoded] = words.decode(words.encode(["hello"]));
     assertEquals(decoded, ["hello"]);
 });
@@ -479,7 +481,7 @@ Deno.test("Array - nested arrays", () => {
 });
 
 Deno.test("Array - custom count codec (u32)", () => {
-    const numsU32 = new ArrayCodec({ codec: u16, countCodec: u32 });
+    const numsU32 = new ArrayCodec(u16, { countCodec: u32 });
     const val = [1, 513, 1000];
     const [decoded] = numsU32.decode(numsU32.encode(val));
     assertEquals(decoded, val);
@@ -493,7 +495,7 @@ Deno.test("Array - custom count codec (u32)", () => {
 
 // Enum Codec
 Deno.test("Enum - simple variants", () => {
-    const MyEnum = new EnumCodec({ A: u8, B: string } as const);
+    const MyEnum = new EnumCodec({ A: u8, B: new StringCodec() } as const);
 
     const valA = { kind: "A" as const, value: 5 };
     const [decodedA] = MyEnum.decode(MyEnum.encode(valA));
@@ -525,7 +527,7 @@ Deno.test("Enum - invalid variant", () => {
 });
 
 Deno.test("Enum - complex payloads", () => {
-    const UserStruct = new StructCodec({ id: u32, name: string } as const);
+    const UserStruct = new StructCodec({ id: u32, name: new StringCodec() } as const);
     const Event = new EnumCodec(
         {
             Created: UserStruct,
@@ -547,7 +549,9 @@ Deno.test("Enum - complex payloads", () => {
 });
 
 Deno.test("Enum - custom index codec (u32)", () => {
-    const MyEnum = new EnumCodec({ A: u8, B: string } as const, { indexCodec: u32 });
+    const MyEnum = new EnumCodec({ A: u8, B: new StringCodec() } as const, {
+        indexCodec: u32,
+    });
 
     const valA = { kind: "A" as const, value: 5 };
     const [decodedA] = MyEnum.decode(MyEnum.encode(valA));
@@ -568,7 +572,7 @@ Deno.test("Enum - custom index codec (u32)", () => {
 
 // Mapping Codec
 Deno.test("Mapping - simple", () => {
-    const Dict = new MappingCodec(string, u8);
+    const Dict = new MappingCodec(new StringCodec(), u8);
     const val = new Map([["x", 1], ["y", 2]]);
     const [decoded] = Dict.decode(Dict.encode(val));
     assertEquals(Array.from(decoded.entries()), Array.from(val.entries()));
@@ -576,14 +580,14 @@ Deno.test("Mapping - simple", () => {
 });
 
 Deno.test("Mapping - empty", () => {
-    const Dict = new MappingCodec(u32, string);
+    const Dict = new MappingCodec(u32, new StringCodec());
     const val = new Map<number, string>();
     const [decoded] = Dict.decode(Dict.encode(val));
     assertEquals(decoded.size, 0);
 });
 
 Deno.test("Mapping - complex types", () => {
-    const UserStruct = new StructCodec({ id: u32, name: string } as const);
+    const UserStruct = new StructCodec({ id: u32, name: new StringCodec() } as const);
     const UserMap = new MappingCodec(u32, UserStruct);
     const val = new Map([
         [1, { id: 1, name: "Alice" }],
@@ -594,7 +598,7 @@ Deno.test("Mapping - complex types", () => {
 });
 
 Deno.test("Mapping - custom count codec (u32)", () => {
-    const DictU32 = new MappingCodec(string, u8, { countCodec: u32 });
+    const DictU32 = new MappingCodec(new StringCodec(), u8, { countCodec: u32 });
     const val = new Map([["x", 1], ["y", 2]]);
     const [decoded] = DictU32.decode(DictU32.encode(val));
     assertEquals(Array.from(decoded.entries()), Array.from(val.entries()));
@@ -610,8 +614,8 @@ Deno.test("Mapping - custom count codec (u32)", () => {
 Deno.test("Complex - nested structures", () => {
     const Address = new StructCodec(
         {
-            street: string,
-            city: string,
+            street: new StringCodec(),
+            city: new StringCodec(),
             zipCode: u32,
         } as const,
     );
@@ -619,10 +623,10 @@ Deno.test("Complex - nested structures", () => {
     const Person = new StructCodec(
         {
             id: u32,
-            name: string,
+            name: new StringCodec(),
             age: u8,
             address: Address,
-            tags: new ArrayCodec(string),
+            tags: new ArrayCodec(new StringCodec()),
         } as const,
     );
 
@@ -647,7 +651,7 @@ Deno.test("Complex - optional nested structures", () => {
         {
             enabled: bool,
             timeout: new OptionCodec(u32),
-            endpoints: new ArrayCodec(string),
+            endpoints: new ArrayCodec(new StringCodec()),
         } as const,
     );
 
@@ -670,7 +674,7 @@ Deno.test("Complex - optional nested structures", () => {
 
 Deno.test("Complex - mapping with tuples", () => {
     const coordMap = new MappingCodec(
-        string,
+        new StringCodec(),
         new TupleCodec([f64, f64] as const),
     );
 
@@ -686,7 +690,7 @@ Deno.test("Complex - mapping with tuples", () => {
 Deno.test("Complex - array of enums", () => {
     const Message = new EnumCodec(
         {
-            Text: string,
+            Text: new StringCodec(),
             Number: i32,
             Flag: bool,
         } as const,

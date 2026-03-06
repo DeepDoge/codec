@@ -181,7 +181,7 @@ import { ArrayCodec, u16, u32 } from "@nomadshiba/codec";
 const nums = new ArrayCodec(u16);
 
 // Custom count codec
-const numsU32 = new ArrayCodec({ codec: u16, countCodec: u32 });
+const numsU32 = new ArrayCodec(u16, { countCodec: u32 });
 ```
 
 ---

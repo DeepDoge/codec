@@ -277,11 +277,9 @@ export declare namespace ArrayCodec {
 /**
  * Options for Vector codec.
  */
-export type ArrayOptions<T> = {
+export type ArrayOptions = {
 	/** Codec for encoding the count prefix. Default is varint. */
 	countCodec?: Codec<number>;
-	/** Codec for encoding each element. Required. */
-	codec: Codec<T>;
 };
 
 /**
@@ -319,15 +317,10 @@ export class ArrayCodec<T> extends Codec<ArrayCodec.Value<T>> {
 	readonly #countCodec: Codec<number>;
 	readonly #codec: Codec<T>;
 
-	constructor(codecOrOptions: Codec<T> | ArrayOptions<T>) {
+	constructor(codec: Codec<T>, options?: ArrayOptions) {
 		super();
-		if (codecOrOptions instanceof Codec) {
-			this.#codec = codecOrOptions;
-			this.#countCodec = varint;
-		} else {
-			this.#codec = codecOrOptions.codec;
-			this.#countCodec = codecOrOptions.countCodec ?? varint;
-		}
+		this.#codec = codec;
+		this.#countCodec = options?.countCodec ?? varint;
 	}
 
 	public get codec(): Codec<T> {
@@ -550,10 +543,10 @@ export class MappingCodec<K, V> extends Codec<MappingCodec.Value<K, V>> {
 		options?: MappingOptions,
 	) {
 		super();
-		this.#entriesCodec = new ArrayCodec({
-			codec: new TupleCodec([keyCodec, valueCodec]),
-			countCodec: options?.countCodec,
-		});
+		this.#entriesCodec = new ArrayCodec(
+			new TupleCodec([keyCodec, valueCodec]),
+			{ countCodec: options?.countCodec },
+		);
 	}
 
 	public encode(value: MappingCodec.Value<K, V>): Uint8Array {

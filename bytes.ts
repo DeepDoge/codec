@@ -4,10 +4,10 @@ import { varint } from "./varint.ts";
 /**
  * Options for Str codec.
  */
-export interface StrOptions {
+export type StringOptions = {
 	/** Codec for encoding the length prefix. Default is varint. */
 	lengthCodec?: Codec<number>;
-}
+};
 
 /**
  * Codec for UTF-8 encoded strings.
@@ -24,13 +24,13 @@ export interface StrOptions {
  * const strU32 = new Str({ lengthCodec: u32 });
  * ```
  */
-export class StrCodec extends Codec<string> {
+export class StringCodec extends Codec<string> {
 	public readonly stride = -1;
 	readonly #lengthCodec: Codec<number>;
 	readonly #encoder = new TextEncoder();
 	readonly #decoder = new TextDecoder();
 
-	constructor(options?: StrOptions) {
+	constructor(options?: StringOptions) {
 		super();
 		this.#lengthCodec = options?.lengthCodec ?? varint;
 	}
@@ -51,16 +51,14 @@ export class StrCodec extends Codec<string> {
 		return [decoded, bytesRead + length];
 	}
 }
-/** Singleton instance of Str codec (uses varint for length) */
-export const str: StrCodec = new StrCodec();
 
 /**
  * Options for Bytes codec.
  */
-export interface BytesOptions {
+export type BytesOptions = {
 	/** Codec for encoding the length prefix when size is -1. Default is varint. */
 	lengthCodec?: Codec<number>;
-}
+};
 
 /**
  * Codec for raw byte arrays.
@@ -124,5 +122,3 @@ export class BytesCodec extends Codec<Uint8Array> {
 		}
 	}
 }
-/** Singleton instance of Bytes codec (variable-length, uses varint) */
-export const bytes: BytesCodec = new BytesCodec();

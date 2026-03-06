@@ -275,12 +275,12 @@ export declare namespace Vector {
 /**
  * Options for Vector codec.
  */
-export interface VectorOptions<T> {
+export type ArrayOptions<T> = {
 	/** Codec for encoding the count prefix. Default is varint. */
 	countCodec?: Codec<number>;
 	/** Codec for encoding each element. Required. */
 	codec: Codec<T>;
-}
+};
 
 /**
  * Codec for variable-length arrays of the same element type.
@@ -312,12 +312,12 @@ export interface VectorOptions<T> {
  * words.decode(wb);                         // [["a", "bc"], 6]
  * ```
  */
-export class VectorCodec<T> extends Codec<Vector.Value<T>> {
+export class ArrayCodec<T> extends Codec<Vector.Value<T>> {
 	public readonly stride = -1;
 	readonly #countCodec: Codec<number>;
 	readonly #codec: Codec<T>;
 
-	constructor(codecOrOptions: Codec<T> | VectorOptions<T>) {
+	constructor(codecOrOptions: Codec<T> | ArrayOptions<T>) {
 		super();
 		if (codecOrOptions instanceof Codec) {
 			this.#codec = codecOrOptions;
@@ -408,10 +408,10 @@ export declare namespace Enum {
 /**
  * Options for Enum codec.
  */
-export interface EnumOptions {
+export type EnumOptions = {
 	/** Codec for encoding the variant index. Default is u8 (1 byte). */
 	indexCodec?: Codec<number>;
-}
+};
 
 /**
  * Codec for tagged unions (enums).
@@ -508,10 +508,10 @@ export declare namespace Mapping {
 /**
  * Options for Mapping codec.
  */
-export interface MappingOptions {
+export type MappingOptions = {
 	/** Codec for encoding the entry count. Default is varint. */
 	countCodec?: Codec<number>;
-}
+};
 
 /**
  * Codec for key-value mappings.
@@ -540,7 +540,7 @@ export interface MappingOptions {
  */
 export class MappingCodec<K, V> extends Codec<Mapping.Value<K, V>> {
 	public readonly stride = -1;
-	readonly #entriesCodec: VectorCodec<[K, V]>;
+	readonly #entriesCodec: ArrayCodec<[K, V]>;
 
 	constructor(
 		keyCodec: Codec<K>,
@@ -548,7 +548,7 @@ export class MappingCodec<K, V> extends Codec<Mapping.Value<K, V>> {
 		options?: MappingOptions,
 	) {
 		super();
-		this.#entriesCodec = new VectorCodec({
+		this.#entriesCodec = new ArrayCodec({
 			codec: new TupleCodec([keyCodec, valueCodec]),
 			countCodec: options?.countCodec,
 		});

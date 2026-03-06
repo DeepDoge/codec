@@ -77,23 +77,23 @@ export {
 	U8Codec,
 	u8,
 } from "./primitives.ts";
-export type { PrimitiveOptions } from "./primitives.ts";
+export type { NumericOptions } from "./primitives.ts";
 
 // Bytes & Strings
-export { BytesCodec, bytes, StrCodec, str } from "./bytes.ts";
-export type { BytesOptions, StrOptions } from "./bytes.ts";
+export { BytesCodec, StringCodec } from "./bytes.ts";
+export type { BytesOptions, StringOptions } from "./bytes.ts";
 
 // Composites
 export {
+	ArrayCodec,
 	EnumCodec,
 	MappingCodec,
 	OptionCodec,
 	StructCodec,
 	TupleCodec,
-	VectorCodec,
 } from "./composites.ts";
 export type {
+	ArrayOptions,
 	EnumOptions,
 	MappingOptions,
-	VectorOptions,
 } from "./composites.ts";

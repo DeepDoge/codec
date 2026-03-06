@@ -3,10 +3,10 @@ import { Codec } from "./codec.ts";
 /**
  * Options for primitive codecs.
  */
-export interface PrimitiveOptions {
+export type NumericOptions = {
 	/** Endianness. Default is big-endian ("be"). */
 	endian?: "be" | "le";
-}
+};
 
 /**
  * Codec for signed 8-bit integers (int8).
@@ -92,7 +92,7 @@ export class I16Codec extends Codec<number> {
 	public readonly stride = 2;
 	readonly #littleEndian: boolean;
 
-	constructor(options?: PrimitiveOptions) {
+	constructor(options?: NumericOptions) {
 		super();
 		this.#littleEndian = options?.endian === "le";
 	}
@@ -134,7 +134,7 @@ export class U16Codec extends Codec<number> {
 	public readonly stride = 2;
 	readonly #littleEndian: boolean;
 
-	constructor(options?: PrimitiveOptions) {
+	constructor(options?: NumericOptions) {
 		super();
 		this.#littleEndian = options?.endian === "le";
 	}
@@ -176,7 +176,7 @@ export class I32Codec extends Codec<number> {
 	public readonly stride = 4;
 	readonly #littleEndian: boolean;
 
-	constructor(options?: PrimitiveOptions) {
+	constructor(options?: NumericOptions) {
 		super();
 		this.#littleEndian = options?.endian === "le";
 	}
@@ -218,7 +218,7 @@ export class U32Codec extends Codec<number> {
 	public readonly stride = 4;
 	readonly #littleEndian: boolean;
 
-	constructor(options?: PrimitiveOptions) {
+	constructor(options?: NumericOptions) {
 		super();
 		this.#littleEndian = options?.endian === "le";
 	}
@@ -260,7 +260,7 @@ export class I64Codec extends Codec<bigint> {
 	public readonly stride = 8;
 	readonly #littleEndian: boolean;
 
-	constructor(options?: PrimitiveOptions) {
+	constructor(options?: NumericOptions) {
 		super();
 		this.#littleEndian = options?.endian === "le";
 	}
@@ -302,7 +302,7 @@ export class U64Codec extends Codec<bigint> {
 	public readonly stride = 8;
 	readonly #littleEndian: boolean;
 
-	constructor(options?: PrimitiveOptions) {
+	constructor(options?: NumericOptions) {
 		super();
 		this.#littleEndian = options?.endian === "le";
 	}
@@ -344,7 +344,7 @@ export class F32Codec extends Codec<number> {
 	public readonly stride = 4;
 	readonly #littleEndian: boolean;
 
-	constructor(options?: PrimitiveOptions) {
+	constructor(options?: NumericOptions) {
 		super();
 		this.#littleEndian = options?.endian === "le";
 	}
@@ -386,7 +386,7 @@ export class F64Codec extends Codec<number> {
 	public readonly stride = 8;
 	readonly #littleEndian: boolean;
 
-	constructor(options?: PrimitiveOptions) {
+	constructor(options?: NumericOptions) {
 		super();
 		this.#littleEndian = options?.endian === "le";
 	}

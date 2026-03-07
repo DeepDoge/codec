@@ -1,4 +1,4 @@
-import { TransformCodec } from "./finalize.ts";
+import { TransformCodec } from "./transform.ts";
 
 /**
  * Type inference helper for codecs.
@@ -33,7 +33,7 @@ export declare namespace Codec {
 	 * type Input = Codec.InferInput<typeof codec>; // number
 	 * ```
 	 */
-	export type InferInput<T> = T extends Codec<infer I, infer O> ? I : never;
+	export type InferInput<T> = T extends Codec<infer O, infer I> ? I : never;
 
 	/**
 	 * Infers the output type that a codec returns from decoding.
@@ -45,7 +45,7 @@ export declare namespace Codec {
 	 * type Output = Codec.InferOutput<typeof codec>; // number
 	 * ```
 	 */
-	export type InferOutput<T> = T extends Codec<infer I, infer O> ? O : never;
+	export type InferOutput<T> = T extends Codec<infer O, infer I> ? O : never;
 }
 
 /**
@@ -70,7 +70,7 @@ export declare namespace Codec {
  * }
  * ```
  */
-export abstract class Codec<I, O extends I = I> {
+export abstract class Codec<O extends I, I = O> {
 	/**
 	 * Size in bytes of the encoded data, or -1 if variable length
 	 */
@@ -93,30 +93,30 @@ export abstract class Codec<I, O extends I = I> {
 	 */
 	public abstract decode(data: Uint8Array): [O, number];
 
-    /**
-     * Wrap this codec with a transformer that transforms the decoded value.
-     * The transformer receives both the decoded value and the raw bytes.
-     *
-     * @template F - The final output type after transformation
-     * @param transformer - Function to transform the decoded value
-     * @returns A new TransformCodec that applies the transformation
-     *
-     * @example
-     * ```ts
-     * // Add validation to a codec
-     * const validatedU32 = u32.transform((value, bytes) => {
-     *   if (value > 1000) throw new Error('Value too large');
-     *   return value;
-     * });
-     *
-     * // Transform the decoded type
-     * const dateCodec = u64.transform((value) => new Date(Number(value)));
-     * type DateValue = Codec.Infer<typeof dateCodec>; // Date
-     * ```
-     */
-	public transform<F extends O>(
-		transformer: (value: O, bytes: Uint8Array) => F,
-	): TransformCodec<I, O, F> {
+	/**
+	 * Wrap this codec with a transformer that transforms the decoded value.
+	 * The transformer receives both the decoded value and the raw bytes.
+	 *
+	 * @template T - The final output type after transformation
+	 * @param transformer - Function to transform the decoded value
+	 * @returns A new TransformCodec that applies the transformation
+	 *
+	 * @example
+	 * ```ts
+	 * // Add validation to a codec
+	 * const validatedU32 = u32.transform((value, bytes) => {
+	 *   if (value > 1000) throw new Error('Value too large');
+	 *   return value;
+	 * });
+	 *
+	 * // Transform the decoded type
+	 * const dateCodec = u64.transform((value) => new Date(Number(value)));
+	 * type DateValue = Codec.Infer<typeof dateCodec>; // Date
+	 * ```
+	 */
+	public transform<T extends O>(
+		transformer: (value: O, bytes: Uint8Array) => T,
+	): TransformCodec<O, I, T> {
 		return new TransformCodec(this, transformer);
 	}
 }

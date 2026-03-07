@@ -4,9 +4,9 @@ import { Codec } from "./codec.ts";
  * A codec wrapper that applies a transformation to the decoded value.
  * Allows post-processing decoded data while maintaining the same encoding behavior.
  *
- * @template A - Input type (what can be encoded)
- * @template B - Base output type from inner codec
- * @template C - Final output type after transformation (extends B)
+ * @template O - Base output type from inner codec
+ * @template I - Input type (what can be encoded)
+ * @template T - Final output type after transformation (extends O)
  *
  * @example
  * ```ts
@@ -18,15 +18,15 @@ import { Codec } from "./codec.ts";
  * });
  * ```
  */
-export class TransformCodec<A, B extends A, C extends B = B>
-    extends Codec<A, C> {
+export class TransformCodec<O extends I, I = O, T extends O = O>
+    extends Codec<T, I> {
     /**
      * Size in bytes of the encoded data, inherited from the inner codec
      */
     public readonly stride: number;
 
-    private readonly inner: Codec<A, B>;
-    private readonly transformer: (value: B, bytes: Uint8Array) => C;
+    private readonly inner: Codec<O, I>;
+    private readonly transformer: (value: O, bytes: Uint8Array) => T;
 
     /**
      * Creates a new TransformCodec
@@ -35,8 +35,8 @@ export class TransformCodec<A, B extends A, C extends B = B>
      * @param transformer - Function to transform the decoded value
      */
     constructor(
-        inner: Codec<A, B>,
-        transformer: (value: B, bytes: Uint8Array) => C,
+        inner: Codec<O, I>,
+        transformer: (value: O, bytes: Uint8Array) => T,
     ) {
         super();
         this.stride = inner.stride;
@@ -50,7 +50,7 @@ export class TransformCodec<A, B extends A, C extends B = B>
      * @param value - Value to encode
      * @returns Binary representation as Uint8Array
      */
-    encode(value: A): Uint8Array {
+    encode(value: I): Uint8Array {
         return this.inner.encode(value);
     }
 
@@ -60,7 +60,7 @@ export class TransformCodec<A, B extends A, C extends B = B>
      * @param data - Binary data to decode
      * @returns Tuple of [transformed value, bytes consumed]
      */
-    decode(data: Uint8Array): [C, number] {
+    decode(data: Uint8Array): [T, number] {
         const [value, size] = this.inner.decode(data);
         const bytes = data.subarray(0, size);
         const transformed = this.transformer(value, bytes);

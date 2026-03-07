@@ -142,6 +142,10 @@ export type StructValue<T extends StructGeneric> = {
 	-readonly [K in keyof T]: Codec.Infer<T[K]>;
 };
 
+export type StructOptions<T extends StructGeneric, U extends StructValue<T>> = {
+	finalizer?: (value: StructValue<T>) => U;
+};
+
 /**
  * Codec for structured objects with named fields.
  *
@@ -175,20 +179,24 @@ export type StructValue<T extends StructGeneric> = {
  * // User.encode(...) is NOT compatible with User2.decode(...)
  * ```
  */
-export class StructCodec<const T extends StructGeneric>
-	extends Codec<StructValue<T>> {
+export class StructCodec<
+	const T extends StructGeneric,
+	U extends StructValue<T> = StructValue<T>,
+> extends Codec<StructValue<T>> {
 	public readonly stride: number;
 	public readonly shape: T;
+	public readonly finalizer?: (value: StructValue<T>) => StructValue<T>;
 
 	private readonly keys: Extract<keyof T, string>[];
 	private readonly tuple: TupleCodec<T[(keyof T)][]>;
 
-	constructor(shape: T) {
+	constructor(shape: T, options?: StructOptions<T, U>) {
 		super();
 		this.shape = shape;
 		this.keys = Object.keys(shape) as typeof this.keys;
 		this.tuple = new TupleCodec(this.keys.map((key) => shape[key]));
 		this.stride = this.tuple.stride;
+		this.finalizer = options?.finalizer;
 	}
 
 	public encode(value: StructValue<T>): Uint8Array {
@@ -196,14 +204,19 @@ export class StructCodec<const T extends StructGeneric>
 		return this.tuple.encode(tupleValue);
 	}
 
-	public decode(data: Uint8Array): [StructValue<T>, number] {
+	public decode(data: Uint8Array): [U, number] {
 		const [tupleValue, size] = this.tuple.decode(data);
 		const result: Partial<StructValue<T>> = {};
 		for (let i = 0; i < this.keys.length; i++) {
 			const key = this.keys[i]!;
 			result[key] = tupleValue[i]!;
 		}
-		return [result as StructValue<T>, size];
+
+		if (this.finalizer) {
+			return [this.finalizer(result as StructValue<T>) as U, size];
+		}
+
+		return [result as U, size];
 	}
 }
 
@@ -461,13 +474,11 @@ export class MappingCodec<const T extends MappingGeneric>
 	}
 
 	public encode(value: MappingValue<T>): Uint8Array {
-		// deno-lint-ignore no-explicit-any
 		return this.#entriesCodec.encode(value.entries().toArray() as any);
 	}
 
 	public decode(data: Uint8Array): [MappingValue<T>, number] {
 		const [entries, size] = this.#entriesCodec.decode(data);
-		// deno-lint-ignore no-explicit-any
 		return [new Map(entries as any), size];
 	}
 }

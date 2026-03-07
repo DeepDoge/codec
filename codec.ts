@@ -13,7 +13,7 @@ export declare namespace Codec {
 	 *
 	 * @template T - The codec type
 	 */
-	export type Infer<T> = T extends Codec<infer U> ? U : never;
+	export type Infer<T> = T extends Codec<infer I, infer O> ? O : never;
 }
 
 /**
@@ -23,7 +23,7 @@ export declare namespace Codec {
  * - stride >= 0: encoded size is fixed (in bytes)
  * - stride < 0: encoded size is variable
  *
- * @template T - Encoded/decoded value type
+ * @template I - Encoded/decoded value type
  *
  * @example
  * ```ts
@@ -38,7 +38,7 @@ export declare namespace Codec {
  * }
  * ```
  */
-export abstract class Codec<T> {
+export abstract class Codec<I, O extends I = I> {
 	/**
 	 * Size in bytes of the encoded data, or -1 if variable length
 	 */
@@ -51,7 +51,7 @@ export abstract class Codec<T> {
 	 * @param target - Optional pre-allocated buffer to write into. If provided, must be large enough.
 	 * @returns Binary representation as Uint8Array (either the target or a new Uint8Array)
 	 */
-	public abstract encode(value: T, target?: Uint8Array): Uint8Array;
+	public abstract encode(value: I, target?: Uint8Array): Uint8Array;
 
 	/**
 	 * Decode a binary representation to a value
@@ -59,5 +59,5 @@ export abstract class Codec<T> {
 	 * @param data - Binary data to decode
 	 * @returns Tuple of [decoded value, bytes consumed]
 	 */
-	public abstract decode(data: Uint8Array): [T, number];
+	public abstract decode(data: Uint8Array): [O, number];
 }

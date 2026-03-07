@@ -143,7 +143,7 @@ export type StructValue<T extends StructGeneric> = {
 };
 
 export type StructOptions<T extends StructGeneric, U extends StructValue<T>> = {
-	finalizer?: (value: StructValue<T>) => U;
+	finalizer?: (params: { bytes: Uint8Array; value: StructValue<T> }) => U;
 };
 
 /**
@@ -181,16 +181,16 @@ export type StructOptions<T extends StructGeneric, U extends StructValue<T>> = {
  */
 export class StructCodec<
 	const T extends StructGeneric,
-	U extends StructValue<T> = StructValue<T>,
-> extends Codec<StructValue<T>> {
+	O extends StructValue<T> = StructValue<T>,
+> extends Codec<StructValue<T>, O> {
 	public readonly stride: number;
 	public readonly shape: T;
-	public readonly finalizer?: (value: StructValue<T>) => StructValue<T>;
+	public readonly finalizer?: StructOptions<T, O>["finalizer"];
 
 	private readonly keys: Extract<keyof T, string>[];
 	private readonly tuple: TupleCodec<T[(keyof T)][]>;
 
-	constructor(shape: T, options?: StructOptions<T, U>) {
+	constructor(shape: T, options?: StructOptions<T, O>) {
 		super();
 		this.shape = shape;
 		this.keys = Object.keys(shape) as typeof this.keys;
@@ -204,19 +204,19 @@ export class StructCodec<
 		return this.tuple.encode(tupleValue);
 	}
 
-	public decode(data: Uint8Array): [U, number] {
+	public decode(data: Uint8Array): [O, number] {
 		const [tupleValue, size] = this.tuple.decode(data);
-		const result: Partial<StructValue<T>> = {};
+		const result = {} as StructValue<T>;
 		for (let i = 0; i < this.keys.length; i++) {
 			const key = this.keys[i]!;
 			result[key] = tupleValue[i]!;
 		}
 
 		if (this.finalizer) {
-			return [this.finalizer(result as StructValue<T>) as U, size];
+			return [this.finalizer({ bytes: data, value: result }), size];
 		}
 
-		return [result as U, size];
+		return [result as O, size];
 	}
 }
 

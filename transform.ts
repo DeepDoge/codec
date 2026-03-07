@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import { Codec } from "./codec.ts";
 
 /**
@@ -20,19 +19,18 @@ import { Codec } from "./codec.ts";
  * ```
  */
 export class TransformCodec<
-    C extends Codec<any>,
-    T extends Codec.InferOutput<C> = Codec.InferOutput<C>,
-> extends Codec<T, Codec.InferInput<C>> {
+    O extends I,
+    I = O,
+    T extends O = O,
+    C extends Codec<O, I> = Codec<O, I>,
+> extends Codec<T, I> {
     /**
      * Size in bytes of the encoded data, inherited from the inner codec
      */
     public readonly stride: number;
 
     public readonly inner: C;
-    private readonly transformer: (
-        value: Codec.InferOutput<C>,
-        bytes: Uint8Array,
-    ) => T;
+    private readonly transformer: (value: O, bytes: Uint8Array) => T;
 
     /**
      * Creates a new TransformCodec
@@ -40,10 +38,7 @@ export class TransformCodec<
      * @param inner - The codec to wrap
      * @param transformer - Function to transform the decoded value
      */
-    constructor(
-        inner: C,
-        transformer: (value: Codec.InferOutput<C>, bytes: Uint8Array) => T,
-    ) {
+    constructor(inner: C, transformer: (value: O, bytes: Uint8Array) => T) {
         super();
         this.stride = inner.stride;
         this.inner = inner;
@@ -56,7 +51,7 @@ export class TransformCodec<
      * @param value - Value to encode
      * @returns Binary representation as Uint8Array
      */
-    encode(value: Codec.InferInput<C>): Uint8Array {
+    encode(value: I): Uint8Array {
         return this.inner.encode(value);
     }
 

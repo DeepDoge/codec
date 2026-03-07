@@ -114,9 +114,9 @@ export abstract class Codec<O extends I, I = O> {
 	 * type DateValue = Codec.Infer<typeof dateCodec>; // Date
 	 * ```
 	 */
-	public transform<T extends O>(
+	public transform<T extends Codec.InferOutput<Codec<O, I>>>(
 		transformer: (value: O, bytes: Uint8Array) => T,
-	): TransformCodec<O, I, T> {
+	): TransformCodec<O, I, T, this> {
 		return new TransformCodec(this, transformer);
 	}
 }

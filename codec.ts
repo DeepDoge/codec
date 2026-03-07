@@ -1,3 +1,5 @@
+import { FinalizeCodec } from "./finalize.ts";
+
 /**
  * Type inference helper for codecs.
  *
@@ -9,11 +11,41 @@
  */
 export declare namespace Codec {
 	/**
-	 * Infers the JavaScript type that a codec can encode/decode
+	 * Infers the JavaScript type that a codec can encode/decode.
+	 * This is an alias for {@link InferOutput}.
 	 *
-	 * @template T - The codec type
+	 * @template T - The codec type to infer from
+	 * @example
+	 * ```ts
+	 * const codec = new U32Codec();
+	 * type Value = Codec.Infer<typeof codec>; // number
+	 * ```
 	 */
-	export type Infer<T> = T extends Codec<infer I, infer O> ? O : never;
+	export type Infer<T> = InferOutput<T>;
+
+	/**
+	 * Infers the input type that a codec accepts for encoding.
+	 *
+	 * @template T - The codec type to infer from
+	 * @example
+	 * ```ts
+	 * const codec = new U32Codec();
+	 * type Input = Codec.InferInput<typeof codec>; // number
+	 * ```
+	 */
+	export type InferInput<T> = T extends Codec<infer I, infer O> ? I : never;
+
+	/**
+	 * Infers the output type that a codec returns from decoding.
+	 *
+	 * @template T - The codec type to infer from
+	 * @example
+	 * ```ts
+	 * const codec = new U32Codec();
+	 * type Output = Codec.InferOutput<typeof codec>; // number
+	 * ```
+	 */
+	export type InferOutput<T> = T extends Codec<infer I, infer O> ? O : never;
 }
 
 /**
@@ -60,4 +92,31 @@ export abstract class Codec<I, O extends I = I> {
 	 * @returns Tuple of [decoded value, bytes consumed]
 	 */
 	public abstract decode(data: Uint8Array): [O, number];
+
+	/**
+	 * Wrap this codec with a finalizer that transforms the decoded value.
+	 * The finalizer receives both the decoded value and the raw bytes.
+	 *
+	 * @template F - The final output type after transformation
+	 * @param finalizer - Function to transform the decoded value
+	 * @returns A new FinalizeCodec that applies the transformation
+	 *
+	 * @example
+	 * ```ts
+	 * // Add validation to a codec
+	 * const validatedU32 = u32.finalize(({ value, bytes }) => {
+	 *   if (value > 1000) throw new Error('Value too large');
+	 *   return value;
+	 * });
+	 *
+	 * // Transform the decoded type
+	 * const dateCodec = u64.finalize(({ value }) => new Date(Number(value)));
+	 * type DateValue = Codec.Infer<typeof dateCodec>; // Date
+	 * ```
+	 */
+	public finalize<F extends O>(
+		finalizer: (params: { bytes: Uint8Array; value: O }) => F,
+	): FinalizeCodec<I, O, F> {
+		return new FinalizeCodec(this, finalizer);
+	}
 }

@@ -142,10 +142,6 @@ export type StructValue<T extends StructGeneric> = {
 	-readonly [K in keyof T]: Codec.Infer<T[K]>;
 };
 
-export type StructOptions<T extends StructGeneric, U extends StructValue<T>> = {
-	finalizer?: (params: { bytes: Uint8Array; value: StructValue<T> }) => U;
-};
-
 /**
  * Codec for structured objects with named fields.
  *
@@ -179,24 +175,20 @@ export type StructOptions<T extends StructGeneric, U extends StructValue<T>> = {
  * // User.encode(...) is NOT compatible with User2.decode(...)
  * ```
  */
-export class StructCodec<
-	const T extends StructGeneric,
-	O extends StructValue<T> = StructValue<T>,
-> extends Codec<StructValue<T>, O> {
+export class StructCodec<const T extends StructGeneric>
+	extends Codec<StructValue<T>> {
 	public readonly stride: number;
 	public readonly shape: T;
-	public readonly finalizer?: StructOptions<T, O>["finalizer"];
 
 	private readonly keys: Extract<keyof T, string>[];
 	private readonly tuple: TupleCodec<T[(keyof T)][]>;
 
-	constructor(shape: T, options?: StructOptions<T, O>) {
+	constructor(shape: T) {
 		super();
 		this.shape = shape;
 		this.keys = Object.keys(shape) as typeof this.keys;
 		this.tuple = new TupleCodec(this.keys.map((key) => shape[key]));
 		this.stride = this.tuple.stride;
-		this.finalizer = options?.finalizer;
 	}
 
 	public encode(value: StructValue<T>): Uint8Array {
@@ -204,7 +196,7 @@ export class StructCodec<
 		return this.tuple.encode(tupleValue);
 	}
 
-	public decode(data: Uint8Array): [O, number] {
+	public decode(data: Uint8Array): [StructValue<T>, number] {
 		const [tupleValue, size] = this.tuple.decode(data);
 		const result = {} as StructValue<T>;
 		for (let i = 0; i < this.keys.length; i++) {
@@ -212,11 +204,7 @@ export class StructCodec<
 			result[key] = tupleValue[i]!;
 		}
 
-		if (this.finalizer) {
-			return [this.finalizer({ bytes: data, value: result }), size];
-		}
-
-		return [result as O, size];
+		return [result, size];
 	}
 }
 

@@ -211,11 +211,9 @@ export type ArrayGeneric = Codec<any>;
 export type ArrayValue<T extends ArrayGeneric> = Codec.Infer<T>[];
 
 /**
- * Options for Vector codec.
+ * Options for Array codec.
  */
-export type ArrayOptions<T extends ArrayGeneric> = {
-	/** Codec for encoding array elements */
-	codec: T;
+export type ArrayOptions = {
 	/** Codec for encoding the count prefix. Default is varint. */
 	countCodec?: Codec<number>;
 };
@@ -234,7 +232,7 @@ export type ArrayOptions<T extends ArrayGeneric> = {
  * import { ArrayCodec, U16 } from "@nomadshiba/codec";
  *
  * // Default: varint count prefix
- * const nums = new ArrayCodec({ codec: U16 });
+ * const nums = new ArrayCodec(U16);
  * const b = nums.encode([1, 513]);    // [0x02, 0x02, 0x01, 0x01, 0x02]
  * nums.decode(b);                     // [[1, 513], 5]
  * ```
@@ -244,7 +242,7 @@ export type ArrayOptions<T extends ArrayGeneric> = {
  * import { ArrayCodec, U16, U32 } from "@nomadshiba/codec";
  *
  * // Custom count codec (e.g., U32 for fixed 4-byte count)
- * const numsU32 = new ArrayCodec({ codec: U16, countCodec: U32 });
+ * const numsU32 = new ArrayCodec(U16, { countCodec: U32 });
  * ```
  *
  * @example
@@ -253,7 +251,7 @@ export type ArrayOptions<T extends ArrayGeneric> = {
  *
  * const str = new StringCodec();
  * // Variable-stride elements
- * const words = new ArrayCodec({ codec: str });
+ * const words = new ArrayCodec(str);
  * const wb = words.encode(["a", "bc"]); // [0x02, 0x01, 'a', 0x02, 'b', 'c']
  * words.decode(wb);                      // [["a", "bc"], 6]
  * ```
@@ -263,10 +261,10 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
 	readonly #countCodec: Codec<number>;
 	readonly #codec: T;
 
-	constructor(options: ArrayOptions<T>) {
+	constructor(codec: T, options?: ArrayOptions) {
 		super();
-		this.#codec = options.codec;
-		this.#countCodec = options.countCodec ?? VarInt;
+		this.#codec = codec;
+		this.#countCodec = options?.countCodec ?? VarInt;
 	}
 
 	public get codec(): Codec<T> {
@@ -322,9 +320,7 @@ export type EnumValue<T extends StructGeneric> = {
 /**
  * Options for Enum codec.
  */
-export type EnumOptions<T extends EnumGeneric> = {
-	/** Record mapping variant names to codecs */
-	variants: T;
+export type EnumOptions = {
 	/** Codec for encoding the variant index. Default is u8 (1 byte). */
 	indexCodec?: Codec<number>;
 };
@@ -351,9 +347,7 @@ export type EnumOptions<T extends EnumGeneric> = {
  * const U8 = new U8Codec();
  *
  * // Default: U8 for variant index
- * const MyEnum = new EnumCodec({
- *   variants: { A: U8, B: str }
- * });
+ * const MyEnum = new EnumCodec({ A: U8, B: str });
  * const b = MyEnum.encode({ kind: "B", value: "ok" });
  * const v = MyEnum.decode(b); // [{ kind: "B", value: "ok" }, size]
  * ```
@@ -366,10 +360,7 @@ export type EnumOptions<T extends EnumGeneric> = {
  * const U8 = new U8Codec();
  *
  * // Custom index codec (e.g., U32 for large enums)
- * const MyEnum = new EnumCodec({
- *   variants: { A: U8, B: str },
- *   indexCodec: U32
- * });
+ * const MyEnum = new EnumCodec({ A: U8, B: str }, { indexCodec: U32 });
  * ```
  */
 export class EnumCodec<const T extends EnumGeneric>
@@ -379,11 +370,11 @@ export class EnumCodec<const T extends EnumGeneric>
 	readonly #indexCodec: Codec<number>;
 	private readonly keys: (keyof T)[];
 
-	constructor(options: EnumOptions<T>) {
+	constructor(variants: T, options?: EnumOptions) {
 		super();
-		this.variants = options.variants;
+		this.variants = variants;
 		this.keys = Object.keys(this.variants).sort() as (keyof T)[];
-		this.#indexCodec = options.indexCodec ?? new U8Codec();
+		this.#indexCodec = options?.indexCodec ?? new U8Codec();
 	}
 
 	public encode(value: EnumValue<T>): Uint8Array {
@@ -421,9 +412,7 @@ export type MappingValue<T extends MappingGeneric> = Map<
 /**
  * Options for Mapping codec.
  */
-export type MappingOptions<T extends MappingGeneric> = {
-	/** Tuple of [keyCodec, valueCodec] */
-	codecs: T;
+export type MappingOptions = {
 	/** Codec for encoding the entry count. Default is varint. */
 	countCodec?: Codec<number>;
 };
@@ -443,7 +432,7 @@ export type MappingOptions<T extends MappingGeneric> = {
  *
  * const str = new StringCodec();
  * // Default: varint count
- * const Dict = new MappingCodec({ codecs: [str, U8] });
+ * const Dict = new MappingCodec([str, U8]);
  * const map = new Map<string, number>([["x", 1], ["y", 2]]);
  * const b = Dict.encode(map);
  * const out = Dict.decode(b);   // [Map { "x" => 1, "y" => 2 }, size]
@@ -455,28 +444,30 @@ export type MappingOptions<T extends MappingGeneric> = {
  *
  * const str = new StringCodec();
  * // Custom count codec
- * const Dict = new MappingCodec({ codecs: [str, U8], countCodec: U32 });
+ * const Dict = new MappingCodec([str, U8], { countCodec: U32 });
  * ```
  */
 export class MappingCodec<const T extends MappingGeneric>
 	extends Codec<MappingValue<T>> {
 	public readonly stride = -1;
-	readonly #entriesCodec: ArrayCodec<TupleCodec<[T[0], T[1]]>>;
+	readonly #entriesCodec: ArrayCodec<TupleCodec<T>>;
 
-	constructor(options: MappingOptions<[T[0], T[1]]>) {
+	constructor(codecs: T, options?: MappingOptions) {
 		super();
-		this.#entriesCodec = new ArrayCodec({
-			codec: new TupleCodec(options.codecs),
-			countCodec: options.countCodec,
-		});
+		this.#entriesCodec = new ArrayCodec(
+			new TupleCodec(codecs),
+			options,
+		);
 	}
 
-	public encode(value: MappingValue<[T[0], T[1]]>): Uint8Array {
-		return this.#entriesCodec.encode(value.entries().toArray());
+	public encode(value: MappingValue<T>): Uint8Array {
+		// deno-lint-ignore no-explicit-any
+		return this.#entriesCodec.encode(value.entries().toArray() as any);
 	}
 
-	public decode(data: Uint8Array): [MappingValue<[T[0], T[1]]>, number] {
+	public decode(data: Uint8Array): [MappingValue<T>, number] {
 		const [entries, size] = this.#entriesCodec.decode(data);
-		return [new Map(entries), size];
+		// deno-lint-ignore no-explicit-any
+		return [new Map(entries as any), size];
 	}
 }

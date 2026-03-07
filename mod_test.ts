@@ -305,7 +305,7 @@ Deno.test("bytes - roundtrip variable", () => {
 });
 
 Deno.test("bytes - roundtrip fixed size", () => {
-    const fixedBytes = new BytesCodec(4);
+    const fixedBytes = new BytesCodec({ size: 4 });
     const val = new Uint8Array([1, 2, 3, 4]);
     const [decoded] = fixedBytes.decode(fixedBytes.encode(val));
     assertEquals(Array.from(decoded), Array.from(val));
@@ -313,12 +313,12 @@ Deno.test("bytes - roundtrip fixed size", () => {
 });
 
 Deno.test("bytes - fixed size error", () => {
-    const fixedBytes = new BytesCodec(4);
+    const fixedBytes = new BytesCodec({ size: 4 });
     assertThrows(() => fixedBytes.encode(new Uint8Array([1, 2])), RangeError);
 });
 
 Deno.test("bytes - custom length codec (U32)", () => {
-    const bytesU32 = new BytesCodec(-1, { lengthCodec: U32 });
+    const bytesU32 = new BytesCodec({ lengthCodec: U32 });
     const val = new Uint8Array([1, 2, 3]);
     const [decoded] = bytesU32.decode(bytesU32.encode(val));
     assertEquals(Array.from(decoded), Array.from(val));
@@ -449,7 +449,7 @@ Deno.test("Struct - definition order matters", () => {
 
 // Array Codec
 Deno.test("Array - fixed stride elements", () => {
-    const nums = new ArrayCodec({ codec: U16 });
+    const nums = new ArrayCodec(U16);
     const val = [1, 513, 1000];
     const [decoded] = nums.decode(nums.encode(val));
     assertEquals(decoded, val);
@@ -457,35 +457,35 @@ Deno.test("Array - fixed stride elements", () => {
 });
 
 Deno.test("Array - empty", () => {
-    const nums = new ArrayCodec({ codec: U32 });
+    const nums = new ArrayCodec(U32);
     const val: number[] = [];
     const [decoded] = nums.decode(nums.encode(val));
     assertEquals(decoded, val);
 });
 
 Deno.test("Array - variable stride elements", () => {
-    const words = new ArrayCodec({ codec: new StringCodec() });
+    const words = new ArrayCodec(new StringCodec());
     const val = ["a", "bc", "def"];
     const [decoded] = words.decode(words.encode(val));
     assertEquals(decoded, val);
 });
 
 Deno.test("Array - single variable item", () => {
-    const words = new ArrayCodec({ codec: new StringCodec() });
+    const words = new ArrayCodec(new StringCodec());
     const [decoded] = words.decode(words.encode(["hello"]));
     assertEquals(decoded, ["hello"]);
 });
 
 Deno.test("Array - nested arrays", () => {
-    const innerArray = new ArrayCodec({ codec: U8 });
-    const outerArray = new ArrayCodec({ codec: innerArray });
+    const innerArray = new ArrayCodec(U8);
+    const outerArray = new ArrayCodec(innerArray);
     const val = [[1, 2], [3, 4, 5], []];
     const [decoded] = outerArray.decode(outerArray.encode(val));
     assertEquals(decoded, val);
 });
 
 Deno.test("Array - custom count codec (U32)", () => {
-    const numsU32 = new ArrayCodec({ codec: U16, countCodec: U32 });
+    const numsU32 = new ArrayCodec(U16, { countCodec: U32 });
     const val = [1, 513, 1000];
     const [decoded] = numsU32.decode(numsU32.encode(val));
     assertEquals(decoded, val);
@@ -499,7 +499,7 @@ Deno.test("Array - custom count codec (U32)", () => {
 
 // Enum Codec
 Deno.test("Enum - simple variants", () => {
-    const MyEnum = new EnumCodec({ variants: { A: U8, B: new StringCodec() } });
+    const MyEnum = new EnumCodec({ A: U8, B: new StringCodec() });
 
     const valA = { kind: "A", value: 5 } as const;
     const [decodedA] = MyEnum.decode(MyEnum.encode(valA));
@@ -514,7 +514,7 @@ Deno.test("Enum - simple variants", () => {
 
 Deno.test("Enum - variant sorting", () => {
     // Variants are sorted alphabetically: A=0, B=1
-    const MyEnum = new EnumCodec({ variants: { B: U8, A: U8 } });
+    const MyEnum = new EnumCodec({ B: U8, A: U8 });
     const encA = MyEnum.encode({ kind: "A", value: 5 });
     const encB = MyEnum.encode({ kind: "B", value: 5 });
     assertEquals(encA[0], 0); // A is first alphabetically
@@ -522,7 +522,7 @@ Deno.test("Enum - variant sorting", () => {
 });
 
 Deno.test("Enum - invalid variant", () => {
-    const MyEnum = new EnumCodec({ variants: { A: U8, B: U8 } });
+    const MyEnum = new EnumCodec({ A: U8, B: U8 });
     assertThrows(
         () => MyEnum.encode({ kind: "C" as never, value: 5 }),
         Error,
@@ -533,11 +533,9 @@ Deno.test("Enum - invalid variant", () => {
 Deno.test("Enum - complex payloads", () => {
     const UserStruct = new StructCodec({ id: U32, name: new StringCodec() });
     const Event = new EnumCodec({
-        variants: {
-            Created: UserStruct,
-            Deleted: U32,
-            Updated: UserStruct,
-        },
+        Created: UserStruct,
+        Deleted: U32,
+        Updated: UserStruct,
     });
 
     const created = {
@@ -553,10 +551,10 @@ Deno.test("Enum - complex payloads", () => {
 });
 
 Deno.test("Enum - custom index codec (U32)", () => {
-    const MyEnum = new EnumCodec({
-        variants: { A: U8, B: new StringCodec() },
-        indexCodec: U32,
-    });
+    const MyEnum = new EnumCodec(
+        { A: U8, B: new StringCodec() },
+        { indexCodec: U32 },
+    );
 
     const valA = { kind: "A", value: 5 } as const;
     const [decodedA] = MyEnum.decode(MyEnum.encode(valA));
@@ -577,7 +575,7 @@ Deno.test("Enum - custom index codec (U32)", () => {
 
 // Mapping Codec
 Deno.test("Mapping - simple", () => {
-    const Dict = new MappingCodec({ codecs: [new StringCodec(), U8] });
+    const Dict = new MappingCodec([new StringCodec(), U8]);
     const val = new Map([["x", 1], ["y", 2]]);
     const [decoded] = Dict.decode(Dict.encode(val));
     assertEquals(Array.from(decoded.entries()), Array.from(val.entries()));
@@ -585,7 +583,7 @@ Deno.test("Mapping - simple", () => {
 });
 
 Deno.test("Mapping - empty", () => {
-    const Dict = new MappingCodec({ codecs: [U32, new StringCodec()] });
+    const Dict = new MappingCodec([U32, new StringCodec()]);
     const val = new Map<number, string>();
     const [decoded] = Dict.decode(Dict.encode(val));
     assertEquals(decoded.size, 0);
@@ -593,7 +591,7 @@ Deno.test("Mapping - empty", () => {
 
 Deno.test("Mapping - complex types", () => {
     const UserStruct = new StructCodec({ id: U32, name: new StringCodec() });
-    const UserMap = new MappingCodec({ codecs: [U32, UserStruct] });
+    const UserMap = new MappingCodec([U32, UserStruct]);
     const val = new Map([
         [1, { id: 1, name: "Alice" }],
         [2, { id: 2, name: "Bob" }],
@@ -603,8 +601,7 @@ Deno.test("Mapping - complex types", () => {
 });
 
 Deno.test("Mapping - custom count codec (U32)", () => {
-    const DictU32 = new MappingCodec({
-        codecs: [new StringCodec(), U8],
+    const DictU32 = new MappingCodec([new StringCodec(), U8], {
         countCodec: U32,
     });
     const val = new Map([["x", 1], ["y", 2]]);
@@ -631,7 +628,7 @@ Deno.test("Complex - nested structures", () => {
         name: new StringCodec(),
         age: U8,
         address: Address,
-        tags: new ArrayCodec({ codec: new StringCodec() }),
+        tags: new ArrayCodec(new StringCodec()),
     });
 
     const val = {
@@ -654,7 +651,7 @@ Deno.test("Complex - optional nested structures", () => {
     const Config = new StructCodec({
         enabled: Bool,
         timeout: new OptionCodec(U32),
-        endpoints: new ArrayCodec({ codec: new StringCodec() }),
+        endpoints: new ArrayCodec(new StringCodec()),
     });
 
     const val1 = {
@@ -675,12 +672,10 @@ Deno.test("Complex - optional nested structures", () => {
 });
 
 Deno.test("Complex - mapping with tuples", () => {
-    const coordMap = new MappingCodec({
-        codecs: [
-            new StringCodec(),
-            new TupleCodec([F64, F64]),
-        ],
-    });
+    const coordMap = new MappingCodec([
+        new StringCodec(),
+        new TupleCodec([F64, F64]),
+    ]);
 
     const val = new Map<string, [number, number]>([
         ["home", [40.7128, -74.0060]],
@@ -693,14 +688,12 @@ Deno.test("Complex - mapping with tuples", () => {
 
 Deno.test("Complex - array of enums", () => {
     const Message = new EnumCodec({
-        variants: {
-            Text: new StringCodec(),
-            Number: I32,
-            Flag: Bool,
-        },
+        Text: new StringCodec(),
+        Number: I32,
+        Flag: Bool,
     });
 
-    const Messages = new ArrayCodec({ codec: Message });
+    const Messages = new ArrayCodec(Message);
 
     const val = [
         { kind: "Text", value: "hello" } as const,

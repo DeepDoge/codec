@@ -85,6 +85,9 @@ export type BytesOptions = {
  * // Fixed-length bytes (no prefix)
  * const fixed4 = new BytesCodec({ size: 4 });
  * fixed4.encode(new Uint8Array([1, 2, 3, 4]));       // [0x01, 0x02, 0x03, 0x04]
+ *
+ * // Variable-length with custom length codec
+ * const bytesU32 = new BytesCodec({ lengthCodec: U32 });
  * ```
  */
 export class BytesCodec extends Codec<Uint8Array> {

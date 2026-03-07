@@ -48,9 +48,10 @@ export abstract class Codec<T> {
 	 * Encode a value to binary representation
 	 *
 	 * @param value - Value to encode
-	 * @returns Binary representation as Uint8Array
+	 * @param target - Optional pre-allocated buffer to write into. If provided, must be large enough.
+	 * @returns Binary representation as Uint8Array (either the target or a new Uint8Array)
 	 */
-	public abstract encode(value: T): Uint8Array;
+	public abstract encode(value: T, target?: Uint8Array): Uint8Array;
 
 	/**
 	 * Decode a binary representation to a value

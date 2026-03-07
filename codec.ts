@@ -1,4 +1,4 @@
-import { FinalizeCodec } from "./finalize.ts";
+import { TransformCodec } from "./finalize.ts";
 
 /**
  * Type inference helper for codecs.
@@ -93,30 +93,30 @@ export abstract class Codec<I, O extends I = I> {
 	 */
 	public abstract decode(data: Uint8Array): [O, number];
 
-	/**
-	 * Wrap this codec with a finalizer that transforms the decoded value.
-	 * The finalizer receives both the decoded value and the raw bytes.
-	 *
-	 * @template F - The final output type after transformation
-	 * @param finalizer - Function to transform the decoded value
-	 * @returns A new FinalizeCodec that applies the transformation
-	 *
-	 * @example
-	 * ```ts
-	 * // Add validation to a codec
-	 * const validatedU32 = u32.finalize(({ value, bytes }) => {
-	 *   if (value > 1000) throw new Error('Value too large');
-	 *   return value;
-	 * });
-	 *
-	 * // Transform the decoded type
-	 * const dateCodec = u64.finalize(({ value }) => new Date(Number(value)));
-	 * type DateValue = Codec.Infer<typeof dateCodec>; // Date
-	 * ```
-	 */
-	public finalize<F extends O>(
-		finalizer: (params: { bytes: Uint8Array; value: O }) => F,
-	): FinalizeCodec<I, O, F> {
-		return new FinalizeCodec(this, finalizer);
+    /**
+     * Wrap this codec with a transformer that transforms the decoded value.
+     * The transformer receives both the decoded value and the raw bytes.
+     *
+     * @template F - The final output type after transformation
+     * @param transformer - Function to transform the decoded value
+     * @returns A new TransformCodec that applies the transformation
+     *
+     * @example
+     * ```ts
+     * // Add validation to a codec
+     * const validatedU32 = u32.transform((value, bytes) => {
+     *   if (value > 1000) throw new Error('Value too large');
+     *   return value;
+     * });
+     *
+     * // Transform the decoded type
+     * const dateCodec = u64.transform((value) => new Date(Number(value)));
+     * type DateValue = Codec.Infer<typeof dateCodec>; // Date
+     * ```
+     */
+	public transform<F extends O>(
+		transformer: (value: O, bytes: Uint8Array) => F,
+	): TransformCodec<I, O, F> {
+		return new TransformCodec(this, transformer);
 	}
 }

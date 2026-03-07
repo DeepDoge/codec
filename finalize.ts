@@ -11,14 +11,14 @@ import { Codec } from "./codec.ts";
  * @example
  * ```ts
  * // Add checksum validation to a codec
- * const checksumCodec = u32.finalize(({ value, bytes }) => {
+ * const checksumCodec = u32.transform((value, bytes) => {
  *   const expected = calculateChecksum(bytes);
  *   if (value !== expected) throw new Error('Checksum mismatch');
  *   return value;
  * });
  * ```
  */
-export class FinalizeCodec<A, B extends A, C extends B = B>
+export class TransformCodec<A, B extends A, C extends B = B>
     extends Codec<A, C> {
     /**
      * Size in bytes of the encoded data, inherited from the inner codec
@@ -26,24 +26,22 @@ export class FinalizeCodec<A, B extends A, C extends B = B>
     public readonly stride: number;
 
     private readonly inner: Codec<A, B>;
-    private readonly finalizer: (
-        params: { value: B; bytes: Uint8Array },
-    ) => C;
+    private readonly transformer: (value: B, bytes: Uint8Array) => C;
 
     /**
-     * Creates a new FinalizeCodec
+     * Creates a new TransformCodec
      *
      * @param inner - The codec to wrap
-     * @param finalizer - Function to transform the decoded value
+     * @param transformer - Function to transform the decoded value
      */
     constructor(
         inner: Codec<A, B>,
-        finalizer: (params: { value: B; bytes: Uint8Array }) => C,
+        transformer: (value: B, bytes: Uint8Array) => C,
     ) {
         super();
         this.stride = inner.stride;
         this.inner = inner;
-        this.finalizer = finalizer;
+        this.transformer = transformer;
     }
 
     /**
@@ -57,7 +55,7 @@ export class FinalizeCodec<A, B extends A, C extends B = B>
     }
 
     /**
-     * Decode binary data and apply the finalizer transformation
+     * Decode binary data and apply the transformer
      *
      * @param data - Binary data to decode
      * @returns Tuple of [transformed value, bytes consumed]
@@ -65,7 +63,7 @@ export class FinalizeCodec<A, B extends A, C extends B = B>
     decode(data: Uint8Array): [C, number] {
         const [value, size] = this.inner.decode(data);
         const bytes = data.subarray(0, size);
-        const transformed = this.finalizer({ value, bytes });
+        const transformed = this.transformer(value, bytes);
         return [transformed, size];
     }
 }

@@ -246,8 +246,6 @@ class DateCodec extends Codec<Date> {
 }
 ```
 
----
-
 ## License
 
-LGPL-3.0-only
+[LGPL v2.1](LICENSE)

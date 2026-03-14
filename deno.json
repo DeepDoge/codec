@@ -1,0 +1,16 @@
+{
+  "name": "@nomadshiba/codec",
+  "version": "0.1.0-preview.25",
+  "license": "LGPL-3.0-only",
+  "exports": "./mod.ts",
+  "compilerOptions": {
+    "lib": [
+      "deno.window",
+      "deno.unstable",
+      "esnext"
+    ]
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.19"
+  }
+}

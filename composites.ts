@@ -1,4 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
+
 import { Codec } from "./codec.ts";
 import { U8Codec } from "./primitives.ts";
 import { VarInt } from "./varint.ts";
@@ -27,40 +28,40 @@ export type OptionValue<T extends OptionGeneric> = Codec.Infer<T> | null;
  * ```
  */
 export class OptionCodec<T extends OptionGeneric>
-	extends Codec<OptionValue<T>> {
-	private readonly codec: T;
-	public readonly stride = -1;
+  extends Codec<OptionValue<T>> {
+  private readonly codec: T;
+  public readonly stride = -1;
 
-	constructor(codec: T) {
-		super();
-		this.codec = codec;
-	}
+  constructor(codec: T) {
+    super();
+    this.codec = codec;
+  }
 
-	public encode(value: OptionValue<T>): Uint8Array {
-		if (value === null) {
-			return new Uint8Array([0]);
-		} else {
-			const encoded = this.codec.encode(value);
-			const result = new Uint8Array(1 + encoded.length);
-			result[0] = 1;
-			result.set(encoded, 1);
-			return result;
-		}
-	}
+  public encode(value: OptionValue<T>): Uint8Array {
+    if (value === null) {
+      return new Uint8Array([0]);
+    } else {
+      const encoded = this.codec.encode(value);
+      const result = new Uint8Array(1 + encoded.length);
+      result[0] = 1;
+      result.set(encoded, 1);
+      return result;
+    }
+  }
 
-	public decode(data: Uint8Array): [OptionValue<T>, number] {
-		if (data[0] === 0) {
-			return [null, 1];
-		} else {
-			const [value, size] = this.codec.decode(data.subarray(1));
-			return [value, 1 + size];
-		}
-	}
+  public decode(data: Uint8Array): [OptionValue<T>, number] {
+    if (data[0] === 0) {
+      return [null, 1];
+    } else {
+      const [value, size] = this.codec.decode(data.subarray(1));
+      return [value, 1 + size];
+    }
+  }
 }
 
 export type TupleGeneric = readonly Codec<any>[];
 export type TupleValue<T extends TupleGeneric> = {
-	-readonly [I in keyof T]: Codec.Infer<T[I]>;
+  -readonly [I in keyof T]: Codec.Infer<T[I]>;
 };
 
 /**
@@ -86,60 +87,60 @@ export type TupleValue<T extends TupleGeneric> = {
  * ```
  */
 export class TupleCodec<const T extends TupleGeneric>
-	extends Codec<TupleValue<T>> {
-	public readonly codecs: T;
-	public readonly stride: number;
+  extends Codec<TupleValue<T>> {
+  public readonly codecs: T;
+  public readonly stride: number;
 
-	constructor(codecs: T) {
-		super();
-		this.codecs = codecs;
-		this.stride = 0;
-		for (const codec of codecs) {
-			if (codec.stride < 0) {
-				this.stride = -1;
-				break;
-			}
-			this.stride += codec.stride;
-		}
-	}
+  constructor(codecs: T) {
+    super();
+    this.codecs = codecs;
+    this.stride = 0;
+    for (const codec of codecs) {
+      if (codec.stride < 0) {
+        this.stride = -1;
+        break;
+      }
+      this.stride += codec.stride;
+    }
+  }
 
-	public encode(value: TupleValue<T>): Uint8Array {
-		const parts: Uint8Array[] = [];
-		for (let i = 0; i < this.codecs.length; i++) {
-			const codec = this.codecs[i]!;
-			const part = codec.encode(value[i]!);
-			parts.push(part);
-		}
+  public encode(value: TupleValue<T>): Uint8Array {
+    const parts: Uint8Array[] = [];
+    for (let i = 0; i < this.codecs.length; i++) {
+      const codec = this.codecs[i]!;
+      const part = codec.encode(value[i]!);
+      parts.push(part);
+    }
 
-		const combinedLength = parts.reduce(
-			(sum, part) => sum + part.length,
-			0,
-		);
-		const combined = new Uint8Array(combinedLength);
-		let offset = 0;
-		for (const part of parts) {
-			combined.set(part, offset);
-			offset += part.length;
-		}
-		return combined;
-	}
+    const combinedLength = parts.reduce(
+      (sum, part) => sum + part.length,
+      0,
+    );
+    const combined = new Uint8Array(combinedLength);
+    let offset = 0;
+    for (const part of parts) {
+      combined.set(part, offset);
+      offset += part.length;
+    }
+    return combined;
+  }
 
-	public decode(data: Uint8Array): [TupleValue<T>, number] {
-		const result: unknown[] = [];
-		let offset = 0;
-		for (let i = 0; i < this.codecs.length; i++) {
-			const codec = this.codecs[i]!;
-			const [value, size] = codec.decode(data.subarray(offset));
-			result[i] = value;
-			offset += size;
-		}
-		return [result as never, offset];
-	}
+  public decode(data: Uint8Array): [TupleValue<T>, number] {
+    const result: unknown[] = [];
+    let offset = 0;
+    for (let i = 0; i < this.codecs.length; i++) {
+      const codec = this.codecs[i]!;
+      const [value, size] = codec.decode(data.subarray(offset));
+      result[i] = value;
+      offset += size;
+    }
+    return [result as never, offset];
+  }
 }
 
 export type StructGeneric = { readonly [key: string]: Codec<any> };
 export type StructValue<T extends StructGeneric> = {
-	-readonly [K in keyof T]: Codec.Infer<T[K]>;
+  -readonly [K in keyof T]: Codec.Infer<T[K]>;
 };
 
 /**
@@ -176,36 +177,36 @@ export type StructValue<T extends StructGeneric> = {
  * ```
  */
 export class StructCodec<const T extends StructGeneric>
-	extends Codec<StructValue<T>> {
-	public readonly stride: number;
-	public readonly shape: T;
+  extends Codec<StructValue<T>> {
+  public readonly stride: number;
+  public readonly shape: T;
 
-	private readonly keys: Extract<keyof T, string>[];
-	private readonly tuple: TupleCodec<T[(keyof T)][]>;
+  private readonly keys: Extract<keyof T, string>[];
+  private readonly tuple: TupleCodec<T[(keyof T)][]>;
 
-	constructor(shape: T) {
-		super();
-		this.shape = shape;
-		this.keys = Object.keys(shape) as typeof this.keys;
-		this.tuple = new TupleCodec(this.keys.map((key) => shape[key]));
-		this.stride = this.tuple.stride;
-	}
+  constructor(shape: T) {
+    super();
+    this.shape = shape;
+    this.keys = Object.keys(shape) as typeof this.keys;
+    this.tuple = new TupleCodec(this.keys.map((key) => shape[key]));
+    this.stride = this.tuple.stride;
+  }
 
-	public encode(value: StructValue<T>): Uint8Array {
-		const tupleValue = this.keys.map((key) => value[key]);
-		return this.tuple.encode(tupleValue);
-	}
+  public encode(value: StructValue<T>): Uint8Array {
+    const tupleValue = this.keys.map((key) => value[key]);
+    return this.tuple.encode(tupleValue);
+  }
 
-	public decode(data: Uint8Array): [StructValue<T>, number] {
-		const [tupleValue, size] = this.tuple.decode(data);
-		const result = {} as StructValue<T>;
-		for (let i = 0; i < this.keys.length; i++) {
-			const key = this.keys[i]!;
-			result[key] = tupleValue[i]!;
-		}
+  public decode(data: Uint8Array): [StructValue<T>, number] {
+    const [tupleValue, size] = this.tuple.decode(data);
+    const result = {} as StructValue<T>;
+    for (let i = 0; i < this.keys.length; i++) {
+      const key = this.keys[i]!;
+      result[key] = tupleValue[i]!;
+    }
 
-		return [result, size];
-	}
+    return [result, size];
+  }
 }
 
 export type ArrayGeneric = Codec<any>;
@@ -215,8 +216,8 @@ export type ArrayValue<T extends ArrayGeneric> = Codec.Infer<T>[];
  * Options for Array codec.
  */
 export type ArrayOptions = {
-	/** Codec for encoding the count prefix. Default is varint. */
-	countCodec?: Codec<number>;
+  /** Codec for encoding the count prefix. Default is varint. */
+  countCodec?: Codec<number>;
 };
 
 /**
@@ -258,72 +259,72 @@ export type ArrayOptions = {
  * ```
  */
 export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
-	public readonly stride = -1;
-	readonly #countCodec: Codec<number>;
-	readonly #codec: T;
+  public readonly stride = -1;
+  readonly #countCodec: Codec<number>;
+  readonly #codec: T;
 
-	constructor(codec: T, options?: ArrayOptions) {
-		super();
-		this.#codec = codec;
-		this.#countCodec = options?.countCodec ?? VarInt;
-	}
+  constructor(codec: T, options?: ArrayOptions) {
+    super();
+    this.#codec = codec;
+    this.#countCodec = options?.countCodec ?? VarInt;
+  }
 
-	public get codec(): Codec<T> {
-		return this.#codec;
-	}
+  public get codec(): Codec<T> {
+    return this.#codec;
+  }
 
-	public encode(value: ArrayValue<T>): Uint8Array {
-		const parts: Uint8Array[] = [];
+  public encode(value: ArrayValue<T>): Uint8Array {
+    const parts: Uint8Array[] = [];
 
-		for (const item of value) {
-			const part = this.#codec.encode(item);
-			parts.push(part);
-		}
+    for (const item of value) {
+      const part = this.#codec.encode(item);
+      parts.push(part);
+    }
 
-		const combinedLength = parts.reduce(
-			(sum, part) => sum + part.length,
-			0,
-		);
-		const elementsData = new Uint8Array(combinedLength);
-		let offset = 0;
-		for (const part of parts) {
-			elementsData.set(part, offset);
-			offset += part.length;
-		}
+    const combinedLength = parts.reduce(
+      (sum, part) => sum + part.length,
+      0,
+    );
+    const elementsData = new Uint8Array(combinedLength);
+    let offset = 0;
+    for (const part of parts) {
+      elementsData.set(part, offset);
+      offset += part.length;
+    }
 
-		const countPrefix = this.#countCodec.encode(value.length);
-		const result = new Uint8Array(countPrefix.length + elementsData.length);
-		result.set(countPrefix, 0);
-		result.set(elementsData, countPrefix.length);
-		return result;
-	}
+    const countPrefix = this.#countCodec.encode(value.length);
+    const result = new Uint8Array(countPrefix.length + elementsData.length);
+    result.set(countPrefix, 0);
+    result.set(elementsData, countPrefix.length);
+    return result;
+  }
 
-	public decode(data: Uint8Array): [ArrayValue<T>, number] {
-		const [count, bytesRead] = this.#countCodec.decode(data);
-		const result: ArrayValue<T> = [];
-		let offset = bytesRead;
+  public decode(data: Uint8Array): [ArrayValue<T>, number] {
+    const [count, bytesRead] = this.#countCodec.decode(data);
+    const result: ArrayValue<T> = [];
+    let offset = bytesRead;
 
-		for (let i = 0; i < count; i++) {
-			const [value, size] = this.#codec.decode(data.subarray(offset));
-			result.push(value);
-			offset += size;
-		}
+    for (let i = 0; i < count; i++) {
+      const [value, size] = this.#codec.decode(data.subarray(offset));
+      result.push(value);
+      offset += size;
+    }
 
-		return [result, offset];
-	}
+    return [result, offset];
+  }
 }
 
 export type EnumGeneric = { readonly [key: string]: Codec<any> };
 export type EnumValue<T extends StructGeneric> = {
-	-readonly [K in keyof T]: { kind: K; value: Codec.Infer<T[K]> };
+  -readonly [K in keyof T]: { kind: K; value: Codec.Infer<T[K]> };
 }[keyof T];
 
 /**
  * Options for Enum codec.
  */
 export type EnumOptions = {
-	/** Codec for encoding the variant index. Default is u8 (1 byte). */
-	indexCodec?: Codec<number>;
+  /** Codec for encoding the variant index. Default is u8 (1 byte). */
+  indexCodec?: Codec<number>;
 };
 
 /**
@@ -365,57 +366,57 @@ export type EnumOptions = {
  * ```
  */
 export class EnumCodec<const T extends EnumGeneric>
-	extends Codec<EnumValue<T>> {
-	public readonly stride = -1;
-	public readonly variants: T;
-	readonly #indexCodec: Codec<number>;
-	private readonly keys: (keyof T)[];
+  extends Codec<EnumValue<T>> {
+  public readonly stride = -1;
+  public readonly variants: T;
+  readonly #indexCodec: Codec<number>;
+  private readonly keys: (keyof T)[];
 
-	constructor(variants: T, options?: EnumOptions) {
-		super();
-		this.variants = variants;
-		this.keys = Object.keys(this.variants).sort() as (keyof T)[];
-		this.#indexCodec = options?.indexCodec ?? new U8Codec();
-	}
+  constructor(variants: T, options?: EnumOptions) {
+    super();
+    this.variants = variants;
+    this.keys = Object.keys(this.variants).sort() as (keyof T)[];
+    this.#indexCodec = options?.indexCodec ?? new U8Codec();
+  }
 
-	public encode(value: EnumValue<T>): Uint8Array {
-		const index = this.keys.indexOf(value.kind);
-		if (index === -1) {
-			throw new Error(`Invalid enum variant: ${String(value.kind)}`);
-		}
-		const codec = this.variants[value.kind]!;
-		const encodedValue = codec.encode(value.value as never);
-		const indexBytes = this.#indexCodec.encode(index);
-		const result = new Uint8Array(indexBytes.length + encodedValue.length);
-		result.set(indexBytes, 0);
-		result.set(encodedValue, indexBytes.length);
-		return result;
-	}
+  public encode(value: EnumValue<T>): Uint8Array {
+    const index = this.keys.indexOf(value.kind);
+    if (index === -1) {
+      throw new Error(`Invalid enum variant: ${String(value.kind)}`);
+    }
+    const codec = this.variants[value.kind]!;
+    const encodedValue = codec.encode(value.value as never);
+    const indexBytes = this.#indexCodec.encode(index);
+    const result = new Uint8Array(indexBytes.length + encodedValue.length);
+    result.set(indexBytes, 0);
+    result.set(encodedValue, indexBytes.length);
+    return result;
+  }
 
-	public decode(data: Uint8Array): [EnumValue<T>, number] {
-		const [index, indexSize] = this.#indexCodec.decode(data);
-		if (index >= this.keys.length) {
-			throw new Error(`Invalid enum index: ${index}`);
-		}
-		const key = this.keys[index]!;
-		const codec = this.variants[key]!;
-		const [value, size] = codec.decode(data.subarray(indexSize));
-		return [{ kind: key, value } as never, indexSize + size];
-	}
+  public decode(data: Uint8Array): [EnumValue<T>, number] {
+    const [index, indexSize] = this.#indexCodec.decode(data);
+    if (index >= this.keys.length) {
+      throw new Error(`Invalid enum index: ${index}`);
+    }
+    const key = this.keys[index]!;
+    const codec = this.variants[key]!;
+    const [value, size] = codec.decode(data.subarray(indexSize));
+    return [{ kind: key, value } as never, indexSize + size];
+  }
 }
 
 export type MappingGeneric = readonly [Codec<any>, Codec<any>];
 export type MappingValue<T extends MappingGeneric> = Map<
-	Codec.Infer<T[0]>,
-	Codec.Infer<T[1]>
+  Codec.Infer<T[0]>,
+  Codec.Infer<T[1]>
 >;
 
 /**
  * Options for Mapping codec.
  */
 export type MappingOptions = {
-	/** Codec for encoding the entry count. Default is varint. */
-	countCodec?: Codec<number>;
+  /** Codec for encoding the entry count. Default is varint. */
+  countCodec?: Codec<number>;
 };
 
 /**
@@ -449,24 +450,24 @@ export type MappingOptions = {
  * ```
  */
 export class MappingCodec<const T extends MappingGeneric>
-	extends Codec<MappingValue<T>> {
-	public readonly stride = -1;
-	readonly #entriesCodec: ArrayCodec<TupleCodec<T>>;
+  extends Codec<MappingValue<T>> {
+  public readonly stride = -1;
+  readonly #entriesCodec: ArrayCodec<TupleCodec<T>>;
 
-	constructor(codecs: T, options?: MappingOptions) {
-		super();
-		this.#entriesCodec = new ArrayCodec(
-			new TupleCodec(codecs),
-			options,
-		);
-	}
+  constructor(codecs: T, options?: MappingOptions) {
+    super();
+    this.#entriesCodec = new ArrayCodec(
+      new TupleCodec(codecs),
+      options,
+    );
+  }
 
-	public encode(value: MappingValue<T>): Uint8Array {
-		return this.#entriesCodec.encode(value.entries().toArray() as any);
-	}
+  public encode(value: MappingValue<T>): Uint8Array {
+    return this.#entriesCodec.encode(value.entries().toArray() as any);
+  }
 
-	public decode(data: Uint8Array): [MappingValue<T>, number] {
-		const [entries, size] = this.#entriesCodec.decode(data);
-		return [new Map(entries as any), size];
-	}
+  public decode(data: Uint8Array): [MappingValue<T>, number] {
+    const [entries, size] = this.#entriesCodec.decode(data);
+    return [new Map(entries as any), size];
+  }
 }

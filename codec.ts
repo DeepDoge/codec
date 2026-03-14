@@ -92,7 +92,7 @@ export abstract class Codec<O extends I, I = O> {
    * @param data - Binary data to decode
    * @returns Tuple of [decoded value, bytes consumed]
    */
-  public abstract decode(data: Uint8Array<ArrayBuffer>): [O, number];
+  public abstract decode(data: Uint8Array): [O, number];
 
   /**
    * Wrap this codec with a transformer that transforms the decoded value.
@@ -116,7 +116,7 @@ export abstract class Codec<O extends I, I = O> {
    * ```
    */
   public transform<T extends Codec.InferOutput<Codec<O, I>>>(
-    transformer: (value: O, bytes: Uint8Array<ArrayBuffer>) => T,
+    transformer: (value: O, bytes: Uint8Array) => T,
   ): TransformCodec<O, I, T, this> {
     return new TransformCodec(this, transformer);
   }
@@ -152,7 +152,7 @@ export class TransformCodec<
   public readonly stride: number;
 
   public readonly inner: C;
-  private readonly transformer: (value: O, bytes: Uint8Array<ArrayBuffer>) => T;
+  private readonly transformer: (value: O, bytes: Uint8Array) => T;
 
   /**
    * Creates a new TransformCodec
@@ -162,7 +162,7 @@ export class TransformCodec<
    */
   constructor(
     inner: C,
-    transformer: (value: O, bytes: Uint8Array<ArrayBuffer>) => T,
+    transformer: (value: O, bytes: Uint8Array) => T,
   ) {
     super();
     this.stride = inner.stride;
@@ -186,7 +186,7 @@ export class TransformCodec<
    * @param data - Binary data to decode
    * @returns Tuple of [transformed value, bytes consumed]
    */
-  decode(data: Uint8Array<ArrayBuffer>): [T, number] {
+  decode(data: Uint8Array): [T, number] {
     const [value, size] = this.inner.decode(data);
     const bytes = data.subarray(0, size);
     const transformed = this.transformer(value, bytes);

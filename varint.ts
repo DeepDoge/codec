@@ -44,7 +44,7 @@ export class VarIntCodec extends Codec<number> {
     return new Uint8Array(parts);
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+  public decode(data: Uint8Array): [number, number] {
     let value = 0;
     let shift = 0;
     let bytesRead = 0;

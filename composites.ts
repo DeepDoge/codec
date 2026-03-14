@@ -49,7 +49,7 @@ export class OptionCodec<T extends OptionGeneric>
     }
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [OptionValue<T>, number] {
+  public decode(data: Uint8Array): [OptionValue<T>, number] {
     if (data[0] === 0) {
       return [null, 1];
     } else {
@@ -125,7 +125,7 @@ export class TupleCodec<const T extends TupleGeneric>
     return combined;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [TupleValue<T>, number] {
+  public decode(data: Uint8Array): [TupleValue<T>, number] {
     const result: unknown[] = [];
     let offset = 0;
     for (let i = 0; i < this.codecs.length; i++) {
@@ -197,7 +197,7 @@ export class StructCodec<const T extends StructGeneric>
     return this.tuple.encode(tupleValue);
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [StructValue<T>, number] {
+  public decode(data: Uint8Array): [StructValue<T>, number] {
     const [tupleValue, size] = this.tuple.decode(data);
     const result = {} as StructValue<T>;
     for (let i = 0; i < this.keys.length; i++) {
@@ -301,7 +301,7 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
     return result;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [ArrayValue<T>, number] {
+  public decode(data: Uint8Array): [ArrayValue<T>, number] {
     const [count, bytesRead] = this.#countCodec.decode(data);
     const result: ArrayValue<T> = [];
     let offset = bytesRead;
@@ -397,7 +397,7 @@ export class EnumCodec<const T extends EnumGeneric>
     return result;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [EnumValue<T>, number] {
+  public decode(data: Uint8Array): [EnumValue<T>, number] {
     const [index, indexSize] = this.#indexCodec.decode(data);
     if (index >= this.keys.length) {
       throw new Error(`Invalid enum index: ${index}`);
@@ -470,7 +470,7 @@ export class MappingCodec<const T extends MappingGeneric>
     return this.#entriesCodec.encode(value.entries().toArray() as any);
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [MappingValue<T>, number] {
+  public decode(data: Uint8Array): [MappingValue<T>, number] {
     const [entries, size] = this.#entriesCodec.decode(data);
     return [new Map(entries as any), size];
   }

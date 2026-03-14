@@ -239,7 +239,7 @@ class DateCodec extends Codec<Date> {
     return U64.encode(BigInt(d.getTime()));
   }
 
-  decode(data: Uint8Array<ArrayBuffer>): [Date, number] {
+  decode(data: Uint8Array): [Date, number] {
     const [ms] = U64.decode(data);
     return [new Date(Number(ms)), 8];
   }

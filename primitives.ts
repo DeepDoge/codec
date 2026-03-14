@@ -29,7 +29,7 @@ export class I8Codec extends Codec<number> {
     return arr;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+  public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
       data.byteOffset,
@@ -62,7 +62,7 @@ export class U8Codec extends Codec<number> {
     return arr;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+  public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
       data.byteOffset,
@@ -104,7 +104,7 @@ export class I16Codec extends Codec<number> {
     return arr;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+  public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
       data.byteOffset,
@@ -146,7 +146,7 @@ export class U16Codec extends Codec<number> {
     return arr;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+  public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
       data.byteOffset,
@@ -188,7 +188,7 @@ export class I32Codec extends Codec<number> {
     return arr;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+  public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
       data.byteOffset,
@@ -230,7 +230,7 @@ export class U32Codec extends Codec<number> {
     return arr;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+  public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
       data.byteOffset,
@@ -272,7 +272,7 @@ export class I64Codec extends Codec<bigint> {
     return arr;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [bigint, number] {
+  public decode(data: Uint8Array): [bigint, number] {
     const view = new DataView(
       data.buffer,
       data.byteOffset,
@@ -314,7 +314,7 @@ export class U64Codec extends Codec<bigint> {
     return arr;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [bigint, number] {
+  public decode(data: Uint8Array): [bigint, number] {
     const view = new DataView(
       data.buffer,
       data.byteOffset,
@@ -356,7 +356,7 @@ export class F32Codec extends Codec<number> {
     return arr;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+  public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
       data.byteOffset,
@@ -398,7 +398,7 @@ export class F64Codec extends Codec<number> {
     return arr;
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+  public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
       data.byteOffset,
@@ -427,7 +427,7 @@ export class BoolCodec extends Codec<boolean> {
     return new Uint8Array([value ? 1 : 0]);
   }
 
-  public decode(data: Uint8Array<ArrayBuffer>): [boolean, number] {
+  public decode(data: Uint8Array): [boolean, number] {
     return [data[0] !== 0, 1];
   }
 }

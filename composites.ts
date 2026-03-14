@@ -37,7 +37,7 @@ export class OptionCodec<T extends OptionGeneric>
     this.codec = codec;
   }
 
-  public encode(value: OptionValue<T>): Uint8Array {
+  public encode(value: OptionValue<T>): Uint8Array<ArrayBuffer> {
     if (value === null) {
       return new Uint8Array([0]);
     } else {
@@ -49,7 +49,7 @@ export class OptionCodec<T extends OptionGeneric>
     }
   }
 
-  public decode(data: Uint8Array): [OptionValue<T>, number] {
+  public decode(data: Uint8Array<ArrayBuffer>): [OptionValue<T>, number] {
     if (data[0] === 0) {
       return [null, 1];
     } else {
@@ -104,8 +104,8 @@ export class TupleCodec<const T extends TupleGeneric>
     }
   }
 
-  public encode(value: TupleValue<T>): Uint8Array {
-    const parts: Uint8Array[] = [];
+  public encode(value: TupleValue<T>): Uint8Array<ArrayBuffer> {
+    const parts: Uint8Array<ArrayBuffer>[] = [];
     for (let i = 0; i < this.codecs.length; i++) {
       const codec = this.codecs[i]!;
       const part = codec.encode(value[i]!);
@@ -125,7 +125,7 @@ export class TupleCodec<const T extends TupleGeneric>
     return combined;
   }
 
-  public decode(data: Uint8Array): [TupleValue<T>, number] {
+  public decode(data: Uint8Array<ArrayBuffer>): [TupleValue<T>, number] {
     const result: unknown[] = [];
     let offset = 0;
     for (let i = 0; i < this.codecs.length; i++) {
@@ -192,12 +192,12 @@ export class StructCodec<const T extends StructGeneric>
     this.stride = this.tuple.stride;
   }
 
-  public encode(value: StructValue<T>): Uint8Array {
+  public encode(value: StructValue<T>): Uint8Array<ArrayBuffer> {
     const tupleValue = this.keys.map((key) => value[key]);
     return this.tuple.encode(tupleValue);
   }
 
-  public decode(data: Uint8Array): [StructValue<T>, number] {
+  public decode(data: Uint8Array<ArrayBuffer>): [StructValue<T>, number] {
     const [tupleValue, size] = this.tuple.decode(data);
     const result = {} as StructValue<T>;
     for (let i = 0; i < this.keys.length; i++) {
@@ -273,8 +273,8 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
     return this.#codec;
   }
 
-  public encode(value: ArrayValue<T>): Uint8Array {
-    const parts: Uint8Array[] = [];
+  public encode(value: ArrayValue<T>): Uint8Array<ArrayBuffer> {
+    const parts: Uint8Array<ArrayBuffer>[] = [];
 
     for (const item of value) {
       const part = this.#codec.encode(item);
@@ -293,13 +293,15 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
     }
 
     const countPrefix = this.#countCodec.encode(value.length);
-    const result = new Uint8Array(countPrefix.length + elementsData.length);
+    const result = new Uint8Array(
+      countPrefix.length + elementsData.length,
+    );
     result.set(countPrefix, 0);
     result.set(elementsData, countPrefix.length);
     return result;
   }
 
-  public decode(data: Uint8Array): [ArrayValue<T>, number] {
+  public decode(data: Uint8Array<ArrayBuffer>): [ArrayValue<T>, number] {
     const [count, bytesRead] = this.#countCodec.decode(data);
     const result: ArrayValue<T> = [];
     let offset = bytesRead;
@@ -379,7 +381,7 @@ export class EnumCodec<const T extends EnumGeneric>
     this.#indexCodec = options?.indexCodec ?? new U8Codec();
   }
 
-  public encode(value: EnumValue<T>): Uint8Array {
+  public encode(value: EnumValue<T>): Uint8Array<ArrayBuffer> {
     const index = this.keys.indexOf(value.kind);
     if (index === -1) {
       throw new Error(`Invalid enum variant: ${String(value.kind)}`);
@@ -387,13 +389,15 @@ export class EnumCodec<const T extends EnumGeneric>
     const codec = this.variants[value.kind]!;
     const encodedValue = codec.encode(value.value as never);
     const indexBytes = this.#indexCodec.encode(index);
-    const result = new Uint8Array(indexBytes.length + encodedValue.length);
+    const result = new Uint8Array(
+      indexBytes.length + encodedValue.length,
+    );
     result.set(indexBytes, 0);
     result.set(encodedValue, indexBytes.length);
     return result;
   }
 
-  public decode(data: Uint8Array): [EnumValue<T>, number] {
+  public decode(data: Uint8Array<ArrayBuffer>): [EnumValue<T>, number] {
     const [index, indexSize] = this.#indexCodec.decode(data);
     if (index >= this.keys.length) {
       throw new Error(`Invalid enum index: ${index}`);
@@ -462,11 +466,11 @@ export class MappingCodec<const T extends MappingGeneric>
     );
   }
 
-  public encode(value: MappingValue<T>): Uint8Array {
+  public encode(value: MappingValue<T>): Uint8Array<ArrayBuffer> {
     return this.#entriesCodec.encode(value.entries().toArray() as any);
   }
 
-  public decode(data: Uint8Array): [MappingValue<T>, number] {
+  public decode(data: Uint8Array<ArrayBuffer>): [MappingValue<T>, number] {
     const [entries, size] = this.#entriesCodec.decode(data);
     return [new Map(entries as any), size];
   }

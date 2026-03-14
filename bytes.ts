@@ -38,16 +38,18 @@ export class StringCodec extends Codec<string> {
     this.#lengthCodec = options?.lengthCodec ?? VarInt;
   }
 
-  public encode(value: string): Uint8Array {
+  public encode(value: string): Uint8Array<ArrayBuffer> {
     const utf8 = this.#encoder.encode(value);
     const lengthPrefix = this.#lengthCodec.encode(utf8.length);
-    const result = new Uint8Array(lengthPrefix.length + utf8.length);
+    const result = new Uint8Array(
+      lengthPrefix.length + utf8.length,
+    );
     result.set(lengthPrefix, 0);
     result.set(utf8, lengthPrefix.length);
     return result;
   }
 
-  public decode(data: Uint8Array): [string, number] {
+  public decode(data: Uint8Array<ArrayBuffer>): [string, number] {
     const [length, bytesRead] = this.#lengthCodec.decode(data);
     const utf8 = data.subarray(bytesRead, bytesRead + length);
     const decoded = this.#decoder.decode(utf8);
@@ -87,7 +89,7 @@ export type BytesOptions =
  * // Variable-length bytes (uses varint for length by default)
  * const bytes = new BytesCodec();
  * const b = bytes.encode(new Uint8Array([1, 2, 3])); // [0x03, 0x01, 0x02, 0x03]
- * bytes.decode(b);                                    // [Uint8Array([1,2,3]), 4]
+ * bytes.decode(b);                                    // [Uint8Array<ArrayBuffer>([1,2,3]), 4]
  *
  * // Fixed-length bytes (no prefix)
  * const fixed4 = new BytesCodec({ size: 4 });
@@ -97,7 +99,7 @@ export type BytesOptions =
  * const bytesU32 = new BytesCodec({ lengthCodec: U32 });
  * ```
  */
-export class BytesCodec extends Codec<Uint8Array> {
+export class BytesCodec extends Codec<Uint8Array<ArrayBuffer>> {
   public readonly stride: number;
   readonly #lengthCodec: Codec<number>;
 
@@ -107,7 +109,7 @@ export class BytesCodec extends Codec<Uint8Array> {
     this.#lengthCodec = options?.lengthCodec ?? VarInt;
   }
 
-  public encode(value: Uint8Array): Uint8Array {
+  public encode(value: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
     if (this.stride >= 0) {
       if (value.length !== this.stride) {
         throw new RangeError(
@@ -117,14 +119,18 @@ export class BytesCodec extends Codec<Uint8Array> {
       return value;
     } else {
       const lengthPrefix = this.#lengthCodec.encode(value.length);
-      const result = new Uint8Array(lengthPrefix.length + value.length);
+      const result = new Uint8Array(
+        lengthPrefix.length + value.length,
+      );
       result.set(lengthPrefix, 0);
       result.set(value, lengthPrefix.length);
       return result;
     }
   }
 
-  public decode(data: Uint8Array): [Uint8Array, number] {
+  public decode(
+    data: Uint8Array<ArrayBuffer>,
+  ): [Uint8Array<ArrayBuffer>, number] {
     if (this.stride >= 0) {
       if (data.length < this.stride) {
         throw new RangeError(

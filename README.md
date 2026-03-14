@@ -2,8 +2,8 @@
 
 Composable binary codecs for **TypeScript and JavaScript**.
 
-Encode and decode structured data to and from `Uint8Array` with a simple,
-composable API.
+Encode and decode structured data to and from `Uint8Array<ArrayBuffer>` with a
+simple, composable API.
 
 ---
 
@@ -46,11 +46,11 @@ const [decoded] = User.decode(bytes);
 
 All codecs extend `Codec<T>` and implement:
 
-| Method   | Signature                           | Description                         |
-| -------- | ----------------------------------- | ----------------------------------- |
-| `encode` | `(value: T) => Uint8Array`          | Encode a value                      |
-| `decode` | `(data: Uint8Array) => [T, number]` | Decode `[value, bytesRead]`         |
-| `stride` | `number`                            | `≥0` fixed size, `<0` variable size |
+| Method   | Signature                                        | Description                         |
+| -------- | ------------------------------------------------ | ----------------------------------- |
+| `encode` | `(value: T) => Uint8Array<ArrayBuffer>`          | Encode a value                      |
+| `decode` | `(data: Uint8Array<ArrayBuffer>) => [T, number]` | Decode `[value, bytesRead]`         |
+| `stride` | `number`                                         | `≥0` fixed size, `<0` variable size |
 
 ---
 
@@ -235,11 +235,11 @@ import { Codec, U64 } from "@nomadshiba/codec";
 class DateCodec extends Codec<Date> {
   readonly stride = 8;
 
-  encode(d: Date): Uint8Array {
+  encode(d: Date): Uint8Array<ArrayBuffer> {
     return U64.encode(BigInt(d.getTime()));
   }
 
-  decode(data: Uint8Array): [Date, number] {
+  decode(data: Uint8Array<ArrayBuffer>): [Date, number] {
     const [ms] = U64.decode(data);
     return [new Date(Number(ms)), 8];
   }

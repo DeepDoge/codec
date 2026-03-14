@@ -4,8 +4,8 @@ import { Codec } from "./codec.ts";
  * Options for primitive codecs.
  */
 export type NumericOptions = {
-	/** Endianness. Default is big-endian ("be"). */
-	endian?: "be" | "le";
+  /** Endianness. Default is big-endian ("be"). */
+  endian?: "be" | "le";
 };
 
 /**
@@ -20,23 +20,23 @@ export type NumericOptions = {
  * ```
  */
 export class I8Codec extends Codec<number> {
-	public readonly stride = 1;
+  public readonly stride = 1;
 
-	public encode(value: number): Uint8Array {
-		const arr = new Uint8Array(1);
-		const view = new DataView(arr.buffer);
-		view.setInt8(0, value);
-		return arr;
-	}
+  public encode(value: number): Uint8Array<ArrayBuffer> {
+    const arr = new Uint8Array(1);
+    const view = new DataView(arr.buffer);
+    view.setInt8(0, value);
+    return arr;
+  }
 
-	public decode(data: Uint8Array): [number, number] {
-		const view = new DataView(
-			data.buffer,
-			data.byteOffset,
-			data.byteLength,
-		);
-		return [view.getInt8(0), 1];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+    const view = new DataView(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return [view.getInt8(0), 1];
+  }
 }
 /** Singleton instance of I8 codec */
 export const I8: I8Codec = new I8Codec();
@@ -53,23 +53,23 @@ export const I8: I8Codec = new I8Codec();
  * ```
  */
 export class U8Codec extends Codec<number> {
-	public readonly stride = 1;
+  public readonly stride = 1;
 
-	public encode(value: number): Uint8Array {
-		const arr = new Uint8Array(1);
-		const view = new DataView(arr.buffer);
-		view.setUint8(0, value);
-		return arr;
-	}
+  public encode(value: number): Uint8Array<ArrayBuffer> {
+    const arr = new Uint8Array(1);
+    const view = new DataView(arr.buffer);
+    view.setUint8(0, value);
+    return arr;
+  }
 
-	public decode(data: Uint8Array): [number, number] {
-		const view = new DataView(
-			data.buffer,
-			data.byteOffset,
-			data.byteLength,
-		);
-		return [view.getUint8(0), 1];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+    const view = new DataView(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return [view.getUint8(0), 1];
+  }
 }
 /** Singleton instance of U8 codec */
 export const U8: U8Codec = new U8Codec();
@@ -89,29 +89,29 @@ export const U8: U8Codec = new U8Codec();
  * ```
  */
 export class I16Codec extends Codec<number> {
-	public readonly stride = 2;
-	readonly #littleEndian: boolean;
+  public readonly stride = 2;
+  readonly #littleEndian: boolean;
 
-	constructor(options?: NumericOptions) {
-		super();
-		this.#littleEndian = options?.endian === "le";
-	}
+  constructor(options?: NumericOptions) {
+    super();
+    this.#littleEndian = options?.endian === "le";
+  }
 
-	public encode(value: number): Uint8Array {
-		const arr = new Uint8Array(2);
-		const view = new DataView(arr.buffer);
-		view.setInt16(0, value, this.#littleEndian);
-		return arr;
-	}
+  public encode(value: number): Uint8Array<ArrayBuffer> {
+    const arr = new Uint8Array(2);
+    const view = new DataView(arr.buffer);
+    view.setInt16(0, value, this.#littleEndian);
+    return arr;
+  }
 
-	public decode(data: Uint8Array): [number, number] {
-		const view = new DataView(
-			data.buffer,
-			data.byteOffset,
-			data.byteLength,
-		);
-		return [view.getInt16(0, this.#littleEndian), 2];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+    const view = new DataView(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return [view.getInt16(0, this.#littleEndian), 2];
+  }
 }
 /** Singleton instance of I16 codec (big-endian) */
 export const I16: I16Codec = new I16Codec();
@@ -131,29 +131,29 @@ export const I16: I16Codec = new I16Codec();
  * ```
  */
 export class U16Codec extends Codec<number> {
-	public readonly stride = 2;
-	readonly #littleEndian: boolean;
+  public readonly stride = 2;
+  readonly #littleEndian: boolean;
 
-	constructor(options?: NumericOptions) {
-		super();
-		this.#littleEndian = options?.endian === "le";
-	}
+  constructor(options?: NumericOptions) {
+    super();
+    this.#littleEndian = options?.endian === "le";
+  }
 
-	public encode(value: number): Uint8Array {
-		const arr = new Uint8Array(2);
-		const view = new DataView(arr.buffer);
-		view.setUint16(0, value, this.#littleEndian);
-		return arr;
-	}
+  public encode(value: number): Uint8Array<ArrayBuffer> {
+    const arr = new Uint8Array(2);
+    const view = new DataView(arr.buffer);
+    view.setUint16(0, value, this.#littleEndian);
+    return arr;
+  }
 
-	public decode(data: Uint8Array): [number, number] {
-		const view = new DataView(
-			data.buffer,
-			data.byteOffset,
-			data.byteLength,
-		);
-		return [view.getUint16(0, this.#littleEndian), 2];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+    const view = new DataView(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return [view.getUint16(0, this.#littleEndian), 2];
+  }
 }
 /** Singleton instance of U16 codec (big-endian) */
 export const U16: U16Codec = new U16Codec();
@@ -173,29 +173,29 @@ export const U16: U16Codec = new U16Codec();
  * ```
  */
 export class I32Codec extends Codec<number> {
-	public readonly stride = 4;
-	readonly #littleEndian: boolean;
+  public readonly stride = 4;
+  readonly #littleEndian: boolean;
 
-	constructor(options?: NumericOptions) {
-		super();
-		this.#littleEndian = options?.endian === "le";
-	}
+  constructor(options?: NumericOptions) {
+    super();
+    this.#littleEndian = options?.endian === "le";
+  }
 
-	public encode(value: number): Uint8Array {
-		const arr = new Uint8Array(4);
-		const view = new DataView(arr.buffer);
-		view.setInt32(0, value, this.#littleEndian);
-		return arr;
-	}
+  public encode(value: number): Uint8Array<ArrayBuffer> {
+    const arr = new Uint8Array(4);
+    const view = new DataView(arr.buffer);
+    view.setInt32(0, value, this.#littleEndian);
+    return arr;
+  }
 
-	public decode(data: Uint8Array): [number, number] {
-		const view = new DataView(
-			data.buffer,
-			data.byteOffset,
-			data.byteLength,
-		);
-		return [view.getInt32(0, this.#littleEndian), 4];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+    const view = new DataView(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return [view.getInt32(0, this.#littleEndian), 4];
+  }
 }
 /** Singleton instance of I32 codec (big-endian) */
 export const I32: I32Codec = new I32Codec();
@@ -215,29 +215,29 @@ export const I32: I32Codec = new I32Codec();
  * ```
  */
 export class U32Codec extends Codec<number> {
-	public readonly stride = 4;
-	readonly #littleEndian: boolean;
+  public readonly stride = 4;
+  readonly #littleEndian: boolean;
 
-	constructor(options?: NumericOptions) {
-		super();
-		this.#littleEndian = options?.endian === "le";
-	}
+  constructor(options?: NumericOptions) {
+    super();
+    this.#littleEndian = options?.endian === "le";
+  }
 
-	public encode(value: number): Uint8Array {
-		const arr = new Uint8Array(4);
-		const view = new DataView(arr.buffer);
-		view.setUint32(0, value, this.#littleEndian);
-		return arr;
-	}
+  public encode(value: number): Uint8Array<ArrayBuffer> {
+    const arr = new Uint8Array(4);
+    const view = new DataView(arr.buffer);
+    view.setUint32(0, value, this.#littleEndian);
+    return arr;
+  }
 
-	public decode(data: Uint8Array): [number, number] {
-		const view = new DataView(
-			data.buffer,
-			data.byteOffset,
-			data.byteLength,
-		);
-		return [view.getUint32(0, this.#littleEndian), 4];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+    const view = new DataView(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return [view.getUint32(0, this.#littleEndian), 4];
+  }
 }
 /** Singleton instance of U32 codec (big-endian) */
 export const U32: U32Codec = new U32Codec();
@@ -257,29 +257,29 @@ export const U32: U32Codec = new U32Codec();
  * ```
  */
 export class I64Codec extends Codec<bigint> {
-	public readonly stride = 8;
-	readonly #littleEndian: boolean;
+  public readonly stride = 8;
+  readonly #littleEndian: boolean;
 
-	constructor(options?: NumericOptions) {
-		super();
-		this.#littleEndian = options?.endian === "le";
-	}
+  constructor(options?: NumericOptions) {
+    super();
+    this.#littleEndian = options?.endian === "le";
+  }
 
-	public encode(value: bigint): Uint8Array {
-		const arr = new Uint8Array(8);
-		const view = new DataView(arr.buffer);
-		view.setBigInt64(0, value, this.#littleEndian);
-		return arr;
-	}
+  public encode(value: bigint): Uint8Array<ArrayBuffer> {
+    const arr = new Uint8Array(8);
+    const view = new DataView(arr.buffer);
+    view.setBigInt64(0, value, this.#littleEndian);
+    return arr;
+  }
 
-	public decode(data: Uint8Array): [bigint, number] {
-		const view = new DataView(
-			data.buffer,
-			data.byteOffset,
-			data.byteLength,
-		);
-		return [view.getBigInt64(0, this.#littleEndian), 8];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [bigint, number] {
+    const view = new DataView(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return [view.getBigInt64(0, this.#littleEndian), 8];
+  }
 }
 /** Singleton instance of I64 codec (big-endian) */
 export const I64: I64Codec = new I64Codec();
@@ -299,29 +299,29 @@ export const I64: I64Codec = new I64Codec();
  * ```
  */
 export class U64Codec extends Codec<bigint> {
-	public readonly stride = 8;
-	readonly #littleEndian: boolean;
+  public readonly stride = 8;
+  readonly #littleEndian: boolean;
 
-	constructor(options?: NumericOptions) {
-		super();
-		this.#littleEndian = options?.endian === "le";
-	}
+  constructor(options?: NumericOptions) {
+    super();
+    this.#littleEndian = options?.endian === "le";
+  }
 
-	public encode(value: bigint): Uint8Array {
-		const arr = new Uint8Array(8);
-		const view = new DataView(arr.buffer);
-		view.setBigUint64(0, value, this.#littleEndian);
-		return arr;
-	}
+  public encode(value: bigint): Uint8Array<ArrayBuffer> {
+    const arr = new Uint8Array(8);
+    const view = new DataView(arr.buffer);
+    view.setBigUint64(0, value, this.#littleEndian);
+    return arr;
+  }
 
-	public decode(data: Uint8Array): [bigint, number] {
-		const view = new DataView(
-			data.buffer,
-			data.byteOffset,
-			data.byteLength,
-		);
-		return [view.getBigUint64(0, this.#littleEndian), 8];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [bigint, number] {
+    const view = new DataView(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return [view.getBigUint64(0, this.#littleEndian), 8];
+  }
 }
 /** Singleton instance of U64 codec (big-endian) */
 export const U64: U64Codec = new U64Codec();
@@ -341,29 +341,29 @@ export const U64: U64Codec = new U64Codec();
  * ```
  */
 export class F32Codec extends Codec<number> {
-	public readonly stride = 4;
-	readonly #littleEndian: boolean;
+  public readonly stride = 4;
+  readonly #littleEndian: boolean;
 
-	constructor(options?: NumericOptions) {
-		super();
-		this.#littleEndian = options?.endian === "le";
-	}
+  constructor(options?: NumericOptions) {
+    super();
+    this.#littleEndian = options?.endian === "le";
+  }
 
-	public encode(value: number): Uint8Array {
-		const arr = new Uint8Array(4);
-		const view = new DataView(arr.buffer);
-		view.setFloat32(0, value, this.#littleEndian);
-		return arr;
-	}
+  public encode(value: number): Uint8Array<ArrayBuffer> {
+    const arr = new Uint8Array(4);
+    const view = new DataView(arr.buffer);
+    view.setFloat32(0, value, this.#littleEndian);
+    return arr;
+  }
 
-	public decode(data: Uint8Array): [number, number] {
-		const view = new DataView(
-			data.buffer,
-			data.byteOffset,
-			data.byteLength,
-		);
-		return [view.getFloat32(0, this.#littleEndian), 4];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+    const view = new DataView(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return [view.getFloat32(0, this.#littleEndian), 4];
+  }
 }
 /** Singleton instance of F32 codec (big-endian) */
 export const F32: F32Codec = new F32Codec();
@@ -383,29 +383,29 @@ export const F32: F32Codec = new F32Codec();
  * ```
  */
 export class F64Codec extends Codec<number> {
-	public readonly stride = 8;
-	readonly #littleEndian: boolean;
+  public readonly stride = 8;
+  readonly #littleEndian: boolean;
 
-	constructor(options?: NumericOptions) {
-		super();
-		this.#littleEndian = options?.endian === "le";
-	}
+  constructor(options?: NumericOptions) {
+    super();
+    this.#littleEndian = options?.endian === "le";
+  }
 
-	public encode(value: number): Uint8Array {
-		const arr = new Uint8Array(8);
-		const view = new DataView(arr.buffer);
-		view.setFloat64(0, value, this.#littleEndian);
-		return arr;
-	}
+  public encode(value: number): Uint8Array<ArrayBuffer> {
+    const arr = new Uint8Array(8);
+    const view = new DataView(arr.buffer);
+    view.setFloat64(0, value, this.#littleEndian);
+    return arr;
+  }
 
-	public decode(data: Uint8Array): [number, number] {
-		const view = new DataView(
-			data.buffer,
-			data.byteOffset,
-			data.byteLength,
-		);
-		return [view.getFloat64(0, this.#littleEndian), 8];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [number, number] {
+    const view = new DataView(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    return [view.getFloat64(0, this.#littleEndian), 8];
+  }
 }
 /** Singleton instance of F64 codec (big-endian) */
 export const F64: F64Codec = new F64Codec();
@@ -421,15 +421,15 @@ export const F64: F64Codec = new F64Codec();
  * ```
  */
 export class BoolCodec extends Codec<boolean> {
-	public readonly stride = 1;
+  public readonly stride = 1;
 
-	public encode(value: boolean): Uint8Array {
-		return new Uint8Array([value ? 1 : 0]);
-	}
+  public encode(value: boolean): Uint8Array<ArrayBuffer> {
+    return new Uint8Array([value ? 1 : 0]);
+  }
 
-	public decode(data: Uint8Array): [boolean, number] {
-		return [data[0] !== 0, 1];
-	}
+  public decode(data: Uint8Array<ArrayBuffer>): [boolean, number] {
+    return [data[0] !== 0, 1];
+  }
 }
 /** Singleton instance of Bool codec */
 export const Bool: BoolCodec = new BoolCodec();

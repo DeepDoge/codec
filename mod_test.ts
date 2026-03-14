@@ -314,7 +314,10 @@ Deno.test("bytes - roundtrip fixed size", () => {
 
 Deno.test("bytes - fixed size error", () => {
   const fixedBytes = new BytesCodec({ size: 4 });
-  assertThrows(() => fixedBytes.encode(new Uint8Array([1, 2])), RangeError);
+  assertThrows(
+    () => fixedBytes.encode(new Uint8Array([1, 2])),
+    RangeError,
+  );
 });
 
 Deno.test("bytes - custom length codec (U32)", () => {

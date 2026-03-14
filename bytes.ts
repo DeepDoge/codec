@@ -55,7 +55,7 @@ export class StringCodec extends Codec<string> {
   }
 }
 
-export const Str = new StringCodec();
+export const Str: StringCodec = new StringCodec();
 
 /**
  * Options for Bytes codec.
@@ -140,4 +140,4 @@ export class BytesCodec extends Codec<Uint8Array> {
   }
 }
 
-export const Bytes = new BytesCodec();
+export const Bytes: BytesCodec = new BytesCodec();

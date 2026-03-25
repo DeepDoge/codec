@@ -37,12 +37,20 @@ export class OptionCodec<T extends OptionGeneric>
     this.codec = codec;
   }
 
-  public encode(value: OptionValue<T>): Uint8Array<ArrayBuffer> {
+  public encode(
+    value: OptionValue<T>,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
     if (value === null) {
-      return new Uint8Array([0]);
+      const result = target && target.length >= 1 ? target.subarray(0, 1) : new Uint8Array(1);
+      result[0] = 0;
+      return result;
     } else {
-      const encoded = this.codec.encode(value);
-      const result = new Uint8Array(1 + encoded.length);
+      const encoded = this.codec.encode(value, target?.subarray(1));
+      const totalLen = 1 + encoded.length;
+      const result = target && target.length >= totalLen
+        ? target.subarray(0, totalLen)
+        : new Uint8Array(totalLen);
       result[0] = 1;
       result.set(encoded, 1);
       return result;
@@ -104,7 +112,10 @@ export class TupleCodec<const T extends TupleGeneric>
     }
   }
 
-  public encode(value: TupleValue<T>): Uint8Array<ArrayBuffer> {
+  public encode(
+    value: TupleValue<T>,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
     const parts: Uint8Array<ArrayBuffer>[] = [];
     for (let i = 0; i < this.codecs.length; i++) {
       const codec = this.codecs[i]!;
@@ -116,7 +127,9 @@ export class TupleCodec<const T extends TupleGeneric>
       (sum, part) => sum + part.length,
       0,
     );
-    const combined = new Uint8Array(combinedLength);
+    const combined = target && target.length >= combinedLength
+      ? target.subarray(0, combinedLength)
+      : new Uint8Array(combinedLength);
     let offset = 0;
     for (const part of parts) {
       combined.set(part, offset);
@@ -192,9 +205,12 @@ export class StructCodec<const T extends StructGeneric>
     this.stride = this.tuple.stride;
   }
 
-  public encode(value: StructValue<T>): Uint8Array<ArrayBuffer> {
+  public encode(
+    value: StructValue<T>,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
     const tupleValue = this.keys.map((key) => value[key]);
-    return this.tuple.encode(tupleValue);
+    return this.tuple.encode(tupleValue, target);
   }
 
   public decode(data: Uint8Array): [StructValue<T>, number] {
@@ -273,7 +289,10 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
     return this.#codec;
   }
 
-  public encode(value: ArrayValue<T>): Uint8Array<ArrayBuffer> {
+  public encode(
+    value: ArrayValue<T>,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
     const parts: Uint8Array<ArrayBuffer>[] = [];
 
     for (const item of value) {
@@ -293,9 +312,10 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
     }
 
     const countPrefix = this.#countCodec.encode(value.length);
-    const result = new Uint8Array(
-      countPrefix.length + elementsData.length,
-    );
+    const totalLen = countPrefix.length + elementsData.length;
+    const result = target && target.length >= totalLen
+      ? target.subarray(0, totalLen)
+      : new Uint8Array(totalLen);
     result.set(countPrefix, 0);
     result.set(elementsData, countPrefix.length);
     return result;
@@ -381,7 +401,10 @@ export class EnumCodec<const T extends EnumGeneric>
     this.#indexCodec = options?.indexCodec ?? new U8Codec();
   }
 
-  public encode(value: EnumValue<T>): Uint8Array<ArrayBuffer> {
+  public encode(
+    value: EnumValue<T>,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
     const index = this.keys.indexOf(value.kind);
     if (index === -1) {
       throw new Error(`Invalid enum variant: ${String(value.kind)}`);
@@ -389,9 +412,10 @@ export class EnumCodec<const T extends EnumGeneric>
     const codec = this.variants[value.kind]!;
     const encodedValue = codec.encode(value.value as never);
     const indexBytes = this.#indexCodec.encode(index);
-    const result = new Uint8Array(
-      indexBytes.length + encodedValue.length,
-    );
+    const totalLen = indexBytes.length + encodedValue.length;
+    const result = target && target.length >= totalLen
+      ? target.subarray(0, totalLen)
+      : new Uint8Array(totalLen);
     result.set(indexBytes, 0);
     result.set(encodedValue, indexBytes.length);
     return result;
@@ -466,8 +490,11 @@ export class MappingCodec<const T extends MappingGeneric>
     );
   }
 
-  public encode(value: MappingValue<T>): Uint8Array<ArrayBuffer> {
-    return this.#entriesCodec.encode(value.entries().toArray() as any);
+  public encode(
+    value: MappingValue<T>,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
+    return this.#entriesCodec.encode(value.entries().toArray() as any, target);
   }
 
   public decode(data: Uint8Array): [MappingValue<T>, number] {

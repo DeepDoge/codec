@@ -174,10 +174,14 @@ export class TransformCodec<
    * Encode a value using the inner codec
    *
    * @param value - Value to encode
+   * @param target - Optional pre-allocated buffer to write into
    * @returns Binary representation as Uint8Array<ArrayBuffer>
    */
-  encode(value: I): Uint8Array<ArrayBuffer> {
-    return this.inner.encode(value);
+  encode(
+    value: I,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
+    return this.inner.encode(value, target);
   }
 
   /**

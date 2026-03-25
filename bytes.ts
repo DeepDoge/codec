@@ -38,12 +38,18 @@ export class StringCodec extends Codec<string> {
     this.#lengthCodec = options?.lengthCodec ?? VarInt;
   }
 
-  public encode(value: string): Uint8Array<ArrayBuffer> {
+  public encode(
+    value: string,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
     const utf8 = this.#encoder.encode(value);
     const lengthPrefix = this.#lengthCodec.encode(utf8.length);
-    const result = new Uint8Array(
-      lengthPrefix.length + utf8.length,
-    );
+    const totalLen = lengthPrefix.length + utf8.length;
+    
+    const result = target && target.length >= totalLen
+      ? target.subarray(0, totalLen)
+      : new Uint8Array(totalLen);
+      
     result.set(lengthPrefix, 0);
     result.set(utf8, lengthPrefix.length);
     return result;
@@ -109,19 +115,29 @@ export class BytesCodec extends Codec<Uint8Array> {
     this.#lengthCodec = options?.lengthCodec ?? VarInt;
   }
 
-  public encode(value: Uint8Array): Uint8Array<ArrayBuffer> {
+  public encode(
+    value: Uint8Array,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
     if (this.stride >= 0) {
       if (value.length !== this.stride) {
         throw new RangeError(
           `Expected byte array of length ${this.stride}, got ${value.length}`,
         );
       }
-      return new Uint8Array(value);
+      const result = target && target.length >= this.stride
+        ? target.subarray(0, this.stride)
+        : new Uint8Array(this.stride);
+      result.set(value);
+      return result;
     } else {
       const lengthPrefix = this.#lengthCodec.encode(value.length);
-      const result = new Uint8Array(
-        lengthPrefix.length + value.length,
-      );
+      const totalLen = lengthPrefix.length + value.length;
+      
+      const result = target && target.length >= totalLen
+        ? target.subarray(0, totalLen)
+        : new Uint8Array(totalLen);
+        
       result.set(lengthPrefix, 0);
       result.set(value, lengthPrefix.length);
       return result;

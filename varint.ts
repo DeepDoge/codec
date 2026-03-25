@@ -31,7 +31,10 @@ import { Codec } from "./codec.ts";
 export class VarIntCodec extends Codec<number> {
   public readonly stride = -1;
 
-  public encode(value: number): Uint8Array<ArrayBuffer> {
+  public encode(
+    value: number,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
     if (value < 0 || !Number.isSafeInteger(value)) {
       throw new RangeError("Value must be a non-negative safe integer");
     }
@@ -41,7 +44,12 @@ export class VarIntCodec extends Codec<number> {
       value >>>= 7;
     }
     parts.push(value & 0x7F);
-    return new Uint8Array(parts);
+    
+    const result = target && target.length >= parts.length
+      ? target.subarray(0, parts.length)
+      : new Uint8Array(parts.length);
+    result.set(parts);
+    return result;
   }
 
   public decode(data: Uint8Array): [number, number] {

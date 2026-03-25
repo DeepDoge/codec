@@ -1,6 +1,6 @@
 {
   "name": "@nomadshiba/codec",
-  "version": "0.1.5-preview.1",
+  "version": "0.1.5",
   "license": "LGPL-2.1-only",
   "exports": "./mod.ts",
   "compilerOptions": {

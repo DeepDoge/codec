@@ -46,9 +46,7 @@ export class StringCodec extends Codec<string> {
     const lengthPrefix = this.#lengthCodec.encode(utf8.length);
     const totalLen = lengthPrefix.length + utf8.length;
     
-    const result = target && target.length >= totalLen
-      ? target.subarray(0, totalLen)
-      : new Uint8Array(totalLen);
+    const result = target ?? new Uint8Array(totalLen);
       
     result.set(lengthPrefix, 0);
     result.set(utf8, lengthPrefix.length);
@@ -125,18 +123,14 @@ export class BytesCodec extends Codec<Uint8Array> {
           `Expected byte array of length ${this.stride}, got ${value.length}`,
         );
       }
-      const result = target && target.length >= this.stride
-        ? target.subarray(0, this.stride)
-        : new Uint8Array(this.stride);
+      const result = target ?? new Uint8Array(this.stride);
       result.set(value);
       return result;
     } else {
       const lengthPrefix = this.#lengthCodec.encode(value.length);
       const totalLen = lengthPrefix.length + value.length;
       
-      const result = target && target.length >= totalLen
-        ? target.subarray(0, totalLen)
-        : new Uint8Array(totalLen);
+      const result = target ?? new Uint8Array(totalLen);
         
       result.set(lengthPrefix, 0);
       result.set(value, lengthPrefix.length);

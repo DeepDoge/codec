@@ -42,15 +42,13 @@ export class OptionCodec<T extends OptionGeneric>
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     if (value === null) {
-      const result = target && target.length >= 1 ? target.subarray(0, 1) : new Uint8Array(1);
+      const result = target ?? new Uint8Array(1);
       result[0] = 0;
       return result;
     } else {
       const encoded = this.codec.encode(value, target?.subarray(1));
       const totalLen = 1 + encoded.length;
-      const result = target && target.length >= totalLen
-        ? target.subarray(0, totalLen)
-        : new Uint8Array(totalLen);
+      const result = target ?? new Uint8Array(totalLen);
       result[0] = 1;
       result.set(encoded, 1);
       return result;
@@ -127,9 +125,7 @@ export class TupleCodec<const T extends TupleGeneric>
       (sum, part) => sum + part.length,
       0,
     );
-    const combined = target && target.length >= combinedLength
-      ? target.subarray(0, combinedLength)
-      : new Uint8Array(combinedLength);
+    const combined = target ?? new Uint8Array(combinedLength);
     let offset = 0;
     for (const part of parts) {
       combined.set(part, offset);
@@ -313,9 +309,7 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
 
     const countPrefix = this.#countCodec.encode(value.length);
     const totalLen = countPrefix.length + elementsData.length;
-    const result = target && target.length >= totalLen
-      ? target.subarray(0, totalLen)
-      : new Uint8Array(totalLen);
+    const result = target ?? new Uint8Array(totalLen);
     result.set(countPrefix, 0);
     result.set(elementsData, countPrefix.length);
     return result;
@@ -413,9 +407,7 @@ export class EnumCodec<const T extends EnumGeneric>
     const encodedValue = codec.encode(value.value as never);
     const indexBytes = this.#indexCodec.encode(index);
     const totalLen = indexBytes.length + encodedValue.length;
-    const result = target && target.length >= totalLen
-      ? target.subarray(0, totalLen)
-      : new Uint8Array(totalLen);
+    const result = target ?? new Uint8Array(totalLen);
     result.set(indexBytes, 0);
     result.set(encodedValue, indexBytes.length);
     return result;

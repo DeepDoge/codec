@@ -45,9 +45,7 @@ export class VarIntCodec extends Codec<number> {
     }
     parts.push(value & 0x7F);
     
-    const result = target && target.length >= parts.length
-      ? target.subarray(0, parts.length)
-      : new Uint8Array(parts.length);
+    const result = target ?? new Uint8Array(parts.length);
     result.set(parts);
     return result;
   }

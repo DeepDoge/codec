@@ -13,11 +13,24 @@ simple, type-safe, composable API.
 deno add jsr:@nomadshiba/codec
 ```
 
+**Or:**
+
+```bash
+npx jsr add @nomadshiba/codec # npm
+pnpm i jsr:@nomadshiba/codec # pnpm >=10.8
+pnpm dlx jsr add @nomadshiba/codec # pnpm <10.8
+yarn add jsr:@nomadshiba/codec # yarn >=4.8
+yarn dlx jsr add @nomadshiba/codec # yarn <4.8
+bunx jsr add @nomadshiba/codec # bun
+vlt install jsr:@nomadshiba/codec # vlt
+```
+
 ---
 
 ## Breaking Changes
 
-**Note for users upgrading:** The library changed significantly in `0.1.0` and `0.2.0`.
+**Note for users upgrading:** The library changed significantly in `0.1.0` and
+`0.2.0`.
 
 See the [migrations](./migrations/) folder for upgrade instructions.
 
@@ -44,11 +57,11 @@ const [decoded] = User.decode(bytes);
 
 All codecs extend `Codec<O, I>` and implement:
 
-| Member   | Signature                                            | Description                                                       |
-| -------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
-| `encode` | `(value: I, target?: Uint8Array) => Uint8Array`      | Encode a value. Pass `target` to write into a pre-allocated buffer. |
-| `decode` | `(data: Uint8Array) => [O, number]`                  | Decode and return `[value, bytesConsumed]`.                       |
-| `stride` | `number`                                             | `≥ 0` = fixed byte size; `< 0` = variable size.                  |
+| Member   | Signature                                       | Description                                                         |
+| -------- | ----------------------------------------------- | ------------------------------------------------------------------- |
+| `encode` | `(value: I, target?: Uint8Array) => Uint8Array` | Encode a value. Pass `target` to write into a pre-allocated buffer. |
+| `decode` | `(data: Uint8Array) => [O, number]`             | Decode and return `[value, bytesConsumed]`.                         |
+| `stride` | `number`                                        | `≥ 0` = fixed byte size; `< 0` = variable size.                     |
 
 The optional `target` parameter on `encode` lets you write into a pre-allocated
 `Uint8Array` for performance-sensitive code, avoiding an extra allocation.
@@ -58,20 +71,20 @@ The optional `target` parameter on `encode` lets you write into a pre-allocated
 Use the `Codec.Infer*` utilities to derive TypeScript types from a codec:
 
 ```ts
-import { Codec, StructCodec, StringCodec, U32 } from "@nomadshiba/codec";
+import { Codec, StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
 
 const User = new StructCodec({ id: U32, name: new StringCodec() });
 
-type User      = Codec.Infer<typeof User>;       // { id: number; name: string }
-type UserInput = Codec.InferInput<typeof User>;  // { id: number; name: string }
-type UserOut   = Codec.InferOutput<typeof User>; // { id: number; name: string }
+type User = Codec.Infer<typeof User>; // { id: number; name: string }
+type UserInput = Codec.InferInput<typeof User>; // { id: number; name: string }
+type UserOut = Codec.InferOutput<typeof User>; // { id: number; name: string }
 ```
 
-| Utility               | Description                              |
-| --------------------- | ---------------------------------------- |
-| `Codec.Infer<T>`      | Alias for `InferOutput<T>`. Decoded type. |
-| `Codec.InferOutput<T>`| Type returned by `decode`.               |
-| `Codec.InferInput<T>` | Type accepted by `encode`.               |
+| Utility                | Description                               |
+| ---------------------- | ----------------------------------------- |
+| `Codec.Infer<T>`       | Alias for `InferOutput<T>`. Decoded type. |
+| `Codec.InferOutput<T>` | Type returned by `decode`.                |
+| `Codec.InferInput<T>`  | Type accepted by `encode`.                |
 
 ### Generic and Value Types
 
@@ -94,14 +107,14 @@ spell out the conditional type yourself:
 
 ```ts
 import {
-  type StructGeneric,
-  type StructValue,
+  ArrayCodec,
   type ArrayGeneric,
   type ArrayValue,
-  StructCodec,
-  ArrayCodec,
-  U32,
   StringCodec,
+  StructCodec,
+  type StructGeneric,
+  type StructValue,
+  U32,
 } from "@nomadshiba/codec";
 
 // Accept any struct codec and return its decoded value type
@@ -123,15 +136,15 @@ function decodeAll<T extends ArrayGeneric>(
 
 The full set of pairs exported by the library:
 
-| Generic type      | Value type            | Used by           |
-| ----------------- | --------------------- | ----------------- |
-| `NullableGeneric` | `NullableValue<T>`    | `NullableCodec`   |
-| `OptionalGeneric` | `OptionalValue<T>`    | `OptionalCodec`   |
-| `TupleGeneric`    | `TupleValue<T>`       | `TupleCodec`      |
-| `StructGeneric`   | `StructValue<T>`      | `StructCodec`     |
-| `ArrayGeneric`    | `ArrayValue<T>`       | `ArrayCodec`      |
-| `UnionGeneric`    | `UnionValue<T>`       | `UnionCodec`      |
-| `MappingGeneric`  | `MappingValue<T>`     | `MappingCodec`    |
+| Generic type      | Value type         | Used by         |
+| ----------------- | ------------------ | --------------- |
+| `NullableGeneric` | `NullableValue<T>` | `NullableCodec` |
+| `OptionalGeneric` | `OptionalValue<T>` | `OptionalCodec` |
+| `TupleGeneric`    | `TupleValue<T>`    | `TupleCodec`    |
+| `StructGeneric`   | `StructValue<T>`   | `StructCodec`   |
+| `ArrayGeneric`    | `ArrayValue<T>`    | `ArrayCodec`    |
+| `UnionGeneric`    | `UnionValue<T>`    | `UnionCodec`    |
+| `MappingGeneric`  | `MappingValue<T>`  | `MappingCodec`  |
 
 For most application code you won't need these directly — `Codec.Infer<T>`
 covers the common case. They become useful when writing generic helpers,
@@ -158,8 +171,8 @@ higher-order codecs, or libraries built on top of this one.
 | `Bool`         | boolean | 1            | Boolean (`0x00`/`0x01`) |
 | `VarInt`       | number  | variable     | Unsigned LEB128         |
 
-All numeric singletons (`U8`, `I32`, `F64`, etc.) are pre-instantiated. You
-only need to call `new` when specifying a non-default endianness:
+All numeric singletons (`U8`, `I32`, `F64`, etc.) are pre-instantiated. You only
+need to call `new` when specifying a non-default endianness:
 
 ```ts
 import { U16Codec } from "@nomadshiba/codec";
@@ -178,7 +191,7 @@ import { U16LE } from "@nomadshiba/codec";
 UTF-8 string with a length prefix.
 
 ```ts
-import { StringCodec, Str, U32 } from "@nomadshiba/codec";
+import { Str, StringCodec, U32 } from "@nomadshiba/codec";
 
 // Default: varint length prefix
 const str = new StringCodec();
@@ -198,7 +211,7 @@ const strU32 = new StringCodec({ lengthCodec: U32 });
 Raw byte arrays.
 
 ```ts
-import { BytesCodec, Bytes, U32 } from "@nomadshiba/codec";
+import { Bytes, BytesCodec, U32 } from "@nomadshiba/codec";
 
 // Variable-length (varint prefix) — pre-built singleton
 Bytes.encode(new Uint8Array([1, 2, 3]));
@@ -225,7 +238,7 @@ import { NullableCodec, U8 } from "@nomadshiba/codec";
 
 const maybeU8 = new NullableCodec(U8);
 maybeU8.encode(null); // [0x00]
-maybeU8.encode(7);    // [0x01, 0x07]
+maybeU8.encode(7); // [0x01, 0x07]
 ```
 
 Wire format:
@@ -247,7 +260,7 @@ import { OptionalCodec, U8 } from "@nomadshiba/codec";
 
 const maybeU8 = new OptionalCodec(U8);
 maybeU8.encode(undefined); // [0x00]
-maybeU8.encode(7);         // [0x01, 0x07]
+maybeU8.encode(7); // [0x01, 0x07]
 ```
 
 Wire format:
@@ -327,7 +340,7 @@ Tagged unions. Variant names are sorted alphabetically to assign stable integer
 indices. The default index codec is `U8` (supports up to 256 variants).
 
 ```ts
-import { StringCodec, UnionCodec, U8, U32 } from "@nomadshiba/codec";
+import { StringCodec, U32, U8, UnionCodec } from "@nomadshiba/codec";
 
 const Event = new UnionCodec({
   Click: U8,
@@ -357,7 +370,7 @@ Key–value `Map` encoded as an array of `[key, value]` tuples with a count
 prefix.
 
 ```ts
-import { MappingCodec, StringCodec, U8, U32 } from "@nomadshiba/codec";
+import { MappingCodec, StringCodec, U32, U8 } from "@nomadshiba/codec";
 
 const Dict = new MappingCodec([new StringCodec(), U8]);
 Dict.encode(new Map([["x", 1], ["y", 2]]));
@@ -418,6 +431,7 @@ class DateCodec extends Codec<Date, bigint> {
 ```
 
 The two type parameters are:
+
 - `O` — the **output** type returned by `decode`
 - `I` — the **input** type accepted by `encode` (defaults to `O`)
 

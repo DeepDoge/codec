@@ -1,27 +1,42 @@
 import { Codec } from "./codec.ts";
 
 /**
- * Options for primitive codecs.
+ * Options for multi-byte numeric codecs.
+ *
+ * Applies to all integer and float codecs wider than one byte
+ * (`I16`, `U16`, `I32`, `U32`, `I64`, `U64`, `F32`, `F64`).
  */
 export type NumericOptions = {
-  /** Endianness. Default is big-endian ("be"). */
+  /**
+   * Byte order used when reading/writing multi-byte values.
+   * Defaults to `"be"` (big-endian / network byte order).
+   * Use `"le"` for little-endian (x86, Bitcoin, etc.).
+   */
   endian?: "be" | "le";
 };
 
 /**
- * Codec for signed 8-bit integers (int8).
+ * Codec for signed 8-bit integers (int8, range −128…127).
  *
- * Endianness: N/A (1 byte)
+ * Single-byte, so endianness is not applicable.
  *
  * @example
  * ```ts
- * I8.encode(-5);              // [0xFB]
- * I8.decode(b);              // [-5, 1]
+ * import { I8 } from "@nomadshiba/codec";
+ *
+ * I8.encode(-5);  // Uint8Array [0xFB]
+ * I8.decode(new Uint8Array([0xFB])); // [-5, 1]
  * ```
  */
 export class I8Codec extends Codec<number> {
+  /** Always `1`. */
   public readonly stride = 1;
 
+  /**
+   * @param value - A signed 8-bit integer (−128…127).
+   * @param target - Optional pre-allocated 1-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` containing the encoded byte.
+   */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
@@ -32,6 +47,10 @@ export class I8Codec extends Codec<number> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 1 byte).
+   * @returns `[value, 1]`.
+   */
   public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
@@ -41,23 +60,32 @@ export class I8Codec extends Codec<number> {
     return [view.getInt8(0), 1];
   }
 }
-/** Singleton instance of I8 codec */
+
+/** Pre-built singleton instance of {@link I8Codec}. */
 export const I8: I8Codec = new I8Codec();
 
 /**
- * Codec for unsigned 8-bit integers (uint8).
+ * Codec for unsigned 8-bit integers (uint8, range 0…255).
  *
- * Endianness: N/A (1 byte)
+ * Single-byte, so endianness is not applicable.
  *
  * @example
  * ```ts
- * U8.encode(255);             // [0xFF]
- * U8.decode(b);              // [255, 1]
+ * import { U8 } from "@nomadshiba/codec";
+ *
+ * U8.encode(255); // Uint8Array [0xFF]
+ * U8.decode(new Uint8Array([0xFF])); // [255, 1]
  * ```
  */
 export class U8Codec extends Codec<number> {
+  /** Always `1`. */
   public readonly stride = 1;
 
+  /**
+   * @param value - An unsigned 8-bit integer (0…255).
+   * @param target - Optional pre-allocated 1-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` containing the encoded byte.
+   */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
@@ -68,6 +96,10 @@ export class U8Codec extends Codec<number> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 1 byte).
+   * @returns `[value, 1]`.
+   */
   public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
@@ -77,32 +109,42 @@ export class U8Codec extends Codec<number> {
     return [view.getUint8(0), 1];
   }
 }
-/** Singleton instance of U8 codec */
+
+/** Pre-built singleton instance of {@link U8Codec} (big-endian). */
 export const U8: U8Codec = new U8Codec();
 
 /**
- * Codec for signed 16-bit integers (int16).
- * Default is big-endian. Use `{ endian: "le" }` for little-endian.
+ * Codec for signed 16-bit integers (int16, range −32 768…32 767).
+ *
+ * Defaults to big-endian. Pass `{ endian: "le" }` for little-endian, or use
+ * the pre-built {@link I16LE} singleton.
  *
  * @example
  * ```ts
- * // Big-endian (default)
- * new I16Codec().encode(-2);   // [0xFF, 0xFE]
- * new I16Codec().decode(b);    // [-2, 2]
+ * import { I16, I16LE } from "@nomadshiba/codec";
  *
- * // Little-endian
- * new I16Codec({ endian: "le" }).encode(-2);  // [0xFE, 0xFF]
+ * I16.encode(-2);   // Uint8Array [0xFF, 0xFE]  (big-endian)
+ * I16LE.encode(-2); // Uint8Array [0xFE, 0xFF]  (little-endian)
  * ```
  */
 export class I16Codec extends Codec<number> {
+  /** Always `2`. */
   public readonly stride = 2;
   readonly #littleEndian: boolean;
 
+  /**
+   * @param options - Optional endianness configuration. Defaults to big-endian.
+   */
   constructor(options?: NumericOptions) {
     super();
     this.#littleEndian = options?.endian === "le";
   }
 
+  /**
+   * @param value - A signed 16-bit integer.
+   * @param target - Optional pre-allocated 2-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` of length 2.
+   */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
@@ -113,6 +155,10 @@ export class I16Codec extends Codec<number> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 2 bytes).
+   * @returns `[value, 2]`.
+   */
   public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
@@ -122,32 +168,42 @@ export class I16Codec extends Codec<number> {
     return [view.getInt16(0, this.#littleEndian), 2];
   }
 }
-/** Singleton instance of I16 codec (big-endian) */
+
+/** Pre-built singleton instance of {@link I16Codec} (big-endian). */
 export const I16: I16Codec = new I16Codec();
 
 /**
- * Codec for unsigned 16-bit integers (uint16).
- * Default is big-endian. Use `{ endian: "le" }` for little-endian.
+ * Codec for unsigned 16-bit integers (uint16, range 0…65 535).
+ *
+ * Defaults to big-endian. Pass `{ endian: "le" }` for little-endian, or use
+ * the pre-built {@link U16LE} singleton.
  *
  * @example
  * ```ts
- * // Big-endian (default)
- * new U16Codec().encode(513);  // [0x02, 0x01]
- * new U16Codec().decode(b);    // [513, 2]
+ * import { U16, U16LE } from "@nomadshiba/codec";
  *
- * // Little-endian
- * new U16Codec({ endian: "le" }).encode(513);  // [0x01, 0x02]
+ * U16.encode(513);   // Uint8Array [0x02, 0x01]  (big-endian)
+ * U16LE.encode(513); // Uint8Array [0x01, 0x02]  (little-endian)
  * ```
  */
 export class U16Codec extends Codec<number> {
+  /** Always `2`. */
   public readonly stride = 2;
   readonly #littleEndian: boolean;
 
+  /**
+   * @param options - Optional endianness configuration. Defaults to big-endian.
+   */
   constructor(options?: NumericOptions) {
     super();
     this.#littleEndian = options?.endian === "le";
   }
 
+  /**
+   * @param value - An unsigned 16-bit integer.
+   * @param target - Optional pre-allocated 2-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` of length 2.
+   */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
@@ -158,6 +214,10 @@ export class U16Codec extends Codec<number> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 2 bytes).
+   * @returns `[value, 2]`.
+   */
   public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
@@ -167,32 +227,42 @@ export class U16Codec extends Codec<number> {
     return [view.getUint16(0, this.#littleEndian), 2];
   }
 }
-/** Singleton instance of U16 codec (big-endian) */
+
+/** Pre-built singleton instance of {@link U16Codec} (big-endian). */
 export const U16: U16Codec = new U16Codec();
 
 /**
  * Codec for signed 32-bit integers (int32).
- * Default is big-endian. Use `{ endian: "le" }` for little-endian.
+ *
+ * Defaults to big-endian. Pass `{ endian: "le" }` for little-endian, or use
+ * the pre-built {@link I32LE} singleton.
  *
  * @example
  * ```ts
- * // Big-endian (default)
- * new I32Codec().encode(-123456); // 4 bytes
- * new I32Codec().decode(b);       // [-123456, 4]
+ * import { I32, I32LE } from "@nomadshiba/codec";
  *
- * // Little-endian
- * new I32Codec({ endian: "le" }).encode(-123456);
+ * I32.encode(-123456);   // 4 bytes, big-endian
+ * I32LE.encode(-123456); // 4 bytes, little-endian
  * ```
  */
 export class I32Codec extends Codec<number> {
+  /** Always `4`. */
   public readonly stride = 4;
   readonly #littleEndian: boolean;
 
+  /**
+   * @param options - Optional endianness configuration. Defaults to big-endian.
+   */
   constructor(options?: NumericOptions) {
     super();
     this.#littleEndian = options?.endian === "le";
   }
 
+  /**
+   * @param value - A signed 32-bit integer.
+   * @param target - Optional pre-allocated 4-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` of length 4.
+   */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
@@ -203,6 +273,10 @@ export class I32Codec extends Codec<number> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 4 bytes).
+   * @returns `[value, 4]`.
+   */
   public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
@@ -212,32 +286,42 @@ export class I32Codec extends Codec<number> {
     return [view.getInt32(0, this.#littleEndian), 4];
   }
 }
-/** Singleton instance of I32 codec (big-endian) */
+
+/** Pre-built singleton instance of {@link I32Codec} (big-endian). */
 export const I32: I32Codec = new I32Codec();
 
 /**
- * Codec for unsigned 32-bit integers (uint32).
- * Default is big-endian. Use `{ endian: "le" }` for little-endian.
+ * Codec for unsigned 32-bit integers (uint32, range 0…4 294 967 295).
+ *
+ * Defaults to big-endian. Pass `{ endian: "le" }` for little-endian, or use
+ * the pre-built {@link U32LE} singleton.
  *
  * @example
  * ```ts
- * // Big-endian (default)
- * new U32Codec().encode(4294967295 >>> 1);
- * new U32Codec().decode(b);       // [value, 4]
+ * import { U32, U32LE } from "@nomadshiba/codec";
  *
- * // Little-endian
- * new U32Codec({ endian: "le" }).encode(4294967295 >>> 1);
+ * U32.encode(0xDEADBEEF);   // 4 bytes, big-endian
+ * U32LE.encode(0xDEADBEEF); // 4 bytes, little-endian
  * ```
  */
 export class U32Codec extends Codec<number> {
+  /** Always `4`. */
   public readonly stride = 4;
   readonly #littleEndian: boolean;
 
+  /**
+   * @param options - Optional endianness configuration. Defaults to big-endian.
+   */
   constructor(options?: NumericOptions) {
     super();
     this.#littleEndian = options?.endian === "le";
   }
 
+  /**
+   * @param value - An unsigned 32-bit integer.
+   * @param target - Optional pre-allocated 4-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` of length 4.
+   */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
@@ -248,6 +332,10 @@ export class U32Codec extends Codec<number> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 4 bytes).
+   * @returns `[value, 4]`.
+   */
   public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
@@ -257,32 +345,43 @@ export class U32Codec extends Codec<number> {
     return [view.getUint32(0, this.#littleEndian), 4];
   }
 }
-/** Singleton instance of U32 codec (big-endian) */
+
+/** Pre-built singleton instance of {@link U32Codec} (big-endian). */
 export const U32: U32Codec = new U32Codec();
 
 /**
- * Codec for signed 64-bit integers (bigint).
- * Default is big-endian. Use `{ endian: "le" }` for little-endian.
+ * Codec for signed 64-bit integers represented as `bigint`.
+ *
+ * Defaults to big-endian. Pass `{ endian: "le" }` for little-endian, or use
+ * the pre-built {@link I64LE} singleton.
  *
  * @example
  * ```ts
- * // Big-endian (default)
- * new I64Codec().encode(-123n);
- * new I64Codec().decode(b);       // [-123n, 8]
+ * import { I64, I64LE } from "@nomadshiba/codec";
  *
- * // Little-endian
- * new I64Codec({ endian: "le" }).encode(-123n);
+ * I64.encode(-123n);   // 8 bytes, big-endian
+ * I64LE.encode(-123n); // 8 bytes, little-endian
+ * I64.decode(bytes);   // [-123n, 8]
  * ```
  */
 export class I64Codec extends Codec<bigint> {
+  /** Always `8`. */
   public readonly stride = 8;
   readonly #littleEndian: boolean;
 
+  /**
+   * @param options - Optional endianness configuration. Defaults to big-endian.
+   */
   constructor(options?: NumericOptions) {
     super();
     this.#littleEndian = options?.endian === "le";
   }
 
+  /**
+   * @param value - A signed 64-bit integer as `bigint`.
+   * @param target - Optional pre-allocated 8-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` of length 8.
+   */
   public encode(
     value: bigint,
     target?: Uint8Array<ArrayBuffer>,
@@ -293,6 +392,10 @@ export class I64Codec extends Codec<bigint> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 8 bytes).
+   * @returns `[value, 8]`.
+   */
   public decode(data: Uint8Array): [bigint, number] {
     const view = new DataView(
       data.buffer,
@@ -302,32 +405,43 @@ export class I64Codec extends Codec<bigint> {
     return [view.getBigInt64(0, this.#littleEndian), 8];
   }
 }
-/** Singleton instance of I64 codec (big-endian) */
+
+/** Pre-built singleton instance of {@link I64Codec} (big-endian). */
 export const I64: I64Codec = new I64Codec();
 
 /**
- * Codec for unsigned 64-bit integers (bigint).
- * Default is big-endian. Use `{ endian: "le" }` for little-endian.
+ * Codec for unsigned 64-bit integers represented as `bigint`.
+ *
+ * Defaults to big-endian. Pass `{ endian: "le" }` for little-endian, or use
+ * the pre-built {@link U64LE} singleton.
  *
  * @example
  * ```ts
- * // Big-endian (default)
- * new U64Codec().encode(9007199254740991n);
- * new U64Codec().decode(b);       // [9007199254740991n, 8]
+ * import { U64, U64LE } from "@nomadshiba/codec";
  *
- * // Little-endian
- * new U64Codec({ endian: "le" }).encode(9007199254740991n);
+ * U64.encode(9007199254740991n);   // 8 bytes, big-endian
+ * U64LE.encode(9007199254740991n); // 8 bytes, little-endian
+ * U64.decode(bytes);               // [9007199254740991n, 8]
  * ```
  */
 export class U64Codec extends Codec<bigint> {
+  /** Always `8`. */
   public readonly stride = 8;
   readonly #littleEndian: boolean;
 
+  /**
+   * @param options - Optional endianness configuration. Defaults to big-endian.
+   */
   constructor(options?: NumericOptions) {
     super();
     this.#littleEndian = options?.endian === "le";
   }
 
+  /**
+   * @param value - An unsigned 64-bit integer as `bigint`.
+   * @param target - Optional pre-allocated 8-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` of length 8.
+   */
   public encode(
     value: bigint,
     target?: Uint8Array<ArrayBuffer>,
@@ -338,6 +452,10 @@ export class U64Codec extends Codec<bigint> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 8 bytes).
+   * @returns `[value, 8]`.
+   */
   public decode(data: Uint8Array): [bigint, number] {
     const view = new DataView(
       data.buffer,
@@ -347,32 +465,47 @@ export class U64Codec extends Codec<bigint> {
     return [view.getBigUint64(0, this.#littleEndian), 8];
   }
 }
-/** Singleton instance of U64 codec (big-endian) */
+
+/** Pre-built singleton instance of {@link U64Codec} (big-endian). */
 export const U64: U64Codec = new U64Codec();
 
 /**
- * Codec for 32-bit floating point numbers (float32).
- * Default is big-endian. Use `{ endian: "le" }` for little-endian.
+ * Codec for 32-bit IEEE 754 floating-point numbers (float32).
+ *
+ * Note that JavaScript `number` values are 64-bit floats. Values are
+ * truncated to 32-bit precision on encode. Use `Math.fround` to check the
+ * representable value before encoding.
+ *
+ * Defaults to big-endian. Pass `{ endian: "le" }` for little-endian, or use
+ * the pre-built {@link F32LE} singleton.
  *
  * @example
  * ```ts
- * // Big-endian (default)
- * new F32Codec().encode(Math.fround(1.5));
- * new F32Codec().decode(b);       // [~1.5, 4]
+ * import { F32, F32LE } from "@nomadshiba/codec";
  *
- * // Little-endian
- * new F32Codec({ endian: "le" }).encode(Math.fround(1.5));
+ * F32.encode(Math.fround(1.5));   // 4 bytes, big-endian
+ * F32LE.encode(Math.fround(1.5)); // 4 bytes, little-endian
+ * F32.decode(bytes);              // [~1.5, 4]
  * ```
  */
 export class F32Codec extends Codec<number> {
+  /** Always `4`. */
   public readonly stride = 4;
   readonly #littleEndian: boolean;
 
+  /**
+   * @param options - Optional endianness configuration. Defaults to big-endian.
+   */
   constructor(options?: NumericOptions) {
     super();
     this.#littleEndian = options?.endian === "le";
   }
 
+  /**
+   * @param value - A number, encoded as a 32-bit float (precision is reduced).
+   * @param target - Optional pre-allocated 4-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` of length 4.
+   */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
@@ -383,6 +516,10 @@ export class F32Codec extends Codec<number> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 4 bytes).
+   * @returns `[value, 4]` where `value` is a 32-bit float promoted to `number`.
+   */
   public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
@@ -392,32 +529,43 @@ export class F32Codec extends Codec<number> {
     return [view.getFloat32(0, this.#littleEndian), 4];
   }
 }
-/** Singleton instance of F32 codec (big-endian) */
+
+/** Pre-built singleton instance of {@link F32Codec} (big-endian). */
 export const F32: F32Codec = new F32Codec();
 
 /**
- * Codec for 64-bit floating point numbers (float64).
- * Default is big-endian. Use `{ endian: "le" }` for little-endian.
+ * Codec for 64-bit IEEE 754 floating-point numbers (float64 / JavaScript `number`).
+ *
+ * Defaults to big-endian. Pass `{ endian: "le" }` for little-endian, or use
+ * the pre-built {@link F64LE} singleton.
  *
  * @example
  * ```ts
- * // Big-endian (default)
- * new F64Codec().encode(1.2345);
- * new F64Codec().decode(b);       // [1.2345, 8]
+ * import { F64, F64LE } from "@nomadshiba/codec";
  *
- * // Little-endian
- * new F64Codec({ endian: "le" }).encode(1.2345);
+ * F64.encode(1.2345);   // 8 bytes, big-endian
+ * F64LE.encode(1.2345); // 8 bytes, little-endian
+ * F64.decode(bytes);    // [1.2345, 8]
  * ```
  */
 export class F64Codec extends Codec<number> {
+  /** Always `8`. */
   public readonly stride = 8;
   readonly #littleEndian: boolean;
 
+  /**
+   * @param options - Optional endianness configuration. Defaults to big-endian.
+   */
   constructor(options?: NumericOptions) {
     super();
     this.#littleEndian = options?.endian === "le";
   }
 
+  /**
+   * @param value - A JavaScript `number` (64-bit float).
+   * @param target - Optional pre-allocated 8-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` of length 8.
+   */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
@@ -428,6 +576,10 @@ export class F64Codec extends Codec<number> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 8 bytes).
+   * @returns `[value, 8]`.
+   */
   public decode(data: Uint8Array): [number, number] {
     const view = new DataView(
       data.buffer,
@@ -437,22 +589,34 @@ export class F64Codec extends Codec<number> {
     return [view.getFloat64(0, this.#littleEndian), 8];
   }
 }
-/** Singleton instance of F64 codec (big-endian) */
+
+/** Pre-built singleton instance of {@link F64Codec} (big-endian). */
 export const F64: F64Codec = new F64Codec();
 
 /**
  * Codec for boolean values.
- * Encoded as a single byte: 0x00 = false, 0x01 = true.
+ *
+ * Encoded as a single byte: `0x00` = `false`, `0x01` = `true`.
+ * Any non-zero byte decodes as `true`.
  *
  * @example
  * ```ts
- * Bool.encode(true);        // [0x01]
- * Bool.decode(b);                     // [true, 1]
+ * import { Bool } from "@nomadshiba/codec";
+ *
+ * Bool.encode(true);  // Uint8Array [0x01]
+ * Bool.encode(false); // Uint8Array [0x00]
+ * Bool.decode(new Uint8Array([0x01])); // [true, 1]
  * ```
  */
 export class BoolCodec extends Codec<boolean> {
+  /** Always `1`. */
   public readonly stride = 1;
 
+  /**
+   * @param value - A boolean value.
+   * @param target - Optional pre-allocated 1-byte buffer.
+   * @returns `Uint8Array<ArrayBuffer>` containing `0x00` or `0x01`.
+   */
   public encode(
     value: boolean,
     target?: Uint8Array<ArrayBuffer>,
@@ -462,83 +626,88 @@ export class BoolCodec extends Codec<boolean> {
     return arr;
   }
 
+  /**
+   * @param data - Binary data (at least 1 byte).
+   * @returns `[value, 1]` where any non-zero byte decodes as `true`.
+   */
   public decode(data: Uint8Array): [boolean, number] {
     return [data[0] !== 0, 1];
   }
 }
-/** Singleton instance of Bool codec */
+
+/** Pre-built singleton instance of {@link BoolCodec}. */
 export const Bool: BoolCodec = new BoolCodec();
 
-// Little-endian singleton instances for convenience
+// ── Little-endian singletons ─────────────────────────────────────────────────
 
 /**
- * Singleton instance of I16 codec (little-endian).
+ * Pre-built little-endian instance of {@link I16Codec}.
  * @example
  * ```ts
- * I16LE.encode(-2);  // [0xFE, 0xFF]
+ * I16LE.encode(-2); // Uint8Array [0xFE, 0xFF]
  * ```
  */
 export const I16LE: I16Codec = new I16Codec({ endian: "le" });
 
 /**
- * Singleton instance of U16 codec (little-endian).
+ * Pre-built little-endian instance of {@link U16Codec}.
  * @example
  * ```ts
- * U16LE.encode(513);  // [0x01, 0x02]
+ * U16LE.encode(513); // Uint8Array [0x01, 0x02]
  * ```
  */
 export const U16LE: U16Codec = new U16Codec({ endian: "le" });
 
 /**
- * Singleton instance of I32 codec (little-endian).
+ * Pre-built little-endian instance of {@link I32Codec}.
  * @example
  * ```ts
- * I32LE.encode(-123456);
+ * I32LE.encode(-123456); // 4 bytes, little-endian
  * ```
  */
 export const I32LE: I32Codec = new I32Codec({ endian: "le" });
 
 /**
- * Singleton instance of U32 codec (little-endian).
+ * Pre-built little-endian instance of {@link U32Codec}.
  * @example
  * ```ts
- * U32LE.encode(4294967295 >>> 1);
+ * U32LE.encode(0xDEADBEEF); // 4 bytes, little-endian
  * ```
  */
 export const U32LE: U32Codec = new U32Codec({ endian: "le" });
 
 /**
- * Singleton instance of I64 codec (little-endian).
+ * Pre-built little-endian instance of {@link I64Codec}.
  * @example
  * ```ts
- * I64LE.encode(-123n);
+ * I64LE.encode(-123n); // 8 bytes, little-endian
  * ```
  */
 export const I64LE: I64Codec = new I64Codec({ endian: "le" });
 
 /**
- * Singleton instance of U64 codec (little-endian).
+ * Pre-built little-endian instance of {@link U64Codec}.
  * @example
  * ```ts
- * U64LE.encode(9007199254740991n);
+ * U64LE.encode(9007199254740991n); // 8 bytes, little-endian
  * ```
  */
 export const U64LE: U64Codec = new U64Codec({ endian: "le" });
 
 /**
- * Singleton instance of F32 codec (little-endian).
+ * Pre-built little-endian instance of {@link F32Codec}.
  * @example
  * ```ts
- * F32LE.encode(Math.fround(1.5));
+ * F32LE.encode(Math.fround(1.5)); // 4 bytes, little-endian
  * ```
  */
 export const F32LE: F32Codec = new F32Codec({ endian: "le" });
 
 /**
- * Singleton instance of F64 codec (little-endian).
+ * Pre-built little-endian instance of {@link F64Codec}.
  * @example
  * ```ts
- * F64LE.encode(1.2345);
+ * F64LE.encode(1.2345); // 8 bytes, little-endian
  * ```
  */
 export const F64LE: F64Codec = new F64Codec({ endian: "le" });

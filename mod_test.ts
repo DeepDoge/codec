@@ -3,7 +3,7 @@ import {
   ArrayCodec,
   Bool,
   BytesCodec,
-  EnumCodec,
+  UnionCodec,
   F32,
   F32LE,
   F64,
@@ -16,7 +16,8 @@ import {
   I64LE,
   I8,
   MappingCodec,
-  OptionCodec,
+  NullableCodec,
+  OptionalCodec,
   StringCodec,
   StructCodec,
   TupleCodec,
@@ -332,26 +333,50 @@ Deno.test("bytes - custom length codec (U32)", () => {
   assertEquals(encodedVarInt.length, 1 + 3); // 1 byte VarInt + 3 bytes data
 });
 
-// Option Codec
-Deno.test("Option - null", () => {
-  const opt = new OptionCodec(U8);
+// Nullable Codec
+Deno.test("Nullable - null", () => {
+  const opt = new NullableCodec(U8);
   const [decoded] = opt.decode(opt.encode(null));
   assertEquals(decoded, null);
   assertEquals(Array.from(opt.encode(null)), [0x00]);
   assertEquals(opt.stride, -1);
 });
 
-Deno.test("Option - present value", () => {
-  const opt = new OptionCodec(U8);
+Deno.test("Nullable - present value", () => {
+  const opt = new NullableCodec(U8);
   const [decoded] = opt.decode(opt.encode(7));
   assertEquals(decoded, 7);
   assertEquals(Array.from(opt.encode(7)), [0x01, 0x07]);
 });
 
-Deno.test("Option - with string", () => {
-  const opt = new OptionCodec(new StringCodec());
+Deno.test("Nullable - with string", () => {
+  const opt = new NullableCodec(new StringCodec());
   const [n] = opt.decode(opt.encode(null));
   assertEquals(n, null);
+  const [s] = opt.decode(opt.encode("hello"));
+  assertEquals(s, "hello");
+});
+
+// Optional Codec
+Deno.test("Optional - undefined", () => {
+  const opt = new OptionalCodec(U8);
+  const [decoded] = opt.decode(opt.encode(undefined));
+  assertEquals(decoded, undefined);
+  assertEquals(Array.from(opt.encode(undefined)), [0x00]);
+  assertEquals(opt.stride, -1);
+});
+
+Deno.test("Optional - present value", () => {
+  const opt = new OptionalCodec(U8);
+  const [decoded] = opt.decode(opt.encode(7));
+  assertEquals(decoded, 7);
+  assertEquals(Array.from(opt.encode(7)), [0x01, 0x07]);
+});
+
+Deno.test("Optional - with string", () => {
+  const opt = new OptionalCodec(new StringCodec());
+  const [n] = opt.decode(opt.encode(undefined));
+  assertEquals(n, undefined);
   const [s] = opt.decode(opt.encode("hello"));
   assertEquals(s, "hello");
 });
@@ -500,42 +525,42 @@ Deno.test("Array - custom count codec (U32)", () => {
   assertEquals(encodedU32[3], 3); // Last byte has the value 3
 });
 
-// Enum Codec
-Deno.test("Enum - simple variants", () => {
-  const MyEnum = new EnumCodec({ A: U8, B: new StringCodec() });
+// Union Codec
+Deno.test("Union - simple variants", () => {
+  const MyUnion = new UnionCodec({ A: U8, B: new StringCodec() });
 
   const valA = { kind: "A", value: 5 } as const;
-  const [decodedA] = MyEnum.decode(MyEnum.encode(valA));
+  const [decodedA] = MyUnion.decode(MyUnion.encode(valA));
   assertEquals(decodedA, valA);
 
   const valB = { kind: "B", value: "ok" } as const;
-  const [decodedB] = MyEnum.decode(MyEnum.encode(valB));
+  const [decodedB] = MyUnion.decode(MyUnion.encode(valB));
   assertEquals(decodedB, valB);
 
-  assertEquals(MyEnum.stride, -1);
+  assertEquals(MyUnion.stride, -1);
 });
 
-Deno.test("Enum - variant sorting", () => {
+Deno.test("Union - variant sorting", () => {
   // Variants are sorted alphabetically: A=0, B=1
-  const MyEnum = new EnumCodec({ B: U8, A: U8 });
-  const encA = MyEnum.encode({ kind: "A", value: 5 });
-  const encB = MyEnum.encode({ kind: "B", value: 5 });
+  const MyUnion = new UnionCodec({ B: U8, A: U8 });
+  const encA = MyUnion.encode({ kind: "A", value: 5 });
+  const encB = MyUnion.encode({ kind: "B", value: 5 });
   assertEquals(encA[0], 0); // A is first alphabetically
   assertEquals(encB[0], 1); // B is second
 });
 
-Deno.test("Enum - invalid variant", () => {
-  const MyEnum = new EnumCodec({ A: U8, B: U8 });
+Deno.test("Union - invalid variant", () => {
+  const MyUnion = new UnionCodec({ A: U8, B: U8 });
   assertThrows(
-    () => MyEnum.encode({ kind: "C" as never, value: 5 }),
+    () => MyUnion.encode({ kind: "C" as never, value: 5 }),
     Error,
-    "Invalid enum variant",
+    "Invalid union variant",
   );
 });
 
-Deno.test("Enum - complex payloads", () => {
+Deno.test("Union - complex payloads", () => {
   const UserStruct = new StructCodec({ id: U32, name: new StringCodec() });
-  const Event = new EnumCodec({
+  const Event = new UnionCodec({
     Created: UserStruct,
     Deleted: U32,
     Updated: UserStruct,
@@ -553,22 +578,22 @@ Deno.test("Enum - complex payloads", () => {
   assertEquals(decodedDeleted, deleted);
 });
 
-Deno.test("Enum - custom index codec (U32)", () => {
-  const MyEnum = new EnumCodec(
+Deno.test("Union - custom index codec (U32)", () => {
+  const MyUnion = new UnionCodec(
     { A: U8, B: new StringCodec() },
     { indexCodec: U32 },
   );
 
   const valA = { kind: "A", value: 5 } as const;
-  const [decodedA] = MyEnum.decode(MyEnum.encode(valA));
+  const [decodedA] = MyUnion.decode(MyUnion.encode(valA));
   assertEquals(decodedA, valA);
 
   const valB = { kind: "B", value: "ok" } as const;
-  const [decodedB] = MyEnum.decode(MyEnum.encode(valB));
+  const [decodedB] = MyUnion.decode(MyUnion.encode(valB));
   assertEquals(decodedB, valB);
 
   // U32 index is 4 bytes, U8 would be 1 byte
-  const encodedA = MyEnum.encode(valA);
+  const encodedA = MyUnion.encode(valA);
   assertEquals(encodedA[0], 0); // First 3 bytes are 0
   assertEquals(encodedA[1], 0);
   assertEquals(encodedA[2], 0);
@@ -650,10 +675,10 @@ Deno.test("Complex - nested structures", () => {
   assertEquals(decoded, val);
 });
 
-Deno.test("Complex - optional nested structures", () => {
+Deno.test("Complex - nullable nested structures", () => {
   const Config = new StructCodec({
     enabled: Bool,
-    timeout: new OptionCodec(U32),
+    timeout: new NullableCodec(U32),
     endpoints: new ArrayCodec(new StringCodec()),
   });
 
@@ -689,8 +714,8 @@ Deno.test("Complex - mapping with tuples", () => {
   assertEquals(Array.from(decoded.entries()), Array.from(val.entries()));
 });
 
-Deno.test("Complex - array of enums", () => {
-  const Message = new EnumCodec({
+Deno.test("Complex - array of unions", () => {
+  const Message = new UnionCodec({
     Text: new StringCodec(),
     Number: I32,
     Flag: Bool,

@@ -1,33 +1,38 @@
 /**
- * @nomadshiba/codec provides composable binary codecs for TypeScript/JavaScript.
+ * `@nomadshiba/codec` — composable binary codecs for TypeScript and JavaScript.
  *
- * Core ideas:
- * - Every codec extends Codec<T> with encode/decode and a stride:
- *   - stride >= 0: fixed-size encoding (bytes)
- *   - stride < 0: variable-size encoding
- * - Numbers default to big-endian encoding (DataView). Little-endian variants available.
- * - Variable-length types encode their own size using unsigned LEB128 (VarInt) prefix.
- * - Composite types (Tuple, Struct, Vector, etc.) handle boundaries via element stride
+ * Every codec is an instance of `Codec<O, I>` with three members:
+ * - `encode(value, target?)` — serialise a value to a `Uint8Array<ArrayBuffer>`.
+ *   Pass an optional `target` buffer to avoid allocation.
+ * - `decode(data)` — deserialise and return `[value, bytesConsumed]`.
+ * - `stride` — `>= 0` for fixed-size types, `< 0` for variable-size types.
  *
- * Layout semantics:
- * - Primitive types (U8, I32, F64, etc.): fixed-size, use stride.
- * - Str: VarInt length prefix + UTF-8 bytes.
- * - Bytes (variable): VarInt length prefix + raw bytes.
- * - Bytes (fixed): raw bytes only, size known from stride.
- * - Tuple: concatenates each element (no wrapper prefix). Fixed-size elements use stride,
- *   variable-size elements include their own size info.
- * - Struct: stored exactly as a Tuple in DEFINITION ORDER (order matters).
- * - Vector: VarInt count prefix (number of items) + concatenated elements.
- *   Elements determine their own boundaries via stride.
- * - Enum: 1 byte variant index (sorted by variant name), followed by payload.
- * - Option: 0x00 for null, 0x01 + payload for present.
- * - Mapping: Vector of Tuple [key, value].
+ * Primitives default to big-endian (network byte order). Little-endian
+ * singletons (`U16LE`, `I32LE`, etc.) are available for x86/Bitcoin use cases.
  *
- * Notes
- * - VarInt here is unsigned LEB128 for non-negative JS numbers.
- * - Self-delimiting types (Str, variable Bytes, Vector) encode their own size.
- * - Big-endian is the default for primitives (network byte order).
- * - Little-endian variants are available for x86 systems and Bitcoin.
+ * Variable-length types are self-delimiting: they prefix their payload with an
+ * unsigned LEB128 count or length so the decoder knows where they end.
+ *
+ * Wire-format summary:
+ * - Primitives (`U8`, `I32`, `F64`, …) — raw fixed-width bytes.
+ * - `VarInt` — unsigned LEB128, 1–8 bytes, non-negative JS safe integers only.
+ * - `Str` / `StringCodec` — `VarInt` length prefix + UTF-8 bytes.
+ * - `Bytes` / `BytesCodec` (variable) — `VarInt` length prefix + raw bytes.
+ * - `BytesCodec` (fixed) — raw bytes only; size is known from `stride`.
+ * - `TupleCodec` — elements concatenated in order, no wrapper prefix.
+ * - `StructCodec` — same as Tuple, fields in **definition order**.
+ * - `ArrayCodec` — `VarInt` (or custom) count prefix + concatenated elements.
+ * - `UnionCodec` — `U8` (or custom) variant index + payload. Variants sorted
+ *   alphabetically for stable indices.
+ * - `NullableCodec` / `OptionalCodec` — `0x00` for absent, `0x01` + payload
+ *   for present.
+ * - `MappingCodec` — encoded as an array of `[key, value]` tuples.
+ *
+ * Use `Codec.Infer<T>`, `Codec.InferInput<T>`, and `Codec.InferOutput<T>` to
+ * derive TypeScript types from codec instances.
+ *
+ * Use `.transform(fn)` on any codec to wrap it with a post-decode
+ * transformation without changing the encoding behaviour.
  *
  * @module
  */

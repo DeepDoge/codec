@@ -4,41 +4,59 @@ import { Codec } from "./codec.ts";
 import { U8Codec } from "./primitives.ts";
 import { VarInt } from "./varint.ts";
 
-export type OptionGeneric = Codec<any>;
-export type OptionValue<T extends OptionGeneric> = Codec.Infer<T> | null;
+// ── Nullable ──────────────────────────────────────────────────────────────────
+
+/** Constraint type for the inner codec of {@link NullableCodec}. */
+export type NullableGeneric = Codec<any>;
 
 /**
- * Codec for optional values (present or null).
+ * The decoded value type produced by a `NullableCodec<T>`:
+ * either the inner codec's output type or `null`.
+ */
+export type NullableValue<T extends NullableGeneric> = Codec.Infer<T> | null;
+
+/**
+ * Codec for nullable values — either a present value or `null`.
  *
- * Encoding:
- * - 0x00 => null
- * - 0x01 => followed by payload bytes encoded with the inner codec
+ * Wire format:
+ * - `0x00` → `null`
+ * - `0x01` + payload → value encoded by the inner codec
  *
- * @template T - The inner value type
+ * @template T - The inner codec type.
  *
  * @example
  * ```ts
- * import { OptionCodec, U8 } from "@nomadshiba/codec";
+ * import { NullableCodec, U8 } from "@nomadshiba/codec";
  *
- * const maybeU8 = new OptionCodec(U8);
- * maybeU8.encode(null);                // [0x00]
- * maybeU8.encode(7);                   // [0x01, 0x07]
- * maybeU8.decode(new Uint8Array([0]));   // [null, 1]
- * maybeU8.decode(new Uint8Array([1, 9])); // [9, 2]
+ * const maybeU8 = new NullableCodec(U8);
+ * maybeU8.encode(null); // Uint8Array [0x00]
+ * maybeU8.encode(7);    // Uint8Array [0x01, 0x07]
+ * maybeU8.decode(new Uint8Array([0x00]));       // [null, 1]
+ * maybeU8.decode(new Uint8Array([0x01, 0x09])); // [9, 2]
  * ```
  */
-export class OptionCodec<T extends OptionGeneric>
-  extends Codec<OptionValue<T>> {
+export class NullableCodec<T extends NullableGeneric>
+  extends Codec<NullableValue<T>> {
   private readonly codec: T;
+
+  /** Always `-1`; the presence byte makes this variable-length. */
   public readonly stride = -1;
 
+  /**
+   * @param codec - The inner codec used to encode/decode the present value.
+   */
   constructor(codec: T) {
     super();
     this.codec = codec;
   }
 
+  /**
+   * @param value - The value to encode, or `null`.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `Uint8Array<ArrayBuffer>`.
+   */
   public encode(
-    value: OptionValue<T>,
+    value: NullableValue<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     if (value === null) {
@@ -55,7 +73,11 @@ export class OptionCodec<T extends OptionGeneric>
     }
   }
 
-  public decode(data: Uint8Array): [OptionValue<T>, number] {
+  /**
+   * @param data - Binary data starting with a presence byte.
+   * @returns `[null, 1]` or `[value, 1 + innerBytesConsumed]`.
+   */
+  public decode(data: Uint8Array): [NullableValue<T>, number] {
     if (data[0] === 0) {
       return [null, 1];
     } else {
@@ -65,38 +87,142 @@ export class OptionCodec<T extends OptionGeneric>
   }
 }
 
+// ── Optional ──────────────────────────────────────────────────────────────────
+
+/** Constraint type for the inner codec of {@link OptionalCodec}. */
+export type OptionalGeneric = Codec<any>;
+
+/**
+ * The decoded value type produced by an `OptionalCodec<T>`:
+ * either the inner codec's output type or `undefined`.
+ */
+export type OptionalValue<T extends OptionalGeneric> =
+  | Codec.Infer<T>
+  | undefined;
+
+/**
+ * Codec for optional values — either a present value or `undefined`.
+ *
+ * Wire format is identical to {@link NullableCodec}, but uses `undefined`
+ * instead of `null` for the absent case:
+ * - `0x00` → `undefined`
+ * - `0x01` + payload → value encoded by the inner codec
+ *
+ * @template T - The inner codec type.
+ *
+ * @example
+ * ```ts
+ * import { OptionalCodec, U8 } from "@nomadshiba/codec";
+ *
+ * const maybeU8 = new OptionalCodec(U8);
+ * maybeU8.encode(undefined); // Uint8Array [0x00]
+ * maybeU8.encode(7);         // Uint8Array [0x01, 0x07]
+ * maybeU8.decode(new Uint8Array([0x00]));       // [undefined, 1]
+ * maybeU8.decode(new Uint8Array([0x01, 0x09])); // [9, 2]
+ * ```
+ */
+export class OptionalCodec<T extends OptionalGeneric>
+  extends Codec<OptionalValue<T>> {
+  private readonly codec: T;
+
+  /** Always `-1`; the presence byte makes this variable-length. */
+  public readonly stride = -1;
+
+  /**
+   * @param codec - The inner codec used to encode/decode the present value.
+   */
+  constructor(codec: T) {
+    super();
+    this.codec = codec;
+  }
+
+  /**
+   * @param value - The value to encode, or `undefined`.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `Uint8Array<ArrayBuffer>`.
+   */
+  public encode(
+    value: OptionalValue<T>,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
+    if (value === undefined) {
+      const result = target ?? new Uint8Array(1);
+      result[0] = 0;
+      return result;
+    } else {
+      const encoded = this.codec.encode(value, target?.subarray(1));
+      const totalLen = 1 + encoded.length;
+      const result = target ?? new Uint8Array(totalLen);
+      result[0] = 1;
+      result.set(encoded, 1);
+      return result;
+    }
+  }
+
+  /**
+   * @param data - Binary data starting with a presence byte.
+   * @returns `[undefined, 1]` or `[value, 1 + innerBytesConsumed]`.
+   */
+  public decode(data: Uint8Array): [OptionalValue<T>, number] {
+    if (data[0] === 0) {
+      return [undefined, 1];
+    } else {
+      const [value, size] = this.codec.decode(data.subarray(1));
+      return [value, 1 + size];
+    }
+  }
+}
+
+// ── Tuple ─────────────────────────────────────────────────────────────────────
+
+/** Constraint type for the element array of a {@link TupleCodec}. */
 export type TupleGeneric = readonly Codec<any>[];
+
+/**
+ * Derives the decoded value tuple type from a `TupleGeneric`:
+ * maps each element codec type to its inferred output type.
+ */
 export type TupleValue<T extends TupleGeneric> = {
   -readonly [I in keyof T]: Codec.Infer<T[I]>;
 };
 
 /**
- * Codec for fixed-length tuples of potentially different types.
+ * Codec for fixed-count tuples of potentially heterogeneous types.
  *
- * Encoding (no length prefixes added by Tuple itself):
- * - For each element in order: append raw bytes from element's encode()
- * - Elements with variable stride must encode their own size info
+ * Elements are concatenated in order with no wrapper prefix. Each element
+ * is self-delimiting: fixed-size elements use their `stride`, variable-size
+ * elements encode their own size.
  *
- * Decoding reads each element in order using stride.
+ * `stride` is the sum of all element strides when all are fixed; `-1` if any
+ * element is variable.
  *
- * @template T - Tuple element types
+ * @template T - Readonly array of element codec types.
  *
  * @example
  * ```ts
- * import { StringCodec, TupleCodec, U8 } from "@nomadshiba/codec";
+ * import { TupleCodec, U8, StringCodec } from "@nomadshiba/codec";
  *
- * const str = new StringCodec();
- * // [U8, str]: first byte is U8, then str with its own varint length
- * const t = new TupleCodec([U8, str]);
- * const enc = t.encode([5, "hi"]);    // [0x05, 0x02, 0x68, 0x69]
- * t.decode(enc);                      // [[5, "hi"], 4]
+ * const t = new TupleCodec([U8, new StringCodec()]);
+ * t.encode([5, "hi"]); // Uint8Array [0x05, 0x02, 0x68, 0x69]
+ * t.decode(enc);       // [[5, "hi"], 4]
  * ```
  */
 export class TupleCodec<const T extends TupleGeneric>
   extends Codec<TupleValue<T>> {
+  /**
+   * The element codecs in definition order.
+   */
   public readonly codecs: T;
+
+  /**
+   * Sum of all element strides (fixed-size), or `-1` if any element is
+   * variable-length.
+   */
   public readonly stride: number;
 
+  /**
+   * @param codecs - Ordered array of element codecs.
+   */
   constructor(codecs: T) {
     super();
     this.codecs = codecs;
@@ -110,6 +236,11 @@ export class TupleCodec<const T extends TupleGeneric>
     }
   }
 
+  /**
+   * @param value - Tuple of values, one per codec in order.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `Uint8Array<ArrayBuffer>` of concatenated element encodings.
+   */
   public encode(
     value: TupleValue<T>,
     target?: Uint8Array<ArrayBuffer>,
@@ -134,6 +265,10 @@ export class TupleCodec<const T extends TupleGeneric>
     return combined;
   }
 
+  /**
+   * @param data - Binary data. Elements are read in definition order.
+   * @returns `[tuple, totalBytesConsumed]`.
+   */
   public decode(data: Uint8Array): [TupleValue<T>, number] {
     const result: unknown[] = [];
     let offset = 0;
@@ -147,52 +282,63 @@ export class TupleCodec<const T extends TupleGeneric>
   }
 }
 
+// ── Struct ────────────────────────────────────────────────────────────────────
+
+/** Constraint type for the shape record of a {@link StructCodec}. */
 export type StructGeneric = { readonly [key: string]: Codec<any> };
+
+/**
+ * Derives the decoded object type from a `StructGeneric`:
+ * maps each field name to the inferred output type of its codec.
+ */
 export type StructValue<T extends StructGeneric> = {
   -readonly [K in keyof T]: Codec.Infer<T[K]>;
 };
 
 /**
- * Codec for structured objects with named fields.
+ * Codec for named-field objects.
  *
- * Layout is the same as a Tuple of fields in DEFINITION ORDER.
- * Definition order matters because the binary is a tuple, not a map.
+ * Internally backed by a {@link TupleCodec} keyed on the field names in
+ * **definition order**. The binary layout is identical to the equivalent
+ * tuple — field names are not part of the wire format.
  *
- * For variable-length fields, each field is prefixed with a VarInt length
- * (handled by Tuple), while fixed-size fields are concatenated directly.
+ * **Reordering fields changes the binary layout** and breaks compatibility
+ * with previously encoded data.
  *
- * @template T - Record mapping field names to codecs
+ * `stride` follows the same rules as `TupleCodec`.
+ *
+ * @template T - Record mapping field names to codecs.
  *
  * @example
  * ```ts
- * import { StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
+ * import { StructCodec, U32, StringCodec } from "@nomadshiba/codec";
  *
- * const str = new StringCodec();
- * // Definition order: id (U32) then name (str)
- * const User = new StructCodec({ id: U32, name: str } as const);
+ * const User = new StructCodec({ id: U32, name: new StringCodec() });
  * const bin = User.encode({ id: 42, name: "Ada" });
- * // Decodes back to the same object
  * User.decode(bin); // [{ id: 42, name: "Ada" }, size]
- * ```
- *
- * @example
- * ```ts
- * import { StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
- *
- * const str = new StringCodec();
- * // Reordering fields changes the binary layout
- * const User2 = new StructCodec({ name: str, id: U32 } as const);
- * // User.encode(...) is NOT compatible with User2.decode(...)
  * ```
  */
 export class StructCodec<const T extends StructGeneric>
   extends Codec<StructValue<T>> {
+  /**
+   * Sum of all field strides (fixed-size), or `-1` if any field is
+   * variable-length.
+   */
   public readonly stride: number;
+
+  /**
+   * The codec shape passed to the constructor. Useful for inspecting field
+   * codecs at runtime.
+   */
   public readonly shape: T;
 
   private readonly keys: Extract<keyof T, string>[];
   private readonly tuple: TupleCodec<T[(keyof T)][]>;
 
+  /**
+   * @param shape - Record mapping field names to their codecs, in definition
+   *   order.
+   */
   constructor(shape: T) {
     super();
     this.shape = shape;
@@ -201,6 +347,11 @@ export class StructCodec<const T extends StructGeneric>
     this.stride = this.tuple.stride;
   }
 
+  /**
+   * @param value - Object with fields matching the codec shape.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `Uint8Array<ArrayBuffer>`.
+   */
   public encode(
     value: StructValue<T>,
     target?: Uint8Array<ArrayBuffer>,
@@ -209,6 +360,10 @@ export class StructCodec<const T extends StructGeneric>
     return this.tuple.encode(tupleValue, target);
   }
 
+  /**
+   * @param data - Binary data.
+   * @returns `[object, bytesConsumed]`.
+   */
   public decode(data: Uint8Array): [StructValue<T>, number] {
     const [tupleValue, size] = this.tuple.decode(data);
     const result = {} as StructValue<T>;
@@ -221,70 +376,79 @@ export class StructCodec<const T extends StructGeneric>
   }
 }
 
+// ── Array ─────────────────────────────────────────────────────────────────────
+
+/** Constraint type for the element codec of an {@link ArrayCodec}. */
 export type ArrayGeneric = Codec<any>;
+
+/**
+ * The decoded value type produced by an `ArrayCodec<T>`:
+ * an array of the inner codec's output type.
+ */
 export type ArrayValue<T extends ArrayGeneric> = Codec.Infer<T>[];
 
 /**
- * Options for Array codec.
+ * Options for {@link ArrayCodec}.
  */
 export type ArrayOptions = {
-  /** Codec for encoding the count prefix. Default is varint. */
+  /**
+   * Codec used to encode the element count prefix. Defaults to
+   * {@link VarInt}.
+   */
   countCodec?: Codec<number>;
 };
 
 /**
- * Codec for variable-length arrays of the same element type.
+ * Codec for variable-length arrays of a single element type.
  *
- * Encoding:
- * - Count prefix (varint by default, or custom countCodec)
- * - Elements concatenated (each element knows its own size via stride)
+ * Wire format: `<count> <elem0> <elem1> …` where `<count>` is encoded by
+ * `countCodec` (default: {@link VarInt}). Elements are concatenated in order;
+ * each element is self-delimiting.
  *
- * @template T - Element type
+ * Always variable-length (`stride = -1`).
  *
- * @example
- * ```ts
- * import { ArrayCodec, U16 } from "@nomadshiba/codec";
- *
- * // Default: varint count prefix
- * const nums = new ArrayCodec(U16);
- * const b = nums.encode([1, 513]);    // [0x02, 0x02, 0x01, 0x01, 0x02]
- * nums.decode(b);                     // [[1, 513], 5]
- * ```
+ * @template T - Element codec type.
  *
  * @example
  * ```ts
  * import { ArrayCodec, U16, U32 } from "@nomadshiba/codec";
  *
- * // Custom count codec (e.g., U32 for fixed 4-byte count)
+ * // Default varint count
+ * const nums = new ArrayCodec(U16);
+ * nums.encode([1, 513]); // [0x02, 0x00, 0x01, 0x02, 0x01]
+ *
+ * // Custom count codec
  * const numsU32 = new ArrayCodec(U16, { countCodec: U32 });
- * ```
- *
- * @example
- * ```ts
- * import { ArrayCodec, StringCodec } from "@nomadshiba/codec";
- *
- * const str = new StringCodec();
- * // Variable-stride elements
- * const words = new ArrayCodec(str);
- * const wb = words.encode(["a", "bc"]); // [0x02, 0x01, 'a', 0x02, 'b', 'c']
- * words.decode(wb);                      // [["a", "bc"], 6]
  * ```
  */
 export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
+  /** Always `-1`. */
   public readonly stride = -1;
   readonly #countCodec: Codec<number>;
   readonly #codec: T;
 
+  /**
+   * @param codec - The element codec.
+   * @param options - Optional configuration for the count prefix codec.
+   */
   constructor(codec: T, options?: ArrayOptions) {
     super();
     this.#codec = codec;
     this.#countCodec = options?.countCodec ?? VarInt;
   }
 
+  /**
+   * The element codec used to encode/decode individual items.
+   */
   public get codec(): Codec<T> {
     return this.#codec;
   }
 
+  /**
+   * @param value - Array of elements to encode.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `Uint8Array<ArrayBuffer>` with count prefix followed by elements.
+   */
   public encode(
     value: ArrayValue<T>,
     target?: Uint8Array<ArrayBuffer>,
@@ -315,6 +479,10 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
     return result;
   }
 
+  /**
+   * @param data - Binary data starting with a count prefix.
+   * @returns `[elements, totalBytesConsumed]`.
+   */
   public decode(data: Uint8Array): [ArrayValue<T>, number] {
     const [count, bytesRead] = this.#countCodec.decode(data);
     const result: ArrayValue<T> = [];
@@ -330,78 +498,94 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
   }
 }
 
-export type EnumGeneric = { readonly [key: string]: Codec<any> };
-export type EnumValue<T extends StructGeneric> = {
+// ── Union ─────────────────────────────────────────────────────────────────────
+
+/** Constraint type for the variants record of a {@link UnionCodec}. */
+export type UnionGeneric = { readonly [key: string]: Codec<any> };
+
+/**
+ * The decoded value type produced by a `UnionCodec<T>`: a discriminated union
+ * where each member has a `kind` (the variant name) and a `value`.
+ */
+export type UnionValue<T extends StructGeneric> = {
   -readonly [K in keyof T]: { kind: K; value: Codec.Infer<T[K]> };
 }[keyof T];
 
 /**
- * Options for Enum codec.
+ * Options for {@link UnionCodec}.
  */
-export type EnumOptions = {
-  /** Codec for encoding the variant index. Default is u8 (1 byte). */
+export type UnionOptions = {
+  /**
+   * Codec used to encode the variant index. Defaults to `U8` (1 byte,
+   * supporting up to 256 variants).
+   *
+   * Use a wider codec (e.g. `U16`) if the union has more than 256 variants.
+   */
   indexCodec?: Codec<number>;
 };
 
 /**
- * Codec for tagged unions (enums).
+ * Codec for tagged unions.
  *
- * Variant index is determined by sorting variant names ascending
- * (Object.keys(variants).sort()).
+ * Variant names are sorted alphabetically to assign stable integer indices.
+ * **Adding, removing, or renaming variants changes existing indices** and
+ * breaks compatibility with previously encoded data.
  *
- * Encoding:
- * - Variant index (u8 by default, or custom indexCodec)
- * - payload: bytes encoded by the variant's codec
+ * Wire format: `<index> <payload>` where `<index>` is encoded by `indexCodec`
+ * (default: `U8`). Decoded values are `{ kind, value }` objects.
  *
- * Decoding returns { kind, value }.
- *
- * @template T - Record mapping variant names to codecs
+ * @template T - Record mapping variant names to codecs.
  *
  * @example
  * ```ts
- * import { EnumCodec, U8Codec, StringCodec } from "@nomadshiba/codec";
+ * import { UnionCodec, U8, StringCodec } from "@nomadshiba/codec";
  *
- * const str = new StringCodec();
- * const U8 = new U8Codec();
+ * const Event = new UnionCodec({ Click: U8, Message: new StringCodec() });
+ * // "Click" → index 0, "Message" → index 1 (alphabetical order)
  *
- * // Default: U8 for variant index
- * const MyEnum = new EnumCodec({ A: U8, B: str });
- * const b = MyEnum.encode({ kind: "B", value: "ok" });
- * const v = MyEnum.decode(b); // [{ kind: "B", value: "ok" }, size]
- * ```
- *
- * @example
- * ```ts
- * import { EnumCodec, U8Codec, StringCodec, U32 } from "@nomadshiba/codec";
- *
- * const str = new StringCodec();
- * const U8 = new U8Codec();
- *
- * // Custom index codec (e.g., U32 for large enums)
- * const MyEnum = new EnumCodec({ A: U8, B: str }, { indexCodec: U32 });
+ * Event.encode({ kind: "Click", value: 5 });
+ * Event.encode({ kind: "Message", value: "hello" });
+ * const [e] = Event.decode(bytes); // { kind: "Click", value: 5 }
  * ```
  */
-export class EnumCodec<const T extends EnumGeneric>
-  extends Codec<EnumValue<T>> {
+export class UnionCodec<const T extends UnionGeneric>
+  extends Codec<UnionValue<T>> {
+  /** Always `-1`. */
   public readonly stride = -1;
+
+  /**
+   * The variants record passed to the constructor. Useful for inspecting
+   * variant codecs at runtime.
+   */
   public readonly variants: T;
+
   readonly #indexCodec: Codec<number>;
   private readonly keys: (keyof T)[];
 
-  constructor(variants: T, options?: EnumOptions) {
+  /**
+   * @param variants - Record mapping variant names to their codecs.
+   * @param options - Optional configuration for the index codec.
+   */
+  constructor(variants: T, options?: UnionOptions) {
     super();
     this.variants = variants;
     this.keys = Object.keys(this.variants).sort() as (keyof T)[];
     this.#indexCodec = options?.indexCodec ?? new U8Codec();
   }
 
+  /**
+   * @param value - `{ kind, value }` object identifying the variant and its payload.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `Uint8Array<ArrayBuffer>` with the variant index followed by the payload.
+   * @throws {Error} If `value.kind` is not a known variant name.
+   */
   public encode(
-    value: EnumValue<T>,
+    value: UnionValue<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     const index = this.keys.indexOf(value.kind);
     if (index === -1) {
-      throw new Error(`Invalid enum variant: ${String(value.kind)}`);
+      throw new Error(`Invalid union variant: ${String(value.kind)}`);
     }
     const codec = this.variants[value.kind]!;
     const encodedValue = codec.encode(value.value as never);
@@ -413,10 +597,15 @@ export class EnumCodec<const T extends EnumGeneric>
     return result;
   }
 
-  public decode(data: Uint8Array): [EnumValue<T>, number] {
+  /**
+   * @param data - Binary data starting with a variant index.
+   * @returns `[{ kind, value }, bytesConsumed]`.
+   * @throws {Error} If the decoded index is out of range.
+   */
+  public decode(data: Uint8Array): [UnionValue<T>, number] {
     const [index, indexSize] = this.#indexCodec.decode(data);
     if (index >= this.keys.length) {
-      throw new Error(`Invalid enum index: ${index}`);
+      throw new Error(`Invalid union index: ${index}`);
     }
     const key = this.keys[index]!;
     const codec = this.variants[key]!;
@@ -425,55 +614,67 @@ export class EnumCodec<const T extends EnumGeneric>
   }
 }
 
+// ── Mapping ───────────────────────────────────────────────────────────────────
+
+/** Constraint type for the `[keyCodec, valueCodec]` pair of a {@link MappingCodec}. */
 export type MappingGeneric = readonly [Codec<any>, Codec<any>];
+
+/**
+ * The decoded value type produced by a `MappingCodec<T>`:
+ * a `Map` from the key codec's output type to the value codec's output type.
+ */
 export type MappingValue<T extends MappingGeneric> = Map<
   Codec.Infer<T[0]>,
   Codec.Infer<T[1]>
 >;
 
 /**
- * Options for Mapping codec.
+ * Options for {@link MappingCodec}.
  */
 export type MappingOptions = {
-  /** Codec for encoding the entry count. Default is varint. */
+  /**
+   * Codec used to encode the entry count. Defaults to {@link VarInt}.
+   */
   countCodec?: Codec<number>;
 };
 
 /**
- * Codec for key-value mappings.
+ * Codec for `Map<K, V>` instances.
  *
- * Encoded as a Vector of Tuple [key, value].
- * - If [key,value] is fixed-stride: entries are concatenated (count implied)
- * - If variable: each entry is prefixed with a VarInt length (via Tuple rules)
+ * Internally encoded as an {@link ArrayCodec} of `[key, value]`
+ * {@link TupleCodec} entries, so the wire format is:
  *
- * @template T - Tuple of [keyCodec, valueCodec]
- *
- * @example
- * ```ts
- * import { MappingCodec, StringCodec, U8 } from "@nomadshiba/codec";
- *
- * const str = new StringCodec();
- * // Default: varint count
- * const Dict = new MappingCodec([str, U8]);
- * const map = new Map<string, number>([["x", 1], ["y", 2]]);
- * const b = Dict.encode(map);
- * const out = Dict.decode(b);   // [Map { "x" => 1, "y" => 2 }, size]
  * ```
+ * <count> <key0> <value0> <key1> <value1> …
+ * ```
+ *
+ * Always variable-length (`stride = -1`).
+ *
+ * @template T - Readonly tuple `[keyCodec, valueCodec]`.
  *
  * @example
  * ```ts
  * import { MappingCodec, StringCodec, U8, U32 } from "@nomadshiba/codec";
  *
- * const str = new StringCodec();
+ * const Dict = new MappingCodec([new StringCodec(), U8]);
+ * const map = new Map([["x", 1], ["y", 2]]);
+ * const b = Dict.encode(map);
+ * Dict.decode(b); // [Map { "x" => 1, "y" => 2 }, size]
+ *
  * // Custom count codec
- * const Dict = new MappingCodec([str, U8], { countCodec: U32 });
+ * const DictU32 = new MappingCodec([new StringCodec(), U8], { countCodec: U32 });
  * ```
  */
 export class MappingCodec<const T extends MappingGeneric>
   extends Codec<MappingValue<T>> {
+  /** Always `-1`. */
   public readonly stride = -1;
   readonly #entriesCodec: ArrayCodec<TupleCodec<T>>;
 
+  /**
+   * @param codecs - `[keyCodec, valueCodec]` tuple.
+   * @param options - Optional configuration for the count prefix codec.
+   */
   constructor(codecs: T, options?: MappingOptions) {
     super();
     this.#entriesCodec = new ArrayCodec(
@@ -482,6 +683,11 @@ export class MappingCodec<const T extends MappingGeneric>
     );
   }
 
+  /**
+   * @param value - The `Map` to encode.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `Uint8Array<ArrayBuffer>`.
+   */
   public encode(
     value: MappingValue<T>,
     target?: Uint8Array<ArrayBuffer>,
@@ -489,6 +695,10 @@ export class MappingCodec<const T extends MappingGeneric>
     return this.#entriesCodec.encode(value.entries().toArray() as any, target);
   }
 
+  /**
+   * @param data - Binary data starting with a count prefix.
+   * @returns `[Map, bytesConsumed]`.
+   */
   public decode(data: Uint8Array): [MappingValue<T>, number] {
     const [entries, size] = this.#entriesCodec.decode(data);
     return [new Map(entries as any), size];

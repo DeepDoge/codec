@@ -1,36 +1,45 @@
 import { Codec } from "./codec.ts";
 
 /**
- * LEB128-style variable-length integer encoding.
+ * Codec for non-negative integers using unsigned LEB128 encoding.
  *
- * Efficient: small numbers use fewer bytes. Uses 7-bit groups with the MSB
- * as a continuation bit, least-significant groups first (little-endian LEB128).
+ * Each byte stores 7 bits of the value in its low bits. The most-significant
+ * bit (`0x80`) is a continuation flag: if set, more bytes follow. Groups are
+ * stored least-significant first (little-endian base-128).
  *
- * Encoding stops when the remaining value fits in 7 bits (MSB = 0).
- *
- * Constraints: value must be a non-negative safe integer (<= Number.MAX_SAFE_INTEGER).
- */
-
-/**
- * VarInt codec for non-negative integers using LEB128 encoding.
- * Extends Codec<number> so it works with other composite codecs.
+ * Size by value:
+ * - `0`–`127`        → 1 byte
+ * - `128`–`16 383`   → 2 bytes
+ * - `16 384`–`2 097 151` → 3 bytes
+ * - …up to 8 bytes for values near `Number.MAX_SAFE_INTEGER`
  *
  * @example
  * ```ts
- * import { VarIntCodec, VarInt } from "@nomadshiba/codec";
+ * import { VarInt, VarIntCodec } from "@nomadshiba/codec";
  *
- * // Using singleton instance
- * const b = VarInt.encode(300);  // [0xAC, 0x02]
- * VarInt.decode(b);             // [300, 2]
+ * // Using the pre-built singleton
+ * const b = VarInt.encode(300);  // Uint8Array [0xAC, 0x02]
+ * VarInt.decode(b);              // [300, 2]
  *
  * // Creating a new instance
  * const v = new VarIntCodec();
- * v.encode(300);                // [0xAC, 0x02]
+ * v.encode(127);   // Uint8Array [0x7F]  (1 byte)
+ * v.encode(128);   // Uint8Array [0x80, 0x01] (2 bytes)
  * ```
  */
 export class VarIntCodec extends Codec<number> {
+  /** Always `-1`; VarInt is variable-length. */
   public readonly stride = -1;
 
+  /**
+   * Encode a non-negative integer using unsigned LEB128.
+   *
+   * @param value - A non-negative safe integer (`0 ≤ value ≤ Number.MAX_SAFE_INTEGER`).
+   * @param target - Optional pre-allocated buffer. When supplied the bytes are
+   *   written at offset 0 and the same buffer is returned.
+   * @returns A `Uint8Array<ArrayBuffer>` containing the LEB128 encoding.
+   * @throws {RangeError} If `value` is negative or not a safe integer.
+   */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
@@ -44,12 +53,21 @@ export class VarIntCodec extends Codec<number> {
       value >>>= 7;
     }
     parts.push(value & 0x7F);
-    
+
     const result = target ?? new Uint8Array(parts.length);
     result.set(parts);
     return result;
   }
 
+  /**
+   * Decode a LEB128-encoded integer from the start of `data`.
+   *
+   * @param data - Binary data. Only the leading LEB128 bytes are consumed.
+   * @returns `[value, bytesConsumed]`.
+   * @throws {RangeError} If the decoded value exceeds `Number.MAX_SAFE_INTEGER`
+   *   or if the encoding is longer than 8 bytes.
+   * @throws {Error} If `data` ends before the final byte (no byte with MSB `0`).
+   */
   public decode(data: Uint8Array): [number, number] {
     let value = 0;
     let shift = 0;
@@ -74,5 +92,11 @@ export class VarIntCodec extends Codec<number> {
   }
 }
 
-/** Singleton instance of VarInt codec */
+/**
+ * Pre-built singleton instance of {@link VarIntCodec}.
+ *
+ * This is the default length/count codec used throughout the library for
+ * variable-length types (`StringCodec`, `BytesCodec`, `ArrayCodec`,
+ * `MappingCodec`).
+ */
 export const VarInt: VarIntCodec = new VarIntCodec();

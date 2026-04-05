@@ -16,13 +16,13 @@ deno add jsr:@nomadshiba/codec
 **Or:**
 
 ```bash
-npx jsr add @nomadshiba/codec # npm
-pnpm i jsr:@nomadshiba/codec # pnpm >=10.8
-pnpm dlx jsr add @nomadshiba/codec # pnpm <10.8
-yarn add jsr:@nomadshiba/codec # yarn >=4.8
-yarn dlx jsr add @nomadshiba/codec # yarn <4.8
-bunx jsr add @nomadshiba/codec # bun
-vlt install jsr:@nomadshiba/codec # vlt
+npx jsr add @nomadshiba/codec       # npm
+pnpm i jsr:@nomadshiba/codec        # pnpm >=10.8
+pnpm dlx jsr add @nomadshiba/codec  # pnpm <10.8
+yarn add jsr:@nomadshiba/codec      # yarn >=4.8
+yarn dlx jsr add @nomadshiba/codec  # yarn <4.8
+bunx jsr add @nomadshiba/codec      # bun
+vlt install jsr:@nomadshiba/codec   # vlt
 ```
 
 ---

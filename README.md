@@ -86,13 +86,19 @@ type UserOut = Codec.InferOutput<typeof User>; // { id: number; name: string }
 | `Codec.InferOutput<T>` | Type returned by `decode`.                |
 | `Codec.InferInput<T>`  | Type accepted by `encode`.                |
 
-### Generic and Value Types
+### Generic, Input, and Output Types
 
-Each composite codec exports two companion types that are useful when writing
-generic functions or utilities that work with multiple codecs.
+Each composite codec exports three companion types useful when writing generic
+functions or higher-order codecs:
 
-**`*Generic`** is a constraint — the upper bound you use in a type parameter to
-say "this must be a codec that this composite can wrap":
+- **`*Generic`** — a constraint, the upper bound for type parameters. It says
+  "this must be a codec/shape that this composite can wrap".
+
+- **`*Input<T>`** — the type accepted by `encode` for a given composite
+  instance.
+
+- **`*Output<T>`** — the type returned by `decode` for a given composite
+  instance.
 
 ```ts
 // StructGeneric = { readonly [key: string]: Codec<any> }
@@ -101,50 +107,51 @@ say "this must be a codec that this composite can wrap":
 // etc.
 ```
 
-**`*Value<T>`** maps a concrete codec (or codec shape) to the JavaScript value
-type it produces on decode. It is the return type you get without having to
-spell out the conditional type yourself:
-
 ```ts
 import {
   ArrayCodec,
   type ArrayGeneric,
-  type ArrayValue,
+  type ArrayInput,
+  type ArrayOutput,
   StringCodec,
   StructCodec,
   type StructGeneric,
-  type StructValue,
+  type StructInput,
+  type StructOutput,
   U32,
 } from "@nomadshiba/codec";
 
-// Accept any struct codec and return its decoded value type
+// Accept a struct codec and return its decoded value type
 function decodeFirst<T extends StructGeneric>(
   codec: StructCodec<T>,
   buffers: Uint8Array[],
-): StructValue<T> {
+): StructOutput<T> {
   return codec.decode(buffers[0]!)[0];
 }
 
-// Accept any array codec and return its element array type
+// Accept an array codec and return its element array type
 function decodeAll<T extends ArrayGeneric>(
   codec: ArrayCodec<T>,
   data: Uint8Array,
-): ArrayValue<T> {
+): ArrayOutput<T> {
   return codec.decode(data)[0];
 }
 ```
 
 The full set of pairs exported by the library:
 
-| Generic type      | Value type         | Used by         |
-| ----------------- | ------------------ | --------------- |
-| `NullableGeneric` | `NullableValue<T>` | `NullableCodec` |
-| `OptionalGeneric` | `OptionalValue<T>` | `OptionalCodec` |
-| `TupleGeneric`    | `TupleValue<T>`    | `TupleCodec`    |
-| `StructGeneric`   | `StructValue<T>`   | `StructCodec`   |
-| `ArrayGeneric`    | `ArrayValue<T>`    | `ArrayCodec`    |
-| `UnionGeneric`    | `UnionValue<T>`    | `UnionCodec`    |
-| `MappingGeneric`  | `MappingValue<T>`  | `MappingCodec`  |
+| Generic type      | Input type         | Output type         | Used by         |
+| ----------------- | ------------------ | ------------------- | --------------- |
+| `NullableGeneric` | `NullableInput<T>` | `NullableOutput<T>` | `NullableCodec` |
+| `OptionalGeneric` | `OptionalInput<T>` | `OptionalOutput<T>` | `OptionalCodec` |
+| `TupleGeneric`    | `TupleInput<T>`    | `TupleOutput<T>`    | `TupleCodec`    |
+| `StructGeneric`   | `StructInput<T>`   | `StructOutput<T>`   | `StructCodec`   |
+| `ArrayGeneric`    | `ArrayInput<T>`    | `ArrayOutput<T>`    | `ArrayCodec`    |
+| `UnionGeneric`    | `UnionInput<T>`    | `UnionOutput<T>`    | `UnionCodec`    |
+| `MappingGeneric`  | `MappingInput<T>`  | `MappingOutput<T>`  | `MappingCodec`  |
+
+> **Note:** `*Value<T>` aliases still exist for backwards compatibility but are
+> deprecated in favor of the explicit `*Output<T>` types.
 
 For most application code you won't need these directly — `Codec.Infer<T>`
 covers the common case. They become useful when writing generic helpers,
@@ -156,20 +163,20 @@ higher-order codecs, or libraries built on top of this one.
 
 **Big-endian is the default.** Use `*LE` variants for little-endian.
 
-| Codec          | Type    | Size (bytes) | Description             |
-| -------------- | ------- | ------------ | ----------------------- |
-| `I8`           | number  | 1            | Signed 8-bit integer    |
-| `U8`           | number  | 1            | Unsigned 8-bit integer  |
-| `I16`, `I16LE` | number  | 2            | Signed 16-bit           |
-| `U16`, `U16LE` | number  | 2            | Unsigned 16-bit         |
-| `I32`, `I32LE` | number  | 4            | Signed 32-bit           |
-| `U32`, `U32LE` | number  | 4            | Unsigned 32-bit         |
-| `I64`, `I64LE` | bigint  | 8            | Signed 64-bit           |
-| `U64`, `U64LE` | bigint  | 8            | Unsigned 64-bit         |
-| `F32`, `F32LE` | number  | 4            | 32-bit float            |
-| `F64`, `F64LE` | number  | 8            | 64-bit float            |
-| `Bool`         | boolean | 1            | Boolean (`0x00`/`0x01`) |
-| `VarInt`       | number  | variable     | Unsigned LEB128         |
+| Codec          | Type    | Size (bytes) | Description                  |
+| -------------- | ------- | ------------ | ---------------------------- |
+| `I8`           | number  | 1            | Signed 8-bit integer         |
+| `U8`           | number  | 1            | Unsigned 8-bit integer       |
+| `I16`, `I16LE` | number  | 2            | Signed 16-bit                |
+| `U16`, `U16LE` | number  | 2            | Unsigned 16-bit              |
+| `I32`, `I32LE` | number  | 4            | Signed 32-bit                |
+| `U32`, `U32LE` | number  | 4            | Unsigned 32-bit              |
+| `I64`, `I64LE` | bigint  | 8            | Signed 64-bit                |
+| `U64`, `U64LE` | bigint  | 8            | Unsigned 64-bit              |
+| `F32`, `F32LE` | number  | 4            | 32-bit float                 |
+| `F64`, `F64LE` | number  | 8            | 64-bit float                 |
+| `Bool`         | boolean | 1            | Boolean (`0x00`/`0x01`)      |
+| `VarInt`       | number  | variable     | Unsigned LEB128              |
 | `Void`         | void    | 0            | Zero bytes. Always succeeds. |
 
 All numeric singletons (`U8`, `I32`, `F64`, etc.) are pre-instantiated. You only

@@ -3,7 +3,6 @@ import {
   ArrayCodec,
   Bool,
   BytesCodec,
-  UnionCodec,
   F32,
   F32LE,
   F64,
@@ -28,6 +27,7 @@ import {
   U64,
   U64LE,
   U8,
+  UnionCodec,
   VarInt,
 } from "./mod.ts";
 

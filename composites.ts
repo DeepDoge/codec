@@ -10,10 +10,23 @@ import { VarInt } from "./varint.ts";
 export type NullableGeneric = Codec<any>;
 
 /**
+ * The input type accepted by a `NullableCodec<T>`:
+ * either the inner codec's input type or `null`.
+ */
+export type NullableInput<T extends NullableGeneric> =
+  | Codec.InferInput<T>
+  | null;
+
+/**
  * The decoded value type produced by a `NullableCodec<T>`:
  * either the inner codec's output type or `null`.
  */
-export type NullableValue<T extends NullableGeneric> = Codec.Infer<T> | null;
+export type NullableOutput<T extends NullableGeneric> =
+  | Codec.InferOutput<T>
+  | null;
+
+/** @deprecated Use {@link NullableOutput} instead. */
+export type NullableValue<T extends NullableGeneric> = NullableOutput<T>;
 
 /**
  * Codec for nullable values — either a present value or `null`.
@@ -36,7 +49,7 @@ export type NullableValue<T extends NullableGeneric> = Codec.Infer<T> | null;
  * ```
  */
 export class NullableCodec<T extends NullableGeneric>
-  extends Codec<NullableValue<T>> {
+  extends Codec<NullableOutput<T>, NullableInput<T>> {
   private readonly codec: T;
 
   /** Always `-1`; the presence byte makes this variable-length. */
@@ -56,7 +69,7 @@ export class NullableCodec<T extends NullableGeneric>
    * @returns `Uint8Array<ArrayBuffer>`.
    */
   public encode(
-    value: NullableValue<T>,
+    value: NullableInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     if (value === null) {
@@ -77,7 +90,7 @@ export class NullableCodec<T extends NullableGeneric>
    * @param data - Binary data starting with a presence byte.
    * @returns `[null, 1]` or `[value, 1 + innerBytesConsumed]`.
    */
-  public decode(data: Uint8Array): [NullableValue<T>, number] {
+  public decode(data: Uint8Array): [NullableOutput<T>, number] {
     if (data[0] === 0) {
       return [null, 1];
     } else {
@@ -93,12 +106,23 @@ export class NullableCodec<T extends NullableGeneric>
 export type OptionalGeneric = Codec<any>;
 
 /**
+ * The input type accepted by an `OptionalCodec<T>`:
+ * either the inner codec's input type or `undefined`.
+ */
+export type OptionalInput<T extends OptionalGeneric> =
+  | Codec.InferInput<T>
+  | undefined;
+
+/**
  * The decoded value type produced by an `OptionalCodec<T>`:
  * either the inner codec's output type or `undefined`.
  */
-export type OptionalValue<T extends OptionalGeneric> =
-  | Codec.Infer<T>
+export type OptionalOutput<T extends OptionalGeneric> =
+  | Codec.InferOutput<T>
   | undefined;
+
+/** @deprecated Use {@link OptionalOutput} instead. */
+export type OptionalValue<T extends OptionalGeneric> = OptionalOutput<T>;
 
 /**
  * Codec for optional values — either a present value or `undefined`.
@@ -122,7 +146,7 @@ export type OptionalValue<T extends OptionalGeneric> =
  * ```
  */
 export class OptionalCodec<T extends OptionalGeneric>
-  extends Codec<OptionalValue<T>> {
+  extends Codec<OptionalOutput<T>, OptionalInput<T>> {
   private readonly codec: T;
 
   /** Always `-1`; the presence byte makes this variable-length. */
@@ -142,7 +166,7 @@ export class OptionalCodec<T extends OptionalGeneric>
    * @returns `Uint8Array<ArrayBuffer>`.
    */
   public encode(
-    value: OptionalValue<T>,
+    value: OptionalInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     if (value === undefined) {
@@ -163,7 +187,7 @@ export class OptionalCodec<T extends OptionalGeneric>
    * @param data - Binary data starting with a presence byte.
    * @returns `[undefined, 1]` or `[value, 1 + innerBytesConsumed]`.
    */
-  public decode(data: Uint8Array): [OptionalValue<T>, number] {
+  public decode(data: Uint8Array): [OptionalOutput<T>, number] {
     if (data[0] === 0) {
       return [undefined, 1];
     } else {
@@ -179,12 +203,23 @@ export class OptionalCodec<T extends OptionalGeneric>
 export type TupleGeneric = readonly Codec<any>[];
 
 /**
+ * Derives the input tuple type from a `TupleGeneric`:
+ * maps each element codec type to its inferred input type.
+ */
+export type TupleInput<T extends TupleGeneric> = {
+  -readonly [I in keyof T]: Codec.InferInput<T[I]>;
+};
+
+/**
  * Derives the decoded value tuple type from a `TupleGeneric`:
  * maps each element codec type to its inferred output type.
  */
-export type TupleValue<T extends TupleGeneric> = {
-  -readonly [I in keyof T]: Codec.Infer<T[I]>;
+export type TupleOutput<T extends TupleGeneric> = {
+  -readonly [I in keyof T]: Codec.InferOutput<T[I]>;
 };
+
+/** @deprecated Use {@link TupleOutput} instead. */
+export type TupleValue<T extends TupleGeneric> = TupleOutput<T>;
 
 /**
  * Codec for fixed-count tuples of potentially heterogeneous types.
@@ -208,7 +243,7 @@ export type TupleValue<T extends TupleGeneric> = {
  * ```
  */
 export class TupleCodec<const T extends TupleGeneric>
-  extends Codec<TupleValue<T>> {
+  extends Codec<TupleOutput<T>, TupleInput<T>> {
   /**
    * The element codecs in definition order.
    */
@@ -242,7 +277,7 @@ export class TupleCodec<const T extends TupleGeneric>
    * @returns `Uint8Array<ArrayBuffer>` of concatenated element encodings.
    */
   public encode(
-    value: TupleValue<T>,
+    value: TupleInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     const parts: Uint8Array<ArrayBuffer>[] = [];
@@ -269,7 +304,7 @@ export class TupleCodec<const T extends TupleGeneric>
    * @param data - Binary data. Elements are read in definition order.
    * @returns `[tuple, totalBytesConsumed]`.
    */
-  public decode(data: Uint8Array): [TupleValue<T>, number] {
+  public decode(data: Uint8Array): [TupleOutput<T>, number] {
     const result: unknown[] = [];
     let offset = 0;
     for (let i = 0; i < this.codecs.length; i++) {
@@ -288,12 +323,23 @@ export class TupleCodec<const T extends TupleGeneric>
 export type StructGeneric = { readonly [key: string]: Codec<any> };
 
 /**
+ * Derives the input object type from a `StructGeneric`:
+ * maps each field name to the inferred input type of its codec.
+ */
+export type StructInput<T extends StructGeneric> = {
+  -readonly [K in keyof T]: Codec.InferInput<T[K]>;
+};
+
+/**
  * Derives the decoded object type from a `StructGeneric`:
  * maps each field name to the inferred output type of its codec.
  */
-export type StructValue<T extends StructGeneric> = {
-  -readonly [K in keyof T]: Codec.Infer<T[K]>;
+export type StructOutput<T extends StructGeneric> = {
+  -readonly [K in keyof T]: Codec.InferOutput<T[K]>;
 };
+
+/** @deprecated Use {@link StructOutput} instead. */
+export type StructValue<T extends StructGeneric> = StructOutput<T>;
 
 /**
  * Codec for named-field objects.
@@ -319,7 +365,7 @@ export type StructValue<T extends StructGeneric> = {
  * ```
  */
 export class StructCodec<const T extends StructGeneric>
-  extends Codec<StructValue<T>> {
+  extends Codec<StructOutput<T>, StructInput<T>> {
   /**
    * Sum of all field strides (fixed-size), or `-1` if any field is
    * variable-length.
@@ -353,7 +399,7 @@ export class StructCodec<const T extends StructGeneric>
    * @returns `Uint8Array<ArrayBuffer>`.
    */
   public encode(
-    value: StructValue<T>,
+    value: StructInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     const tupleValue = this.keys.map((key) => value[key]);
@@ -364,9 +410,9 @@ export class StructCodec<const T extends StructGeneric>
    * @param data - Binary data.
    * @returns `[object, bytesConsumed]`.
    */
-  public decode(data: Uint8Array): [StructValue<T>, number] {
+  public decode(data: Uint8Array): [StructOutput<T>, number] {
     const [tupleValue, size] = this.tuple.decode(data);
-    const result = {} as StructValue<T>;
+    const result = {} as StructOutput<T>;
     for (let i = 0; i < this.keys.length; i++) {
       const key = this.keys[i]!;
       result[key] = tupleValue[i]!;
@@ -382,10 +428,19 @@ export class StructCodec<const T extends StructGeneric>
 export type ArrayGeneric = Codec<any>;
 
 /**
+ * The input type accepted by an `ArrayCodec<T>`:
+ * an array of the inner codec's input type.
+ */
+export type ArrayInput<T extends ArrayGeneric> = Codec.InferInput<T>[];
+
+/**
  * The decoded value type produced by an `ArrayCodec<T>`:
  * an array of the inner codec's output type.
  */
-export type ArrayValue<T extends ArrayGeneric> = Codec.Infer<T>[];
+export type ArrayOutput<T extends ArrayGeneric> = Codec.InferOutput<T>[];
+
+/** @deprecated Use {@link ArrayOutput} instead. */
+export type ArrayValue<T extends ArrayGeneric> = ArrayOutput<T>;
 
 /**
  * Options for {@link ArrayCodec}.
@@ -421,7 +476,8 @@ export type ArrayOptions = {
  * const numsU32 = new ArrayCodec(U16, { countCodec: U32 });
  * ```
  */
-export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
+export class ArrayCodec<T extends ArrayGeneric>
+  extends Codec<ArrayOutput<T>, ArrayInput<T>> {
   /** Always `-1`. */
   public readonly stride = -1;
   readonly #countCodec: Codec<number>;
@@ -450,7 +506,7 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
    * @returns `Uint8Array<ArrayBuffer>` with count prefix followed by elements.
    */
   public encode(
-    value: ArrayValue<T>,
+    value: ArrayInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     const parts: Uint8Array<ArrayBuffer>[] = [];
@@ -483,9 +539,9 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
    * @param data - Binary data starting with a count prefix.
    * @returns `[elements, totalBytesConsumed]`.
    */
-  public decode(data: Uint8Array): [ArrayValue<T>, number] {
+  public decode(data: Uint8Array): [ArrayOutput<T>, number] {
     const [count, bytesRead] = this.#countCodec.decode(data);
-    const result: ArrayValue<T> = [];
+    const result: ArrayOutput<T> = [];
     let offset = bytesRead;
 
     for (let i = 0; i < count; i++) {
@@ -504,12 +560,29 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayValue<T>> {
 export type UnionGeneric = { readonly [key: string]: Codec<any> };
 
 /**
+ * The input type accepted by a `UnionCodec<T>`: a discriminated union
+ * where each member has a `kind` (the variant name) and a `value`.
+ */
+export type UnionInput<T extends UnionGeneric> = {
+  -readonly [K in keyof T]: {
+    kind: K;
+    value: Codec.InferInput<T[K]>;
+  };
+}[keyof T];
+
+/**
  * The decoded value type produced by a `UnionCodec<T>`: a discriminated union
  * where each member has a `kind` (the variant name) and a `value`.
  */
-export type UnionValue<T extends StructGeneric> = {
-  -readonly [K in keyof T]: { kind: K; value: Codec.Infer<T[K]> };
+export type UnionOutput<T extends UnionGeneric> = {
+  -readonly [K in keyof T]: {
+    kind: K;
+    value: Codec.InferOutput<T[K]>;
+  };
 }[keyof T];
+
+/** @deprecated Use {@link UnionOutput} instead. */
+export type UnionValue<T extends UnionGeneric> = UnionOutput<T>;
 
 /**
  * Options for {@link UnionCodec}.
@@ -549,7 +622,7 @@ export type UnionOptions = {
  * ```
  */
 export class UnionCodec<const T extends UnionGeneric>
-  extends Codec<UnionValue<T>> {
+  extends Codec<UnionOutput<T>, UnionInput<T>> {
   /** Always `-1`. */
   public readonly stride = -1;
 
@@ -580,7 +653,7 @@ export class UnionCodec<const T extends UnionGeneric>
    * @throws {Error} If `value.kind` is not a known variant name.
    */
   public encode(
-    value: UnionValue<T>,
+    value: UnionInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     const index = this.keys.indexOf(value.kind);
@@ -602,7 +675,7 @@ export class UnionCodec<const T extends UnionGeneric>
    * @returns `[{ kind, value }, bytesConsumed]`.
    * @throws {Error} If the decoded index is out of range.
    */
-  public decode(data: Uint8Array): [UnionValue<T>, number] {
+  public decode(data: Uint8Array): [UnionOutput<T>, number] {
     const [index, indexSize] = this.#indexCodec.decode(data);
     if (index >= this.keys.length) {
       throw new Error(`Invalid union index: ${index}`);
@@ -620,13 +693,25 @@ export class UnionCodec<const T extends UnionGeneric>
 export type MappingGeneric = readonly [Codec<any>, Codec<any>];
 
 /**
+ * The input type accepted by a `MappingCodec<T>`:
+ * a `Map` from the key codec's input type to the value codec's input type.
+ */
+export type MappingInput<T extends MappingGeneric> = Map<
+  Codec.InferInput<T[0]>,
+  Codec.InferInput<T[1]>
+>;
+
+/**
  * The decoded value type produced by a `MappingCodec<T>`:
  * a `Map` from the key codec's output type to the value codec's output type.
  */
-export type MappingValue<T extends MappingGeneric> = Map<
-  Codec.Infer<T[0]>,
-  Codec.Infer<T[1]>
+export type MappingOutput<T extends MappingGeneric> = Map<
+  Codec.InferOutput<T[0]>,
+  Codec.InferOutput<T[1]>
 >;
+
+/** @deprecated Use {@link MappingOutput} instead. */
+export type MappingValue<T extends MappingGeneric> = MappingOutput<T>;
 
 /**
  * Options for {@link MappingCodec}.
@@ -666,7 +751,7 @@ export type MappingOptions = {
  * ```
  */
 export class MappingCodec<const T extends MappingGeneric>
-  extends Codec<MappingValue<T>> {
+  extends Codec<MappingOutput<T>, MappingInput<T>> {
   /** Always `-1`. */
   public readonly stride = -1;
   readonly #entriesCodec: ArrayCodec<TupleCodec<T>>;
@@ -689,7 +774,7 @@ export class MappingCodec<const T extends MappingGeneric>
    * @returns `Uint8Array<ArrayBuffer>`.
    */
   public encode(
-    value: MappingValue<T>,
+    value: MappingInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     return this.#entriesCodec.encode(value.entries().toArray() as any, target);
@@ -699,7 +784,7 @@ export class MappingCodec<const T extends MappingGeneric>
    * @param data - Binary data starting with a count prefix.
    * @returns `[Map, bytesConsumed]`.
    */
-  public decode(data: Uint8Array): [MappingValue<T>, number] {
+  public decode(data: Uint8Array): [MappingOutput<T>, number] {
     const [entries, size] = this.#entriesCodec.decode(data);
     return [new Map(entries as any), size];
   }

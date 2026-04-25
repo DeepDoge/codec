@@ -711,3 +711,51 @@ export const F32LE: F32Codec = new F32Codec({ endian: "le" });
  * ```
  */
 export const F64LE: F64Codec = new F64Codec({ endian: "le" });
+
+/**
+ * Codec for the `void` type, also accepting `null` and `undefined`.
+ *
+ * Encodes to zero bytes and decodes from zero bytes. Useful as a placeholder
+ * or for optional fields where the absence of data is the signal.
+ *
+ * @example
+ * ```ts
+ * Void.encode(undefined); // Uint8Array(0)
+ * Void.decode(new Uint8Array(0)); // [undefined, 0]
+ * ```
+ */
+export class VoidCodec extends Codec<void, null | undefined | void> {
+  public override readonly stride = 0;
+
+  /**
+   * Encode a void-like value into the target buffer.
+   *
+   * Since void occupies zero bytes, the target is returned unchanged.
+   *
+   * @param _value - Ignored. Accepts `void`, `null`, or `undefined`.
+   * @param target - Optional pre-allocated buffer. Defaults to an empty array.
+   * @returns `target`, unchanged.
+   */
+  public override encode(
+    _value: void | null | undefined,
+    target = new Uint8Array(0),
+  ): Uint8Array<ArrayBuffer> {
+    return target;
+  }
+
+  /**
+   * Decode zero bytes from `data` and return `undefined`.
+   *
+   * Consumes no bytes regardless of `data` length. This is intentional —
+   * void should always decode successfully without advancing the cursor.
+   *
+   * @param _data - Binary data. Ignored.
+   * @returns `[undefined, 0]` — the void value and zero bytes consumed.
+   */
+  public override decode(_data: Uint8Array): [void, number] {
+    return [void 0, 0];
+  }
+}
+
+/** Singleton {@link VoidCodec} instance. */
+export const Void = new VoidCodec();

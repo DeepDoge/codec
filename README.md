@@ -170,6 +170,7 @@ higher-order codecs, or libraries built on top of this one.
 | `F64`, `F64LE` | number  | 8            | 64-bit float            |
 | `Bool`         | boolean | 1            | Boolean (`0x00`/`0x01`) |
 | `VarInt`       | number  | variable     | Unsigned LEB128         |
+| `Void`         | void    | 0            | Zero bytes. Always succeeds. |
 
 All numeric singletons (`U8`, `I32`, `F64`, etc.) are pre-instantiated. You only
 need to call `new` when specifying a non-default endianness:

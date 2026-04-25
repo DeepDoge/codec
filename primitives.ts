@@ -758,4 +758,4 @@ export class VoidCodec extends Codec<void, null | undefined | void> {
 }
 
 /** Singleton {@link VoidCodec} instance. */
-export const Void = new VoidCodec();
+export const Void: VoidCodec = new VoidCodec();

@@ -738,7 +738,7 @@ export class VoidCodec extends Codec<void, null | undefined | void> {
    */
   public override encode(
     _value: void | null | undefined,
-    target = new Uint8Array(0),
+    target: Uint8Array<ArrayBuffer> = new Uint8Array(0),
   ): Uint8Array<ArrayBuffer> {
     return target;
   }

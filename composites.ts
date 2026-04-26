@@ -376,6 +376,15 @@ export type StructOutput<T extends StructGeneric> =
 export type StructValue<T extends StructGeneric> = StructOutput<T>;
 
 /**
+ * Transforms a `StructGeneric` shape into its fully-optional equivalent:
+ * required keys (`"field"`) become `"field?"`, while keys that are already
+ * optional (`"field?"`) are kept as-is.
+ */
+export type PartialShape<T extends StructGeneric> = {
+  [K in Extract<keyof T, string> as K extends `${string}?` ? K : `${K}?`]: T[K];
+};
+
+/**
  * Codec for named-field objects, with support for optional fields via the
  * `"field?"` key syntax.
  *
@@ -534,6 +543,34 @@ export class StructCodec<const T extends StructGeneric>
     }
 
     return [result, offset];
+  }
+
+  /**
+   * Returns a new `StructCodec` where every field is optional.
+   *
+   * Required keys (`"field"`) become `"field?"`. Keys that are already
+   * optional (`"field?"`) are kept as-is. Field order and codecs are
+   * preserved.
+   *
+   * @returns `StructCodec<PartialShape<T>>`
+   *
+   * @example
+   * ```ts
+   * const User = new StructCodec({ id: U32, name: new StringCodec() });
+   * const PartialUser = User.partial();
+   *
+   * PartialUser.encode({});                      // all absent
+   * PartialUser.encode({ name: "Ada" });         // only name present
+   * PartialUser.encode({ id: 1, name: "Ada" }); // all present
+   * ```
+   */
+  public partial(): StructCodec<PartialShape<T>> {
+    const partialShape: { [key: string]: Codec<any, any> } = {};
+    for (const rawKey of this.keys) {
+      const optKey = rawKey.endsWith("?") ? rawKey : `${rawKey}?`;
+      partialShape[optKey] = this.shape[rawKey]!;
+    }
+    return new StructCodec(partialShape) as never;
   }
 }
 

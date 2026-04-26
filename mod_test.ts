@@ -16,7 +16,6 @@ import {
   I8,
   MappingCodec,
   NullableCodec,
-  OptionalCodec,
   StringCodec,
   StructCodec,
   TupleCodec,
@@ -357,30 +356,6 @@ Deno.test("Nullable - with string", () => {
   assertEquals(s, "hello");
 });
 
-// Optional Codec
-Deno.test("Optional - undefined", () => {
-  const opt = new OptionalCodec(U8);
-  const [decoded] = opt.decode(opt.encode(undefined));
-  assertEquals(decoded, undefined);
-  assertEquals(Array.from(opt.encode(undefined)), [0x00]);
-  assertEquals(opt.stride, -1);
-});
-
-Deno.test("Optional - present value", () => {
-  const opt = new OptionalCodec(U8);
-  const [decoded] = opt.decode(opt.encode(7));
-  assertEquals(decoded, 7);
-  assertEquals(Array.from(opt.encode(7)), [0x01, 0x07]);
-});
-
-Deno.test("Optional - with string", () => {
-  const opt = new OptionalCodec(new StringCodec());
-  const [n] = opt.decode(opt.encode(undefined));
-  assertEquals(n, undefined);
-  const [s] = opt.decode(opt.encode("hello"));
-  assertEquals(s, "hello");
-});
-
 // Tuple Codec
 Deno.test("Tuple - fixed stride elements", () => {
   const t = new TupleCodec([U8, U16]);
@@ -473,6 +448,87 @@ Deno.test("Struct - definition order matters", () => {
   const enc2 = S2.encode(val2);
   // Binary should be different due to field order
   assertEquals(Array.from(enc1) !== Array.from(enc2), true);
+});
+
+Deno.test("Struct - optional field absent", () => {
+  const S = new StructCodec({ name: new StringCodec(), "age?": U8 });
+  const val = { name: "Ada" };
+  const encoded = S.encode(val);
+  const [decoded] = S.decode(encoded);
+  // age absent: presence byte 0x00 appended after name
+  assertEquals(decoded.name, "Ada");
+  assertEquals(decoded.age, undefined);
+  // wire: [varint(3), 'A','d','a', 0x00]
+  assertEquals(encoded[encoded.length - 1], 0x00);
+  assertEquals(S.stride, -1);
+});
+
+Deno.test("Struct - optional field present", () => {
+  const S = new StructCodec({ name: new StringCodec(), "age?": U8 });
+  const val = { name: "Ada", age: 30 };
+  const encoded = S.encode(val);
+  const [decoded] = S.decode(encoded);
+  assertEquals(decoded.name, "Ada");
+  assertEquals(decoded.age, 30);
+  // wire ends with: 0x01, 0x1e (presence byte + age=30)
+  assertEquals(encoded[encoded.length - 2], 0x01);
+  assertEquals(encoded[encoded.length - 1], 0x1e);
+});
+
+Deno.test("Struct - multiple optional fields", () => {
+  const S = new StructCodec({
+    id: U32,
+    "name?": new StringCodec(),
+    "age?": U8,
+  });
+
+  // All absent
+  const [d1] = S.decode(S.encode({ id: 1 }));
+  assertEquals(d1, { id: 1 });
+
+  // One present
+  const [d2] = S.decode(S.encode({ id: 2, name: "Bob" }));
+  assertEquals(d2, { id: 2, name: "Bob" });
+
+  // All present
+  const [d3] = S.decode(S.encode({ id: 3, name: "Ada", age: 42 }));
+  assertEquals(d3, { id: 3, name: "Ada", age: 42 });
+});
+
+Deno.test("Struct - optional field wire format", () => {
+  const S = new StructCodec({ x: U8, "y?": U8 });
+
+  // Absent: [x=5, presence=0x00]
+  assertEquals(Array.from(S.encode({ x: 5 })), [0x05, 0x00]);
+
+  // Present: [x=5, presence=0x01, y=9]
+  assertEquals(Array.from(S.encode({ x: 5, y: 9 })), [0x05, 0x01, 0x09]);
+});
+
+Deno.test("Struct - only optional fields", () => {
+  const S = new StructCodec({ "a?": U8, "b?": U8 });
+
+  const [d1] = S.decode(S.encode({}));
+  assertEquals(d1, {});
+
+  const [d2] = S.decode(S.encode({ a: 1 }));
+  assertEquals(d2, { a: 1 });
+
+  const [d3] = S.decode(S.encode({ a: 1, b: 2 }));
+  assertEquals(d3, { a: 1, b: 2 });
+});
+
+Deno.test("Struct - optional with complex inner codec", () => {
+  const S = new StructCodec({
+    id: U32,
+    "meta?": new StructCodec({ tag: new StringCodec(), score: U8 }),
+  });
+
+  const [d1] = S.decode(S.encode({ id: 7 }));
+  assertEquals(d1, { id: 7 });
+
+  const [d2] = S.decode(S.encode({ id: 7, meta: { tag: "hi", score: 99 } }));
+  assertEquals(d2, { id: 7, meta: { tag: "hi", score: 99 } });
 });
 
 // Array Codec
@@ -731,4 +787,35 @@ Deno.test("Complex - array of unions", () => {
 
   const [decoded] = Messages.decode(Messages.encode(val));
   assertEquals(decoded, val);
+});
+
+Deno.test("Complex - struct with optional fields in real schema", () => {
+  const UserProfile = new StructCodec({
+    id: U32,
+    username: new StringCodec(),
+    "bio?": new StringCodec(),
+    "avatarUrl?": new StringCodec(),
+    "age?": U8,
+  });
+
+  // Minimal user
+  const minimal = { id: 1, username: "ada" };
+  const [d1] = UserProfile.decode(UserProfile.encode(minimal));
+  assertEquals(d1, minimal);
+
+  // Fully populated user
+  const full = {
+    id: 2,
+    username: "bob",
+    bio: "Hello world",
+    avatarUrl: "https://example.com/avatar.png",
+    age: 28,
+  };
+  const [d2] = UserProfile.decode(UserProfile.encode(full));
+  assertEquals(d2, full);
+
+  // Partial optional fields
+  const partial = { id: 3, username: "carol", age: 35 };
+  const [d3] = UserProfile.decode(UserProfile.encode(partial));
+  assertEquals(d3, partial);
 });

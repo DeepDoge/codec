@@ -143,7 +143,6 @@ The full set of pairs exported by the library:
 | Generic type      | Input type         | Output type         | Used by         |
 | ----------------- | ------------------ | ------------------- | --------------- |
 | `NullableGeneric` | `NullableInput<T>` | `NullableOutput<T>` | `NullableCodec` |
-| `OptionalGeneric` | `OptionalInput<T>` | `OptionalOutput<T>` | `OptionalCodec` |
 | `TupleGeneric`    | `TupleInput<T>`    | `TupleOutput<T>`    | `TupleCodec`    |
 | `StructGeneric`   | `StructInput<T>`   | `StructOutput<T>`   | `StructCodec`   |
 | `ArrayGeneric`    | `ArrayInput<T>`    | `ArrayOutput<T>`    | `ArrayCodec`    |
@@ -258,28 +257,6 @@ Wire format:
 
 ---
 
-### Optional
-
-Optional values (`undefined`) with a presence byte. Same wire format as
-`NullableCodec` but uses `undefined` instead of `null`.
-
-```ts
-import { OptionalCodec, U8 } from "@nomadshiba/codec";
-
-const maybeU8 = new OptionalCodec(U8);
-maybeU8.encode(undefined); // [0x00]
-maybeU8.encode(7); // [0x01, 0x07]
-```
-
-Wire format:
-
-```
-0x00         → undefined
-0x01 <value> → present value
-```
-
----
-
 ### Tuple
 
 Fixed-count heterogeneous sequences. Elements are concatenated; no wrapper
@@ -300,22 +277,45 @@ if any element is variable.
 ### Struct
 
 Named-field objects encoded in **definition order** (order matters for the
-binary layout).
+binary layout). Append `"?"` to any field name to mark it as optional.
 
 ```ts
-import { StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
+import { StringCodec, StructCodec, U32, U8 } from "@nomadshiba/codec";
 
 const User = new StructCodec({
   id: U32,
   name: new StringCodec(),
+  "age?": U8, // optional field
+  "bio?": new StringCodec(), // optional field
 });
 
-User.encode({ id: 42, name: "Ada" });
+User.encode({ id: 1, name: "Ada" }); // age/bio absent
+User.encode({ id: 1, name: "Ada", age: 30 }); // bio absent
+User.encode({ id: 1, name: "Ada", age: 30, bio: "Hello" }); // all present
 ```
 
-Access the codec shape via `User.shape` and the field order via the underlying
-tuple. **Reordering fields changes the binary layout** and breaks compatibility
-with previously encoded data.
+Optional fields use a presence byte in the wire format:
+
+```
+0x00              → field absent (undefined)
+0x01 <value>      → field present, encoded by its inner codec
+```
+
+TypeScript types are inferred correctly — optional fields become `?: T` in both
+the input and output types:
+
+```ts
+type UserInput = Codec.InferInput<typeof User>;
+// { id: number; name: string; age?: number; bio?: string }
+```
+
+`stride` is always `-1` when any optional field is present, since they are
+inherently variable-length.
+
+**Reordering fields changes the binary layout** and breaks compatibility with
+previously encoded data.
+
+Access the codec shape via `User.shape`.
 
 ---
 

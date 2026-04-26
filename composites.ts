@@ -100,7 +100,7 @@ export class NullableCodec<T extends NullableGeneric>
   }
 }
 
-// ── Optional ──────────────────────────────────────────────────────────────────
+// ── Optional (deprecated) ─────────────────────────────────────────────────────
 
 /** Constraint type for the inner codec of {@link OptionalCodec}. */
 export type OptionalGeneric = Codec<any>;
@@ -127,23 +127,21 @@ export type OptionalValue<T extends OptionalGeneric> = OptionalOutput<T>;
 /**
  * Codec for optional values — either a present value or `undefined`.
  *
- * Wire format is identical to {@link NullableCodec}, but uses `undefined`
- * instead of `null` for the absent case:
+ * @deprecated Use the `"field?"` key syntax on {@link StructCodec} instead:
+ *
+ * ```ts
+ * // Before
+ * new StructCodec({ age: new OptionalCodec(U8) })
+ *
+ * // After
+ * new StructCodec({ "age?": U8 })
+ * ```
+ *
+ * Wire format:
  * - `0x00` → `undefined`
  * - `0x01` + payload → value encoded by the inner codec
  *
  * @template T - The inner codec type.
- *
- * @example
- * ```ts
- * import { OptionalCodec, U8 } from "@nomadshiba/codec";
- *
- * const maybeU8 = new OptionalCodec(U8);
- * maybeU8.encode(undefined); // Uint8Array [0x00]
- * maybeU8.encode(7);         // Uint8Array [0x01, 0x07]
- * maybeU8.decode(new Uint8Array([0x00]));       // [undefined, 1]
- * maybeU8.decode(new Uint8Array([0x01, 0x09])); // [9, 2]
- * ```
  */
 export class OptionalCodec<T extends OptionalGeneric>
   extends Codec<OptionalOutput<T>, OptionalInput<T>> {
@@ -323,52 +321,102 @@ export class TupleCodec<const T extends TupleGeneric>
 export type StructGeneric = { readonly [key: string]: Codec<any> };
 
 /**
- * Derives the input object type from a `StructGeneric`:
- * maps each field name to the inferred input type of its codec.
+ * Extracts only the keys that end with `"?"` from a `StructGeneric`, stripped
+ * of the suffix. These correspond to optional fields.
  */
-export type StructInput<T extends StructGeneric> = {
-  -readonly [K in keyof T]: Codec.InferInput<T[K]>;
-};
+type OptionalKeys<T extends StructGeneric> = {
+  [K in Extract<keyof T, string>]: K extends `${infer Base}?` ? Base : never;
+}[Extract<keyof T, string>];
 
 /**
- * Derives the decoded object type from a `StructGeneric`:
- * maps each field name to the inferred output type of its codec.
+ * Extracts only the keys that do NOT end with `"?"` from a `StructGeneric`.
+ * These correspond to required fields.
  */
-export type StructOutput<T extends StructGeneric> = {
-  -readonly [K in keyof T]: Codec.InferOutput<T[K]>;
-};
+type RequiredKeys<T extends StructGeneric> = {
+  [K in Extract<keyof T, string>]: K extends `${string}?` ? never : K;
+}[Extract<keyof T, string>];
+
+/**
+ * Resolves the codec for an optional key `Base` by looking up `"Base?"` in `T`.
+ */
+type OptionalCodecFor<
+  T extends StructGeneric,
+  Base extends string,
+> = `${Base}?` extends keyof T ? T[`${Base}?`] : never;
+
+/**
+ * Derives the input object type from a `StructGeneric`, honoring `"field?"`
+ * optional syntax:
+ * - Required fields (`"field"`) → `Codec.InferInput<T["field"]>`
+ * - Optional fields (`"field?"`) → `Codec.InferInput<T["field?"]> | undefined`
+ */
+export type StructInput<T extends StructGeneric> =
+  & { -readonly [K in RequiredKeys<T>]: Codec.InferInput<T[K]> }
+  & {
+    -readonly [K in OptionalKeys<T>]?: Codec.InferInput<
+      OptionalCodecFor<T, K>
+    >;
+  };
+
+/**
+ * Derives the decoded object type from a `StructGeneric`, honoring `"field?"`
+ * optional syntax:
+ * - Required fields (`"field"`) → `Codec.InferOutput<T["field"]>`
+ * - Optional fields (`"field?"`) → `Codec.InferOutput<T["field?"]> | undefined`
+ */
+export type StructOutput<T extends StructGeneric> =
+  & { -readonly [K in RequiredKeys<T>]: Codec.InferOutput<T[K]> }
+  & {
+    -readonly [K in OptionalKeys<T>]?: Codec.InferOutput<
+      OptionalCodecFor<T, K>
+    >;
+  };
 
 /** @deprecated Use {@link StructOutput} instead. */
 export type StructValue<T extends StructGeneric> = StructOutput<T>;
 
 /**
- * Codec for named-field objects.
+ * Codec for named-field objects, with support for optional fields via the
+ * `"field?"` key syntax.
  *
  * Internally backed by a {@link TupleCodec} keyed on the field names in
  * **definition order**. The binary layout is identical to the equivalent
  * tuple — field names are not part of the wire format.
  *
+ * Optional fields (keys ending with `"?"`) are prefixed with a presence byte
+ * in the wire format:
+ * - `0x00` → field is absent (`undefined`)
+ * - `0x01` + payload → field is present, encoded by its inner codec
+ *
  * **Reordering fields changes the binary layout** and breaks compatibility
  * with previously encoded data.
  *
- * `stride` follows the same rules as `TupleCodec`.
+ * `stride` follows the same rules as `TupleCodec`. Optional fields always
+ * contribute `-1` (variable-length) due to the presence byte.
  *
- * @template T - Record mapping field names to codecs.
+ * @template T - Record mapping field names to codecs. Append `"?"` to a key
+ *   to mark that field as optional.
  *
  * @example
  * ```ts
- * import { StructCodec, U32, StringCodec } from "@nomadshiba/codec";
+ * import { StructCodec, U32, U8, StringCodec } from "@nomadshiba/codec";
  *
- * const User = new StructCodec({ id: U32, name: new StringCodec() });
- * const bin = User.encode({ id: 42, name: "Ada" });
- * User.decode(bin); // [{ id: 42, name: "Ada" }, size]
+ * const User = new StructCodec({
+ *   id: U32,
+ *   name: new StringCodec(),
+ *   "age?": U8,
+ * });
+ *
+ * User.encode({ id: 1, name: "Ada" });              // age absent → 0x00
+ * User.encode({ id: 1, name: "Ada", age: 30 });     // age present → 0x01 0x1e
+ * User.decode(bin); // [{ id: 1, name: "Ada", age: 30 }, size]
  * ```
  */
 export class StructCodec<const T extends StructGeneric>
   extends Codec<StructOutput<T>, StructInput<T>> {
   /**
    * Sum of all field strides (fixed-size), or `-1` if any field is
-   * variable-length.
+   * variable-length (including all optional fields).
    */
   public readonly stride: number;
 
@@ -378,23 +426,41 @@ export class StructCodec<const T extends StructGeneric>
    */
   public readonly shape: T;
 
+  /**
+   * Raw keys as defined in the shape (may include `"?"` suffix).
+   * Used to drive encode/decode in definition order.
+   */
   private readonly keys: Extract<keyof T, string>[];
-  private readonly tuple: TupleCodec<T[(keyof T)][]>;
 
   /**
    * @param shape - Record mapping field names to their codecs, in definition
-   *   order.
+   *   order. Append `"?"` to a key name to mark that field as optional.
    */
   constructor(shape: T) {
     super();
     this.shape = shape;
     this.keys = Object.keys(shape) as typeof this.keys;
-    this.tuple = new TupleCodec(this.keys.map((key) => shape[key]));
-    this.stride = this.tuple.stride;
+
+    // stride: optional fields are always variable-length (-1).
+    let stride = 0;
+    for (const key of this.keys) {
+      if (key.endsWith("?")) {
+        stride = -1;
+        break;
+      }
+      const s = shape[key]!.stride;
+      if (s < 0) {
+        stride = -1;
+        break;
+      }
+      stride += s;
+    }
+    this.stride = stride;
   }
 
   /**
-   * @param value - Object with fields matching the codec shape.
+   * @param value - Object with fields matching the codec shape. Optional
+   *   fields (declared with `"?"`) may be omitted or set to `undefined`.
    * @param target - Optional pre-allocated buffer.
    * @returns `Uint8Array<ArrayBuffer>`.
    */
@@ -402,23 +468,72 @@ export class StructCodec<const T extends StructGeneric>
     value: StructInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
-    const tupleValue = this.keys.map((key) => value[key]);
-    return this.tuple.encode(tupleValue, target);
+    const parts: Uint8Array<ArrayBuffer>[] = [];
+
+    for (const rawKey of this.keys) {
+      const codec = this.shape[rawKey]!;
+
+      if (rawKey.endsWith("?")) {
+        const fieldKey = rawKey.slice(0, -1) as keyof typeof value;
+        const fieldValue = (value as any)[fieldKey];
+
+        if (fieldValue === undefined) {
+          parts.push(new Uint8Array([0x00]));
+        } else {
+          const encoded = codec.encode(fieldValue);
+          const presenced = new Uint8Array(1 + encoded.length);
+          presenced[0] = 0x01;
+          presenced.set(encoded, 1);
+          parts.push(presenced);
+        }
+      } else {
+        parts.push(codec.encode((value as any)[rawKey]));
+      }
+    }
+
+    const totalLen = parts.reduce((sum, p) => sum + p.length, 0);
+    const result = target ?? new Uint8Array(totalLen);
+    let offset = 0;
+    for (const part of parts) {
+      result.set(part, offset);
+      offset += part.length;
+    }
+    return result;
   }
 
   /**
    * @param data - Binary data.
-   * @returns `[object, bytesConsumed]`.
+   * @returns `[object, bytesConsumed]`. Optional fields absent in the wire
+   *   data are omitted from the returned object (i.e. not set to `undefined`
+   *   explicitly, matching TypeScript's optional property semantics).
    */
   public decode(data: Uint8Array): [StructOutput<T>, number] {
-    const [tupleValue, size] = this.tuple.decode(data);
     const result = {} as StructOutput<T>;
-    for (let i = 0; i < this.keys.length; i++) {
-      const key = this.keys[i]!;
-      result[key] = tupleValue[i]!;
+    let offset = 0;
+
+    for (const rawKey of this.keys) {
+      const codec = this.shape[rawKey]!;
+
+      if (rawKey.endsWith("?")) {
+        const fieldKey = rawKey.slice(0, -1) as keyof StructOutput<T>;
+        const presenceByte = data[offset]!;
+        offset += 1;
+
+        if (presenceByte !== 0x00) {
+          const [fieldValue, size] = codec.decode(data.subarray(offset));
+          result[fieldKey] = fieldValue as never;
+          offset += size;
+        }
+        // absent: leave the key unset (undefined when accessed)
+      } else {
+        const fieldKey = rawKey as keyof StructOutput<T>;
+        const [fieldValue, size] = codec.decode(data.subarray(offset));
+        result[fieldKey] = fieldValue as never;
+        offset += size;
+      }
     }
 
-    return [result, size];
+    return [result, offset];
   }
 }
 

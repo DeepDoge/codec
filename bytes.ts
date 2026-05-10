@@ -43,7 +43,7 @@ export type StringOptions = {
 export class StringCodec extends Codec<string> {
   /** Always `-1`; strings are variable-length. */
   public readonly stride = -1;
-  readonly #lengthCodec: Codec<number>;
+  public readonly lengthCodec: Codec<number>;
   readonly #encoder = new TextEncoder();
   readonly #decoder = new TextDecoder();
 
@@ -53,7 +53,7 @@ export class StringCodec extends Codec<string> {
    */
   constructor(options?: StringOptions) {
     super();
-    this.#lengthCodec = options?.lengthCodec ?? VarInt;
+    this.lengthCodec = options?.lengthCodec ?? VarInt;
   }
 
   /**
@@ -67,7 +67,7 @@ export class StringCodec extends Codec<string> {
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     const utf8 = this.#encoder.encode(value);
-    const lengthPrefix = this.#lengthCodec.encode(utf8.length);
+    const lengthPrefix = this.lengthCodec.encode(utf8.length);
     const totalLen = lengthPrefix.length + utf8.length;
 
     const result = target ?? new Uint8Array(totalLen);
@@ -81,7 +81,7 @@ export class StringCodec extends Codec<string> {
    * @returns `[string, bytesConsumed]`.
    */
   public decode(data: Uint8Array): [string, number] {
-    const [length, bytesRead] = this.#lengthCodec.decode(data);
+    const [length, bytesRead] = this.lengthCodec.decode(data);
     const utf8 = data.subarray(bytesRead, bytesRead + length);
     const decoded = this.#decoder.decode(utf8);
     return [decoded, bytesRead + length];
@@ -154,7 +154,7 @@ export class BytesCodec extends Codec<Uint8Array> {
    * variable-length mode.
    */
   public readonly stride: number;
-  readonly #lengthCodec: Codec<number>;
+  public readonly lengthCodec: Codec<number>;
 
   /**
    * @param options - Optional configuration for fixed or variable length mode.
@@ -162,7 +162,7 @@ export class BytesCodec extends Codec<Uint8Array> {
   constructor(options?: BytesOptions) {
     super();
     this.stride = options?.size ?? -1;
-    this.#lengthCodec = options?.lengthCodec ?? VarInt;
+    this.lengthCodec = options?.lengthCodec ?? VarInt;
   }
 
   /**
@@ -186,7 +186,7 @@ export class BytesCodec extends Codec<Uint8Array> {
       result.set(value);
       return result;
     } else {
-      const lengthPrefix = this.#lengthCodec.encode(value.length);
+      const lengthPrefix = this.lengthCodec.encode(value.length);
       const totalLen = lengthPrefix.length + value.length;
 
       const result = target ?? new Uint8Array(totalLen);
@@ -213,7 +213,7 @@ export class BytesCodec extends Codec<Uint8Array> {
       }
       return [data.subarray(0, this.stride), this.stride];
     } else {
-      const [length, bytesRead] = this.#lengthCodec.decode(data);
+      const [length, bytesRead] = this.lengthCodec.decode(data);
       const decoded = data.subarray(bytesRead, bytesRead + length);
       return [decoded, bytesRead + length];
     }

@@ -632,8 +632,8 @@ export class ArrayCodec<T extends ArrayGeneric>
   extends Codec<ArrayOutput<T>, ArrayInput<T>> {
   /** Always `-1`. */
   public readonly stride = -1;
-  readonly #countCodec: Codec<number>;
-  readonly #codec: T;
+  public readonly countCodec: Codec<number>;
+  public readonly codec: T;
 
   /**
    * @param codec - The element codec.
@@ -641,15 +641,8 @@ export class ArrayCodec<T extends ArrayGeneric>
    */
   constructor(codec: T, options?: ArrayOptions) {
     super();
-    this.#codec = codec;
-    this.#countCodec = options?.countCodec ?? VarInt;
-  }
-
-  /**
-   * The element codec used to encode/decode individual items.
-   */
-  public get codec(): Codec<T> {
-    return this.#codec;
+    this.codec = codec;
+    this.countCodec = options?.countCodec ?? VarInt;
   }
 
   /**
@@ -664,7 +657,7 @@ export class ArrayCodec<T extends ArrayGeneric>
     const parts: Uint8Array<ArrayBuffer>[] = [];
 
     for (const item of value) {
-      const part = this.#codec.encode(item);
+      const part = this.codec.encode(item);
       parts.push(part);
     }
 
@@ -679,7 +672,7 @@ export class ArrayCodec<T extends ArrayGeneric>
       offset += part.length;
     }
 
-    const countPrefix = this.#countCodec.encode(value.length);
+    const countPrefix = this.countCodec.encode(value.length);
     const totalLen = countPrefix.length + elementsData.length;
     const result = target ?? new Uint8Array(totalLen);
     result.set(countPrefix, 0);
@@ -692,12 +685,12 @@ export class ArrayCodec<T extends ArrayGeneric>
    * @returns `[elements, totalBytesConsumed]`.
    */
   public decode(data: Uint8Array): [ArrayOutput<T>, number] {
-    const [count, bytesRead] = this.#countCodec.decode(data);
+    const [count, bytesRead] = this.countCodec.decode(data);
     const result: ArrayOutput<T> = [];
     let offset = bytesRead;
 
     for (let i = 0; i < count; i++) {
-      const [value, size] = this.#codec.decode(data.subarray(offset));
+      const [value, size] = this.codec.decode(data.subarray(offset));
       result.push(value);
       offset += size;
     }
@@ -784,7 +777,7 @@ export class UnionCodec<const T extends UnionGeneric>
    */
   public readonly variants: T;
 
-  readonly #indexCodec: Codec<number>;
+  public readonly indexCodec: Codec<number>;
   private readonly keys: (keyof T)[];
 
   /**
@@ -795,7 +788,7 @@ export class UnionCodec<const T extends UnionGeneric>
     super();
     this.variants = variants;
     this.keys = Object.keys(this.variants).sort() as (keyof T)[];
-    this.#indexCodec = options?.indexCodec ?? new U8Codec();
+    this.indexCodec = options?.indexCodec ?? new U8Codec();
   }
 
   /**
@@ -814,7 +807,7 @@ export class UnionCodec<const T extends UnionGeneric>
     }
     const codec = this.variants[value.kind]!;
     const encodedValue = codec.encode(value.value as never);
-    const indexBytes = this.#indexCodec.encode(index);
+    const indexBytes = this.indexCodec.encode(index);
     const totalLen = indexBytes.length + encodedValue.length;
     const result = target ?? new Uint8Array(totalLen);
     result.set(indexBytes, 0);
@@ -828,7 +821,7 @@ export class UnionCodec<const T extends UnionGeneric>
    * @throws {Error} If the decoded index is out of range.
    */
   public decode(data: Uint8Array): [UnionOutput<T>, number] {
-    const [index, indexSize] = this.#indexCodec.decode(data);
+    const [index, indexSize] = this.indexCodec.decode(data);
     if (index >= this.keys.length) {
       throw new Error(`Invalid union index: ${index}`);
     }
@@ -908,16 +901,17 @@ export class MappingCodec<const T extends MappingGeneric>
   public readonly stride = -1;
   readonly #entriesCodec: ArrayCodec<TupleCodec<T>>;
 
+  public get entryCodec(): T {
+    return this.#entriesCodec.codec.codecs;
+  }
+
   /**
-   * @param codecs - `[keyCodec, valueCodec]` tuple.
+   * @param entryCodec - `[keyCodec, valueCodec]` tuple.
    * @param options - Optional configuration for the count prefix codec.
    */
-  constructor(codecs: T, options?: MappingOptions) {
+  constructor(entryCodec: T, options?: MappingOptions) {
     super();
-    this.#entriesCodec = new ArrayCodec(
-      new TupleCodec(codecs),
-      options,
-    );
+    this.#entriesCodec = new ArrayCodec(new TupleCodec(entryCodec), options);
   }
 
   /**

@@ -50,7 +50,7 @@ export class VarIntCodec extends Codec<number> {
     const parts: number[] = [];
     while (value > 0x7F) {
       parts.push((value & 0x7F) | 0x80);
-      value >>>= 7;
+      value = Math.floor(value / 128);
     }
     parts.push(value & 0x7F);
 

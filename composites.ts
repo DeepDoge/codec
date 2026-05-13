@@ -65,7 +65,14 @@ export class NullableCodec<T extends NullableGeneric>
 
   /**
    * @param value - The value to encode, or `null`.
-   * @param target - Optional pre-allocated buffer.
+   * @param target - Optional pre-allocated buffer. When provided and `value`
+   *   is non-null, `target.subarray(1)` is passed to the inner codec as its
+   *   own `target`. If the inner codec writes into that subarray, `encoded`
+   *   will alias `target[1..]` and the subsequent `result.set(encoded, 1)` is
+   *   a same-buffer copy (harmless but a no-op). If the inner codec allocates
+   *   a fresh buffer instead, `set` copies it in correctly. Either way the
+   *   output is correct; callers must not rely on the inner codec's allocation
+   *   behaviour.
    * @returns `Uint8Array<ArrayBuffer>`.
    */
   public encode(
@@ -160,7 +167,14 @@ export class OptionalCodec<T extends OptionalGeneric>
 
   /**
    * @param value - The value to encode, or `undefined`.
-   * @param target - Optional pre-allocated buffer.
+   * @param target - Optional pre-allocated buffer. When provided and `value`
+   *   is non-undefined, `target.subarray(1)` is passed to the inner codec as
+   *   its own `target`. If the inner codec writes into that subarray, `encoded`
+   *   will alias `target[1..]` and the subsequent `result.set(encoded, 1)` is
+   *   a same-buffer copy (harmless but a no-op). If the inner codec allocates
+   *   a fresh buffer instead, `set` copies it in correctly. Either way the
+   *   output is correct; callers must not rely on the inner codec's allocation
+   *   behaviour.
    * @returns `Uint8Array<ArrayBuffer>`.
    */
   public encode(
@@ -923,7 +937,7 @@ export class MappingCodec<const T extends MappingGeneric>
     value: MappingInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
-    return this.#entriesCodec.encode(value.entries().toArray() as any, target);
+    return this.#entriesCodec.encode(Array.from(value.entries()) as any, target);
   }
 
   /**

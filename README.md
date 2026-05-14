@@ -483,6 +483,30 @@ const validated = U32.transform((value, bytes) => {
 The result is a `TransformCodec` instance. Its `.inner` property holds the
 original wrapped codec.
 
+The transformed type `T` must extend the codec's base decoded type `O`. This
+means the transformer can produce any subtype of `O` — narrowing values,
+attaching methods or getters, computing a hash, or capturing the raw bytes —
+but cannot return something entirely unrelated to `O`.
+
+```ts
+// Narrow with a branded type
+type UserId = string & { readonly brand: "UserId" };
+const UserIdCodec = Str.transform((s): UserId => {
+  if (!s.startsWith("usr_")) throw new Error("invalid user id");
+  return s as UserId;
+});
+
+// Attach methods and expose raw bytes
+const Point = StructCodec({ x: F32, y: F32 });
+const RichPoint = Point.transform((p, bytes) => ({
+  ...p,
+  raw: bytes,
+  distanceFromOrigin() {
+    return Math.sqrt(this.x ** 2 + this.y ** 2);
+  },
+}));
+```
+
 ---
 
 ## Custom Codecs

@@ -504,14 +504,44 @@ export class StructCodec<const T extends StructGeneric>
   private readonly keys: Extract<keyof T, string>[];
 
   /**
-   * Factory function generated from the required field names. Calling it with
+   * Factory function for structs with no optional fields. Calling it with the
    * decoded field values returns an object with a fixed hidden class, allowing
    * V8 to use a fast in-object property layout instead of a hash map.
    *
-   * `null` when the struct has any optional fields, since those cannot be
-   * represented with a single fixed object shape.
+   * `null` when the struct has any optional fields — use `optionalFactories`
+   * instead.
    */
   private readonly factory: ((...args: unknown[]) => StructOutput<T>) | null;
+
+  /**
+   * Lazy cache of per-combination factories for structs that have optional
+   * fields. The cache key is a bitmask over the optional keys (in their
+   * definition order): bit `i` is set when optional field `i` is present.
+   *
+   * Each factory receives `(req0, req1, …, opt0, opt1, …)` — required fields
+   * first in definition order, then only the *present* optional fields in
+   * definition order — and returns an object literal so V8 can assign a
+   * stable hidden class for each unique combination.
+   *
+   * `null` when the struct has no optional fields.
+   */
+  private readonly optionalFactories: Map<
+    bigint,
+    (...args: unknown[]) => StructOutput<T>
+  > | null;
+
+  /** Required field keys (no `"?"` suffix), in definition order. */
+  private readonly requiredKeys: Extract<keyof T, string>[];
+
+  /** Optional field keys *with* the `"?"` suffix, in definition order. */
+  private readonly optionalKeys: Extract<keyof T, string>[];
+
+  /**
+   * Precomputed bigint bit for each key in `this.keys`, in the same order.
+   * `0n` for required keys, `1n << i` for the i-th optional key.
+   * Avoids `indexOf` lookups inside the hot decode loop.
+   */
+  private readonly optionalBits: bigint[];
 
   /**
    * @param shape - Record mapping field names to their codecs, in definition
@@ -522,14 +552,26 @@ export class StructCodec<const T extends StructGeneric>
     this.shape = shape;
     this.keys = Object.keys(shape) as typeof this.keys;
 
-    const hasOptional = this.keys.some((k) => k.endsWith("?"));
+    this.requiredKeys = this.keys.filter((k) => !k.endsWith("?"));
+    this.optionalKeys = this.keys.filter((k) => k.endsWith("?"));
+
+    const hasOptional = this.optionalKeys.length > 0;
     if (hasOptional) {
       this.factory = null;
+      this.optionalFactories = new Map();
     } else {
       const keys = this.keys as string[];
       const body = `return { ${keys.join(", ")} };`;
       this.factory = new Function(...keys, body) as typeof this.factory;
+      this.optionalFactories = null;
     }
+
+    // Precompute the bigint bit for each key so the decode loop never calls
+    // indexOf. Required keys get 0n (unused); optional key i gets 1n << i.
+    let optIdx = 0n;
+    this.optionalBits = this.keys.map((k) =>
+      k.endsWith("?") ? 1n << optIdx++ : 0n
+    );
 
     // Optional fields are always variable-length due to the presence byte.
     let size = 0;
@@ -621,34 +663,69 @@ export class StructCodec<const T extends StructGeneric>
       return [this.factory(...args), offset];
     }
 
-    // Struct has optional fields — build the object incrementally so that
-    // absent optional keys are genuinely missing (not set to `undefined`),
-    // preserving correct `"key" in obj` / spread semantics.
-    const result = {} as StructOutput<T>;
+    // Struct has optional fields.
+    //
+    // Strategy: decode all fields in one pass, tracking which optional fields
+    // are present as a bitmask. Then look up (or lazily build) a factory for
+    // that exact combination of present fields and call it with the collected
+    // args so V8 can assign a stable hidden class per unique combination.
 
-    for (const rawKey of this.keys) {
+    const reqLen = this.requiredKeys.length;
+    const optLen = this.optionalKeys.length;
+
+    // args layout: [req0, req1, …, opt0?, opt1?, …]
+    // optArgs is filled only for present optional fields; absent ones are
+    // tracked by the bitmask and simply omitted from the factory params.
+    const reqArgs: unknown[] = new Array(reqLen);
+    const optArgs: unknown[] = [];
+    let mask = 0n;
+    let reqIdx = 0;
+
+    for (let i = 0; i < this.keys.length; i++) {
+      const rawKey = this.keys[i]!;
       const codec = this.shape[rawKey]!;
 
       if (rawKey.endsWith("?")) {
-        const fieldKey = rawKey.slice(0, -1) as keyof StructOutput<T>;
         const presenceByte = data[offset]!;
         offset += 1;
 
         if (presenceByte !== 0x00) {
           const [fieldValue, size] = codec.decode(data.subarray(offset));
-          result[fieldKey] = fieldValue as never;
+          optArgs.push(fieldValue);
+          mask |= this.optionalBits[i]!;
           offset += size;
         }
-        // absent: leave the key unset (undefined when accessed)
       } else {
-        const fieldKey = rawKey as keyof StructOutput<T>;
         const [fieldValue, size] = codec.decode(data.subarray(offset));
-        result[fieldKey] = fieldValue as never;
+        reqArgs[reqIdx++] = fieldValue;
         offset += size;
       }
     }
 
-    return [result, offset];
+    let factory = this.optionalFactories!.get(mask);
+    if (factory === undefined) {
+      // Build a factory for this exact combination of present optional fields.
+      // Required params come first, then only the present optional params.
+      const reqParams = this.requiredKeys as string[];
+      const optParams: string[] = [];
+      for (let i = 0; i < optLen; i++) {
+        if (mask & (1n << BigInt(i))) {
+          // Strip the trailing "?" to get the actual object key name.
+          optParams.push(this.optionalKeys[i]!.slice(0, -1));
+        }
+      }
+      const allParams = [...reqParams, ...optParams];
+      const body = `return { ${allParams.join(", ")} };`;
+      factory = new Function(...allParams, body) as (
+        ...args: unknown[]
+      ) => StructOutput<T>;
+      this.optionalFactories!.set(mask, factory);
+    }
+
+    return [(factory as (...args: unknown[]) => StructOutput<T>)(
+      ...reqArgs,
+      ...optArgs,
+    ), offset];
   }
 
   /**

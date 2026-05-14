@@ -1,6 +1,6 @@
 ## GOALS for 0.3.0
 
-- [ ] Differentiate between dynamic sized `Codec` and fixed sized `Codec` on the
+- [x] Differentiate between dynamic sized `Codec` and fixed sized `Codec` on the
       type level as well.
 - [ ] Rename `stride` to `size`.
 - [ ] Rename `lengthCodec` to `sizeCodec` or other names that fits the specific
@@ -10,7 +10,7 @@
 - [ ] Remove "Codec" suffix from inner codecs.
 - [ ] Rename union back to enum.
 - [ ] Have alternatives for fixed sized enums. using the max size.
-- [ ] Make `NullableCodec` add 1 byte to the size and if the inner is fixed stay
+- [x] Make `NullableCodec` add 1 byte to the size and if the inner is fixed stay
       fixed.
 - [ ] Don't sort enum variants by key.
 - [ ] make structs and shit V8 friendly, right now it creates the object then

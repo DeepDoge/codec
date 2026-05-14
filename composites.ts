@@ -30,8 +30,14 @@ export type NullableValue<T extends NullableGeneric> = NullableOutput<T>;
  * Codec for nullable values — either a present value or `null`.
  *
  * Wire format:
- * - `0x00` → `null`
- * - `0x01` + payload → value encoded by the inner codec
+ * - flag byte `0x00` → `null`. If the inner codec is fixed-size, the remaining
+ *   `stride.size - 1` bytes are zero-filled so the total size is always
+ *   `1 + inner.stride.size`.
+ * - flag byte `0x01` + payload → value encoded by the inner codec.
+ * - All other flag byte values are invalid.
+ *
+ * When the inner codec is fixed-size the `NullableCodec` is also fixed-size
+ * with `stride = { kind: "fixed", size: 1 + inner.stride.size }`.
  *
  * @template T - The inner codec type.
  *
@@ -40,9 +46,9 @@ export type NullableValue<T extends NullableGeneric> = NullableOutput<T>;
  * import { NullableCodec, U8 } from "@nomadshiba/codec";
  *
  * const maybeU8 = new NullableCodec(U8);
- * maybeU8.encode(null); // Uint8Array [0x00]
+ * maybeU8.encode(null); // Uint8Array [0x00, 0x00]  (flag + zero-padded)
  * maybeU8.encode(7);    // Uint8Array [0x01, 0x07]
- * maybeU8.decode(new Uint8Array([0x00]));       // [null, 1]
+ * maybeU8.decode(new Uint8Array([0x00, 0x00])); // [null, 2]
  * maybeU8.decode(new Uint8Array([0x01, 0x09])); // [9, 2]
  * ```
  */
@@ -50,8 +56,13 @@ export class NullableCodec<T extends NullableGeneric>
   extends Codec<NullableOutput<T>, NullableInput<T>> {
   private readonly codec: T;
 
-  /** Always `{ kind: "variable" }`; the presence byte makes this variable-length. */
-  public readonly stride: Stride<"variable"> = { kind: "variable" };
+  /**
+   * `{ kind: "fixed", size: 1 + inner.stride.size }` when the inner codec is
+   * fixed-size; `{ kind: "variable" }` otherwise.
+   */
+  public readonly stride: T["stride"] extends Stride<"fixed">
+    ? Stride<"fixed">
+    : Stride<"variable">;
 
   /**
    * @param codec - The inner codec used to encode/decode the present value.
@@ -59,20 +70,21 @@ export class NullableCodec<T extends NullableGeneric>
   constructor(codec: T) {
     super();
     this.codec = codec;
+    this.stride = (
+      codec.stride.kind === "fixed"
+        ? { kind: "fixed", size: 1 + codec.stride.size }
+        : { kind: "variable" }
+    ) as typeof this.stride;
   }
 
   /**
-   * Encode a nullable value as a presence-byte-prefixed binary sequence.
+   * Encode a nullable value.
+   *
+   * For fixed-size inner codecs the output is always `stride.size` bytes:
+   * `[0x00, 0x00, …]` for `null`, `[0x01, …payload…]` for a value.
    *
    * @param value - The value to encode, or `null`.
-   * @param target - Optional pre-allocated buffer. When provided and `value`
-   *   is non-null, `target.subarray(1)` is passed to the inner codec as its
-   *   own `target`. If the inner codec writes into that subarray, `encoded`
-   *   will alias `target[1..]` and the subsequent `result.set(encoded, 1)` is
-   *   a same-buffer copy (harmless but a no-op). If the inner codec allocates
-   *   a fresh buffer instead, `set` copies it in correctly. Either way the
-   *   output is correct; callers must not rely on the inner codec's allocation
-   *   behaviour.
+   * @param target - Optional pre-allocated buffer.
    * @returns `Uint8Array<ArrayBuffer>`.
    */
   public encode(
@@ -80,8 +92,9 @@ export class NullableCodec<T extends NullableGeneric>
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     if (value === null) {
-      const result = target ?? new Uint8Array(1);
-      result[0] = 0;
+      const size = this.stride.kind === "fixed" ? this.stride.size : 1;
+      const result = target ?? new Uint8Array(size);
+      result.fill(0, 0, size);
       return result;
     } else {
       const encoded = this.codec.encode(value, target?.subarray(1));
@@ -94,14 +107,18 @@ export class NullableCodec<T extends NullableGeneric>
   }
 
   /**
-   * Decode a nullable value from a presence-byte-prefixed binary sequence.
+   * Decode a nullable value.
    *
-   * @param data - Binary data starting with a presence byte.
-   * @returns `[null, 1]` or `[value, 1 + innerBytesConsumed]`.
+   * Reads the flag byte: `0x00` → `null`, `0x01` → decodes inner value.
+   * For fixed-size inner codecs always consumes `stride.size` bytes total.
+   *
+   * @param data - Binary data starting with a flag byte.
+   * @returns `[null, bytesConsumed]` or `[value, bytesConsumed]`.
    */
   public decode(data: Uint8Array): [NullableOutput<T>, number] {
     if (data[0] === 0) {
-      return [null, 1];
+      const size = this.stride.kind === "fixed" ? this.stride.size : 1;
+      return [null, size];
     } else {
       const [value, size] = this.codec.decode(data.subarray(1));
       return [value, 1 + size];

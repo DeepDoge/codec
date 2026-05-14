@@ -90,8 +90,8 @@ export declare namespace Codec {
    * requireFixed(Str); // error — stride is { kind: "variable" }
    * ```
    */
-  export type FixedStrideGuard<T extends Codec<any>> =
-    T["stride"] extends { kind: "fixed" } ? T : never;
+  export type FixedStrideGuard<T extends Codec<any>> = T["stride"] extends
+    { kind: "fixed" } ? T : never;
 }
 
 /**
@@ -242,7 +242,7 @@ export class TransformCodec<
   /**
    * The stride of this codec, inherited from the inner codec.
    */
-  public readonly stride: Stride;
+  public readonly stride: C["stride"];
 
   /**
    * The wrapped inner codec that handles encoding and the initial decoding

@@ -321,15 +321,15 @@ Deno.test("bytes - fixed size error", () => {
   );
 });
 
-Deno.test("bytes - custom length codec (U32)", () => {
-  const bytesU32 = new BytesCodec({ lengthCodec: U32 });
+Deno.test("bytes - custom size codec (U32)", () => {
+  const bytesU32 = new BytesCodec({ sizeCodec: U32 });
   const val = new Uint8Array([1, 2, 3]);
   const [decoded] = bytesU32.decode(bytesU32.encode(val));
   assertEquals(Array.from(decoded), Array.from(val));
-  // U32 length prefix is 4 bytes, VarInt would be 1 byte
+  // U32 size prefix is 4 bytes, VarInt would be 1 byte
   const encodedU32 = bytesU32.encode(val);
   const encodedVarInt = new BytesCodec().encode(val);
-  assertEquals(encodedU32.length, 4 + 3); // 4 byte length + 3 bytes data
+  assertEquals(encodedU32.length, 4 + 3); // 4 byte size + 3 bytes data
   assertEquals(encodedVarInt.length, 1 + 3); // 1 byte VarInt + 3 bytes data
 });
 

@@ -223,8 +223,8 @@ import { Bytes, BytesCodec, U32 } from "@nomadshiba/codec";
 // Variable-length (varint prefix) — pre-built singleton
 Bytes.encode(new Uint8Array([1, 2, 3]));
 
-// Variable-length with custom length codec
-const bytesU32 = new BytesCodec({ lengthCodec: U32 });
+// Variable-length with custom size codec
+const bytesU32 = new BytesCodec({ sizeCodec: U32 });
 
 // Fixed-length (no prefix, stride = 4)
 const fixed4 = new BytesCodec({ size: 4 });

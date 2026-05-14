@@ -105,10 +105,10 @@ export const Str: StringCodec = new StringCodec();
 /**
  * Options for {@link BytesCodec}.
  *
- * Exactly one of `size` or `lengthCodec` may be specified:
+ * Exactly one of `size` or `sizeCodec` may be specified:
  * - `{ size: n }` — fixed-length mode: encodes/decodes exactly `n` bytes, no
  *   prefix.
- * - `{ lengthCodec }` — variable-length mode with a custom length prefix codec.
+ * - `{ sizeCodec }` — variable-length mode with a custom size prefix codec.
  * - No options (or omitting both fields) — variable-length mode with the
  *   default {@link VarInt} prefix.
  */
@@ -116,18 +116,18 @@ export type BytesOptions =
   | {
     /**
      * Fixed byte count. When `>= 0` the codec operates in fixed-length mode:
-     * no length prefix is written/read, and `stride` equals `size`.
+     * no size prefix is written/read, and `stride` equals `size`.
      */
     size: number;
-    lengthCodec?: undefined;
+    sizeCodec?: undefined;
   }
   | {
     /**
-     * Codec used to encode the length prefix in variable-length mode.
-     * Defaults to {@link VarInt} when neither `size` nor `lengthCodec` is
+     * Codec used to encode the size prefix in variable-length mode.
+     * Defaults to {@link VarInt} when neither `size` nor `sizeCodec` is
      * provided.
      */
-    lengthCodec: Codec<number>;
+    sizeCodec: Codec<number>;
     size?: undefined;
   };
 
@@ -135,7 +135,7 @@ export type BytesOptions =
  * Codec for raw byte arrays (`Uint8Array`).
  *
  * **Variable-length mode** (default): the byte count is written as a prefix
- * using the configured `lengthCodec` (default: {@link VarInt}).
+ * using the configured `sizeCodec` (default: {@link VarInt}).
  *
  * **Fixed-length mode** (`{ size: n }`): no prefix is written; `stride`
  * equals `n` and the input must have exactly `n` bytes.
@@ -148,8 +148,8 @@ export type BytesOptions =
  * const b = Bytes.encode(new Uint8Array([1, 2, 3])); // [0x03, 0x01, 0x02, 0x03]
  * Bytes.decode(b); // [Uint8Array([1, 2, 3]), 4]
  *
- * // Variable-length with custom length codec
- * const bytesU32 = new BytesCodec({ lengthCodec: U32 });
+ * // Variable-length with custom size codec
+ * const bytesU32 = new BytesCodec({ sizeCodec: U32 });
  *
  * // Fixed-length (stride = 4, no prefix)
  * const fixed4 = new BytesCodec({ size: 4 });
@@ -163,10 +163,10 @@ export class BytesCodec extends Codec<Uint8Array> {
    */
   public readonly stride: Stride;
   /**
-   * The codec used to encode the byte-length prefix in variable-length mode.
+   * The codec used to encode the byte-size prefix in variable-length mode.
    * Not used in fixed-length mode (`size >= 0`). Defaults to {@link VarInt}.
    */
-  public readonly lengthCodec: Codec<number>;
+  public readonly sizeCodec: Codec<number>;
 
   /**
    * @param options - Optional configuration for fixed or variable length mode.
@@ -176,7 +176,7 @@ export class BytesCodec extends Codec<Uint8Array> {
     this.stride = options?.size !== undefined
       ? { kind: "fixed", size: options.size } as const
       : { kind: "variable" } as const;
-    this.lengthCodec = options?.lengthCodec ?? VarInt;
+    this.sizeCodec = options?.sizeCodec ?? VarInt;
   }
 
   /**
@@ -203,7 +203,7 @@ export class BytesCodec extends Codec<Uint8Array> {
       result.set(value);
       return result;
     } else {
-      const lengthPrefix = this.lengthCodec.encode(value.length);
+      const lengthPrefix = this.sizeCodec.encode(value.length);
       const totalLen = lengthPrefix.length + value.length;
 
       const result = target ?? new Uint8Array(totalLen);
@@ -233,7 +233,7 @@ export class BytesCodec extends Codec<Uint8Array> {
       }
       return [data.subarray(0, this.stride.size), this.stride.size];
     } else {
-      const [length, bytesRead] = this.lengthCodec.decode(data);
+      const [length, bytesRead] = this.sizeCodec.decode(data);
       const decoded = data.subarray(bytesRead, bytesRead + length);
       return [decoded, bytesRead + length];
     }

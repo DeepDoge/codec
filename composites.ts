@@ -565,6 +565,131 @@ export class StructCodec<const T extends StructGeneric>
   }
 }
 
+// ── FixedStruct ───────────────────────────────────────────────────────────────
+
+/**
+ * Constraint type for the shape record of a {@link FixedStructCodec}: all
+ * fields must be fixed-size and no optional fields (keys ending with `"?"`)
+ * are permitted.
+ */
+export type FixedStructGeneric = {
+  readonly [key: string]: Codec<any, any> & { stride: Stride<"fixed"> };
+};
+
+/**
+ * A fixed-size variant of {@link StructCodec}.
+ *
+ * All field codecs **must** be fixed-size and no optional fields are allowed.
+ * The encoded size is constant: the sum of all field strides. This lets the
+ * codec advertise a `Stride<"fixed">` and enables tighter downstream
+ * optimisations (e.g. pre-allocating exact buffers, using it inside a
+ * {@link FixedEnumCodec}).
+ *
+ * Wire format: field encodings concatenated in definition order (identical to
+ * {@link StructCodec} with all-required fixed fields, so the two are
+ * wire-compatible for the same shape).
+ *
+ * @template T - Record mapping field names to fixed-size codecs.
+ *
+ * @example
+ * ```ts
+ * import { FixedStructCodec, U8, U32 } from "@nomadshiba/codec";
+ *
+ * const Point = new FixedStructCodec({ x: U32, y: U32 });
+ * // stride = { kind: "fixed", size: 8 }
+ *
+ * const bytes = Point.encode({ x: 1, y: 2 });
+ * const [point] = Point.decode(bytes); // { x: 1, y: 2 }
+ * ```
+ */
+export class FixedStructCodec<const T extends FixedStructGeneric>
+  extends Codec<StructOutput<T>, StructInput<T>> {
+  /** `{ kind: "fixed", size: sum of all field strides }` */
+  public readonly stride: Stride<"fixed">;
+
+  /**
+   * The codec shape passed to the constructor. Useful for inspecting field
+   * codecs at runtime.
+   */
+  public readonly shape: T;
+
+  private readonly keys: Extract<keyof T, string>[];
+
+  private readonly factory: (...args: unknown[]) => StructOutput<T>;
+
+  /**
+   * @param shape - Record mapping field names to fixed-size codecs.
+   * @throws {Error} If any field key ends with `"?"`.
+   * @throws {Error} If any field codec does not have a fixed-size stride.
+   */
+  constructor(shape: T) {
+    super();
+    this.shape = shape;
+    this.keys = Object.keys(shape) as typeof this.keys;
+
+    let size = 0;
+    for (const key of this.keys) {
+      if (key.endsWith("?")) {
+        throw new Error(
+          `FixedStructCodec: optional fields are not allowed (found key "${key}")`,
+        );
+      }
+      const codec = shape[key]!;
+      if (codec.stride.kind !== "fixed") {
+        throw new Error(
+          `FixedStructCodec: field "${key}" must have a fixed-size codec`,
+        );
+      }
+      size += codec.stride.size;
+    }
+
+    this.stride = { kind: "fixed", size };
+
+    const keys = this.keys as string[];
+    const body = `return { ${keys.join(", ")} };`;
+    this.factory = new Function(...keys, body) as typeof this.factory;
+  }
+
+  /**
+   * Encode a struct value by concatenating each field's encoding in definition order.
+   *
+   * @param value - Object with fields matching the codec shape.
+   * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
+   * @returns Fixed-size `Uint8Array<ArrayBuffer>`.
+   */
+  public encode(
+    value: StructInput<T>,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
+    const result = target ?? new Uint8Array(this.stride.size);
+    let offset = 0;
+    for (const key of this.keys) {
+      const codec = this.shape[key]!;
+      codec.encode((value as any)[key], result.subarray(offset));
+      offset += codec.stride.size;
+    }
+    return result;
+  }
+
+  /**
+   * Decode a struct by reading each field in definition order.
+   *
+   * @param data - Binary data.
+   * @returns `[object, bytesConsumed]`.
+   */
+  public decode(data: Uint8Array): [StructOutput<T>, number] {
+    const args: unknown[] = new Array(this.keys.length);
+    let offset = 0;
+    for (let i = 0; i < this.keys.length; i++) {
+      const codec = this.shape[this.keys[i]!]!;
+      const [value, size] = codec.decode(data.subarray(offset));
+      args[i] = value;
+      offset += size;
+    }
+    return [this.factory(...args), offset];
+  }
+}
+
 // ── Array ─────────────────────────────────────────────────────────────────────
 
 /** Constraint type for the element codec of an {@link ArrayCodec}. */

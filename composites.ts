@@ -181,11 +181,22 @@ export class TupleCodec<const T extends TupleGeneric>
     : Stride<"fixed">;
 
   /**
+   * Factory function generated from the tuple arity. Calling it with the
+   * decoded element values returns an array literal `[a, b, c, ...]` so V8
+   * can assign a stable element kind and fixed length instead of growing a
+   * dynamic array via push.
+   */
+  private readonly factory: (...args: unknown[]) => TupleOutput<T>;
+
+  /**
    * @param variants - Ordered array of element codecs.
    */
   constructor(variants: T) {
     super();
     this.variants = variants;
+    const params = Array.from({ length: variants.length }, (_, i) => `a${i}`);
+    const body = `return [${params.join(", ")}];`;
+    this.factory = new Function(...params, body) as typeof this.factory;
     let size = 0;
     let variable = false;
     for (const codec of variants) {
@@ -239,15 +250,14 @@ export class TupleCodec<const T extends TupleGeneric>
    * @returns `[tuple, totalBytesConsumed]`.
    */
   public decode(data: Uint8Array): [TupleOutput<T>, number] {
-    const result: unknown[] = [];
+    const args: unknown[] = new Array(this.variants.length);
     let offset = 0;
     for (let i = 0; i < this.variants.length; i++) {
-      const codec = this.variants[i]!;
-      const [value, size] = codec.decode(data.subarray(offset));
-      result[i] = value;
+      const [value, size] = this.variants[i]!.decode(data.subarray(offset));
+      args[i] = value;
       offset += size;
     }
-    return [result as never, offset];
+    return [this.factory(...args), offset];
   }
 }
 
@@ -379,6 +389,16 @@ export class StructCodec<const T extends StructGeneric>
   private readonly keys: Extract<keyof T, string>[];
 
   /**
+   * Factory function generated from the required field names. Calling it with
+   * decoded field values returns an object with a fixed hidden class, allowing
+   * V8 to use a fast in-object property layout instead of a hash map.
+   *
+   * `null` when the struct has any optional fields, since those cannot be
+   * represented with a single fixed object shape.
+   */
+  private readonly factory: ((...args: unknown[]) => StructOutput<T>) | null;
+
+  /**
    * @param shape - Record mapping field names to their codecs, in definition
    *   order. Append `"?"` to a key name to mark that field as optional.
    */
@@ -387,20 +407,27 @@ export class StructCodec<const T extends StructGeneric>
     this.shape = shape;
     this.keys = Object.keys(shape) as typeof this.keys;
 
+    const hasOptional = this.keys.some((k) => k.endsWith("?"));
+    if (hasOptional) {
+      this.factory = null;
+    } else {
+      const keys = this.keys as string[];
+      const body = `return { ${keys.join(", ")} };`;
+      this.factory = new Function(...keys, body) as typeof this.factory;
+    }
+
     // Optional fields are always variable-length due to the presence byte.
     let size = 0;
-    let variable = false;
-    for (const key of this.keys) {
-      if (key.endsWith("?")) {
-        variable = true;
-        break;
+    let variable = hasOptional;
+    if (!variable) {
+      for (const key of this.keys) {
+        const s = shape[key]!.stride;
+        if (s.kind === "variable") {
+          variable = true;
+          break;
+        }
+        size += s.size;
       }
-      const s = shape[key]!.stride;
-      if (s.kind === "variable") {
-        variable = true;
-        break;
-      }
-      size += s.size;
     }
     this.stride =
       (variable
@@ -462,8 +489,27 @@ export class StructCodec<const T extends StructGeneric>
    *   explicitly, matching TypeScript's optional property semantics).
    */
   public decode(data: Uint8Array): [StructOutput<T>, number] {
-    const result = {} as StructOutput<T>;
     let offset = 0;
+
+    if (this.factory !== null) {
+      // All fields are required — decode into a fixed-shape args array and
+      // construct the object via the pre-compiled factory so V8 can assign
+      // a stable hidden class instead of falling back to a hash map.
+      const args: unknown[] = new Array(this.keys.length);
+      for (let i = 0; i < this.keys.length; i++) {
+        const [fieldValue, size] = this.shape[this.keys[i]!]!.decode(
+          data.subarray(offset),
+        );
+        args[i] = fieldValue;
+        offset += size;
+      }
+      return [this.factory(...args), offset];
+    }
+
+    // Struct has optional fields — build the object incrementally so that
+    // absent optional keys are genuinely missing (not set to `undefined`),
+    // preserving correct `"key" in obj` / spread semantics.
+    const result = {} as StructOutput<T>;
 
     for (const rawKey of this.keys) {
       const codec = this.shape[rawKey]!;

@@ -13,7 +13,7 @@
 - [x] Make `NullableCodec` add 1 byte to the size and if the inner is fixed stay
       fixed.
 - [x] Don't sort enum variants by key.
-- [ ] make structs and shit V8 friendly, right now it creates the object then
+- [x] make structs and shit V8 friendly, right now it creates the object then
       appends to it, which doesnt it keep it as a know struct/class in the v8,
       makes it a hashtable instead, takes more space on the memory. instead
       js-ify the data during decoding and eval it on `Function` which should

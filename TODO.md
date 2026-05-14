@@ -2,7 +2,7 @@
 
 - [x] Differentiate between dynamic sized `Codec` and fixed sized `Codec` on the
       type level as well.
-- [ ] Rename `stride` to `size`.
+- [-] Rename `stride` to `size`.
 - [x] Rename `lengthCodec` to `sizeCodec` (`BytesCodec`) / keep `lengthCodec`
       (`StringCodec`) — names now fit each codec's semantics.
 - [ ] Rename `TupleCodec.codecs` to `TupleCodec.variantCodecs`.

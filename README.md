@@ -146,7 +146,7 @@ The full set of pairs exported by the library:
 | `TupleGeneric`    | `TupleInput<T>`    | `TupleOutput<T>`    | `TupleCodec`    |
 | `StructGeneric`   | `StructInput<T>`   | `StructOutput<T>`   | `StructCodec`   |
 | `ArrayGeneric`    | `ArrayInput<T>`    | `ArrayOutput<T>`    | `ArrayCodec`    |
-| `UnionGeneric`    | `UnionInput<T>`    | `UnionOutput<T>`    | `UnionCodec`    |
+ | `EnumGeneric`    | `EnumInput<T>`    | `EnumOutput<T>`    | `EnumCodec`    |
 | `MappingGeneric`  | `MappingInput<T>`  | `MappingOutput<T>`  | `MappingCodec`  |
 
 > **Note:** `*Value<T>` aliases still exist for backwards compatibility but are
@@ -342,15 +342,15 @@ Wire format:
 
 ---
 
-### Union
+### Enum
 
-Tagged unions. Variant names are sorted alphabetically to assign stable integer
-indices. The default index codec is `U8` (supports up to 256 variants).
+Tagged unions. Variant indices are assigned in definition order.
+The default index codec is `U8` (supports up to 256 variants).
 
 ```ts
-import { StringCodec, U32, U8, UnionCodec } from "@nomadshiba/codec";
+import { StringCodec, U32, U8, EnumCodec } from "@nomadshiba/codec";
 
-const Event = new UnionCodec({
+const Event = new EnumCodec({
   Click: U8,
   Message: new StringCodec(),
 });

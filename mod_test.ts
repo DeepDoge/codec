@@ -26,7 +26,7 @@ import {
   U64,
   U64LE,
   U8,
-  UnionCodec,
+  EnumCodec,
   VarInt,
 
 } from "./mod.ts";
@@ -589,9 +589,9 @@ Deno.test("Array - custom count codec (U32)", () => {
   assertEquals(encodedU32[3], 3); // Last byte has the value 3
 });
 
-// Union Codec
-Deno.test("Union - simple variants", () => {
-  const MyUnion = new UnionCodec({ A: U8, B: new StringCodec() });
+// Enum Codec
+Deno.test("Enum - simple variants", () => {
+  const MyUnion = new EnumCodec({ A: U8, B: new StringCodec() });
 
   const valA = { kind: "A", value: 5 } as const;
   const [decodedA] = MyUnion.decode(MyUnion.encode(valA));
@@ -604,17 +604,17 @@ Deno.test("Union - simple variants", () => {
   assertEquals(MyUnion.stride, { kind: "variable" });
 });
 
-Deno.test("Union - variant sorting", () => {
-  // Variants are sorted alphabetically: A=0, B=1
-  const MyUnion = new UnionCodec({ B: U8, A: U8 });
+Deno.test("Enum - variant definition order", () => {
+  // Variants use definition order: B=0, A=1
+  const MyUnion = new EnumCodec({ B: U8, A: U8 });
   const encA = MyUnion.encode({ kind: "A", value: 5 });
   const encB = MyUnion.encode({ kind: "B", value: 5 });
-  assertEquals(encA[0], 0); // A is first alphabetically
-  assertEquals(encB[0], 1); // B is second
+  assertEquals(encB[0], 0); // B is first (definition order)
+  assertEquals(encA[0], 1); // A is second
 });
 
-Deno.test("Union - invalid variant", () => {
-  const MyUnion = new UnionCodec({ A: U8, B: U8 });
+Deno.test("Enum - invalid variant", () => {
+  const MyUnion = new EnumCodec({ A: U8, B: U8 });
   assertThrows(
     () => MyUnion.encode({ kind: "C" as never, value: 5 }),
     Error,
@@ -622,9 +622,9 @@ Deno.test("Union - invalid variant", () => {
   );
 });
 
-Deno.test("Union - complex payloads", () => {
+Deno.test("Enum - complex payloads", () => {
   const UserStruct = new StructCodec({ id: U32, name: new StringCodec() });
-  const Event = new UnionCodec({
+  const Event = new EnumCodec({
     Created: UserStruct,
     Deleted: U32,
     Updated: UserStruct,
@@ -642,8 +642,8 @@ Deno.test("Union - complex payloads", () => {
   assertEquals(decodedDeleted, deleted);
 });
 
-Deno.test("Union - custom index codec (U32)", () => {
-  const MyUnion = new UnionCodec(
+Deno.test("Enum - custom index codec (U32)", () => {
+  const MyUnion = new EnumCodec(
     { A: U8, B: new StringCodec() },
     { indexer: U32 },
   );
@@ -779,7 +779,7 @@ Deno.test("Complex - mapping with tuples", () => {
 });
 
 Deno.test("Complex - array of unions", () => {
-  const Message = new UnionCodec({
+  const Message = new EnumCodec({
     Text: new StringCodec(),
     Number: I32,
     Flag: Bool,

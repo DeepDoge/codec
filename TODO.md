@@ -8,11 +8,11 @@
 - [x] Rename `TupleCodec.codecs` to `TupleCodec.variantCodecs`.
 - [x] Rename `ArrayCodec.codec` to `ArrayCodec.itemCodec`.
 - [x] Remove "Codec" suffix from inner codecs.
-- [ ] Rename union back to enum.
+- [x] Rename union back to enum.
 - [ ] Have alternatives for fixed sized enums. using the max size.
 - [x] Make `NullableCodec` add 1 byte to the size and if the inner is fixed stay
       fixed.
-- [ ] Don't sort enum variants by key.
+- [x] Don't sort enum variants by key.
 - [ ] make structs and shit V8 friendly, right now it creates the object then
       appends to it, which doesnt it keep it as a know struct/class in the v8,
       makes it a hashtable instead, takes more space on the memory. instead

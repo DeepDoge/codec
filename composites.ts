@@ -651,16 +651,16 @@ export class ArrayCodec<T extends ArrayGeneric>
   }
 }
 
-// ── Union ─────────────────────────────────────────────────────────────────────
+// ── Enum ──────────────────────────────────────────────────────────────────────
 
-/** Constraint type for the variants record of a {@link UnionCodec}. */
-export type UnionGeneric = { readonly [key: string]: Codec<any> };
+/** Constraint type for the variants record of a {@link EnumCodec}. */
+export type EnumGeneric = { readonly [key: string]: Codec<any> };
 
 /**
- * The input type accepted by a `UnionCodec<T>`: a discriminated union
+ * The input type accepted by a `EnumCodec<T>`: a discriminated union
  * where each member has a `kind` (the variant name) and a `value`.
  */
-export type UnionInput<T extends UnionGeneric> = {
+export type EnumInput<T extends EnumGeneric> = {
   -readonly [K in keyof T]: {
     kind: K;
     value: Codec.InferInput<T[K]>;
@@ -668,10 +668,10 @@ export type UnionInput<T extends UnionGeneric> = {
 }[keyof T];
 
 /**
- * The decoded value type produced by a `UnionCodec<T>`: a discriminated union
+ * The decoded value type produced by a `EnumCodec<T>`: a discriminated union
  * where each member has a `kind` (the variant name) and a `value`.
  */
-export type UnionOutput<T extends UnionGeneric> = {
+export type EnumOutput<T extends EnumGeneric> = {
   -readonly [K in keyof T]: {
     kind: K;
     value: Codec.InferOutput<T[K]>;
@@ -680,9 +680,9 @@ export type UnionOutput<T extends UnionGeneric> = {
 
 
 /**
- * Options for {@link UnionCodec}.
+ * Options for {@link EnumCodec}.
  */
-export type UnionOptions = {
+export type EnumOptions = {
   /**
    * Codec used to encode the variant index. Defaults to `U8` (1 byte,
    * supporting up to 256 variants).
@@ -695,7 +695,7 @@ export type UnionOptions = {
 /**
  * Codec for tagged unions.
  *
- * Variant names are sorted alphabetically to assign stable integer indices.
+ * Variant indices are assigned in definition order.
  * **Adding, removing, or renaming variants changes existing indices** and
  * breaks compatibility with previously encoded data.
  *
@@ -706,18 +706,18 @@ export type UnionOptions = {
  *
  * @example
  * ```ts
- * import { UnionCodec, U8, StringCodec } from "@nomadshiba/codec";
+ * import { EnumCodec, U8, StringCodec } from "@nomadshiba/codec";
  *
- * const Event = new UnionCodec({ Click: U8, Message: new StringCodec() });
- * // "Click" → index 0, "Message" → index 1 (alphabetical order)
+ * const Event = new EnumCodec({ Click: U8, Message: new StringCodec() });
+ * // "Click" → index 0, "Message" → index 1 (definition order)
  *
  * Event.encode({ kind: "Click", value: 5 });
  * Event.encode({ kind: "Message", value: "hello" });
  * const [e] = Event.decode(bytes); // { kind: "Click", value: 5 }
  * ```
  */
-export class UnionCodec<const T extends UnionGeneric>
-  extends Codec<UnionOutput<T>, UnionInput<T>> {
+export class EnumCodec<const T extends EnumGeneric>
+  extends Codec<EnumOutput<T>, EnumInput<T>> {
   /** Always `{ kind: "variable" }`. */
   public readonly stride: Stride<"variable"> = { kind: "variable" };
 
@@ -738,15 +738,15 @@ export class UnionCodec<const T extends UnionGeneric>
    * @param variants - Record mapping variant names to their codecs.
    * @param options - Optional configuration for the index codec.
    */
-  constructor(variants: T, options?: UnionOptions) {
+  constructor(variants: T, options?: EnumOptions) {
     super();
     this.variants = variants;
-    this.keys = Object.keys(this.variants).sort() as (keyof T)[];
+    this.keys = Object.keys(this.variants) as (keyof T)[];
     this.indexer = options?.indexer ?? new U8Codec();
   }
 
   /**
-   * Encode a union variant by writing its alphabetical index followed by the payload.
+   * Encode a union variant by writing its definition-order index followed by the payload.
    *
    * @param value - `{ kind, value }` object identifying the variant and its payload.
    * @param target - Optional pre-allocated buffer.
@@ -754,7 +754,7 @@ export class UnionCodec<const T extends UnionGeneric>
    * @throws {Error} If `value.kind` is not a known variant name.
    */
   public encode(
-    value: UnionInput<T>,
+    value: EnumInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     const index = this.keys.indexOf(value.kind);
@@ -778,7 +778,7 @@ export class UnionCodec<const T extends UnionGeneric>
    * @returns `[{ kind, value }, bytesConsumed]`.
    * @throws {Error} If the decoded index is out of range.
    */
-  public decode(data: Uint8Array): [UnionOutput<T>, number] {
+  public decode(data: Uint8Array): [EnumOutput<T>, number] {
     const [index, indexSize] = this.indexer.decode(data);
     if (index >= this.keys.length) {
       throw new Error(`Invalid union index: ${index}`);

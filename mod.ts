@@ -25,8 +25,8 @@
  * - `TupleCodec` — elements concatenated in order, no wrapper prefix.
  * - `StructCodec` — same as Tuple, fields in **definition order**.
  * - `ArrayCodec` — `VarInt` (or custom) count prefix + concatenated elements.
- * - `UnionCodec` — `U8` (or custom) variant index + payload. Variants sorted
- *   alphabetically for stable indices.
+ * - `EnumCodec` — `U8` (or custom) variant index + payload. Variants in
+ *   definition order.
  * - `NullableCodec` / `OptionalCodec` — `0x00` for absent, `0x01` + payload
  *   for present.
  * - `MappingCodec` — encoded as an array of `[key, value]` tuples.

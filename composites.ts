@@ -261,6 +261,120 @@ export class TupleCodec<const T extends TupleGeneric>
   }
 }
 
+// ── FixedTuple ────────────────────────────────────────────────────────────────
+
+/**
+ * Constraint type for the element array of a {@link FixedTupleCodec}: all
+ * elements must be fixed-size.
+ */
+export type FixedTupleGeneric = readonly (Codec<any, any> & {
+  stride: Stride<"fixed">;
+})[];
+
+/**
+ * A fixed-size variant of {@link TupleCodec}.
+ *
+ * All element codecs **must** be fixed-size. The encoded size is constant:
+ * the sum of all element strides. This lets the codec advertise a
+ * `Stride<"fixed">` and enables tighter downstream optimisations (e.g.
+ * pre-allocating exact buffers, using it inside a {@link FixedEnumCodec}).
+ *
+ * Wire format: element encodings concatenated in definition order (identical
+ * to {@link TupleCodec} with all-fixed elements, so the two are
+ * wire-compatible for the same shape).
+ *
+ * @template T - Readonly array of fixed-size element codec types.
+ *
+ * @example
+ * ```ts
+ * import { FixedTupleCodec, U8, U32 } from "@nomadshiba/codec";
+ *
+ * const Vec2 = new FixedTupleCodec([U32, U32]);
+ * // stride = { kind: "fixed", size: 8 }
+ *
+ * const bytes = Vec2.encode([1, 2]);
+ * const [vec] = Vec2.decode(bytes); // [1, 2]
+ * ```
+ */
+export class FixedTupleCodec<const T extends FixedTupleGeneric>
+  extends Codec<TupleOutput<T>, TupleInput<T>> {
+  /** `{ kind: "fixed", size: sum of all element strides }` */
+  public readonly stride: Stride<"fixed">;
+
+  /**
+   * The element codecs in definition order.
+   */
+  public readonly variants: T;
+
+  private readonly factory: (...args: unknown[]) => TupleOutput<T>;
+
+  /**
+   * @param variants - Ordered array of fixed-size element codecs.
+   * @throws {Error} If any element codec does not have a fixed-size stride.
+   */
+  constructor(variants: T) {
+    super();
+    this.variants = variants;
+
+    let size = 0;
+    for (let i = 0; i < variants.length; i++) {
+      const codec = variants[i]!;
+      if (codec.stride.kind !== "fixed") {
+        throw new Error(
+          `FixedTupleCodec: element at index ${i} must have a fixed-size codec`,
+        );
+      }
+      size += codec.stride.size;
+    }
+
+    this.stride = { kind: "fixed", size };
+
+    const params = Array.from({ length: variants.length }, (_, i) => `a${i}`);
+    const body = `return [${params.join(", ")}];`;
+    this.factory = new Function(...params, body) as typeof this.factory;
+  }
+
+  /**
+   * Encode a tuple of values by writing each element directly into a
+   * pre-allocated buffer in definition order.
+   *
+   * @param value - Tuple of values, one per codec in order.
+   * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
+   * @returns Fixed-size `Uint8Array<ArrayBuffer>`.
+   */
+  public encode(
+    value: TupleInput<T>,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
+    const result = target ?? new Uint8Array(this.stride.size);
+    let offset = 0;
+    for (let i = 0; i < this.variants.length; i++) {
+      const codec = this.variants[i]!;
+      codec.encode(value[i]!, result.subarray(offset));
+      offset += codec.stride.size;
+    }
+    return result;
+  }
+
+  /**
+   * Decode a tuple by reading each element in definition order.
+   *
+   * @param data - Binary data.
+   * @returns `[tuple, totalBytesConsumed]`.
+   */
+  public decode(data: Uint8Array): [TupleOutput<T>, number] {
+    const args: unknown[] = new Array(this.variants.length);
+    let offset = 0;
+    for (let i = 0; i < this.variants.length; i++) {
+      const codec = this.variants[i]!;
+      const [value, size] = codec.decode(data.subarray(offset));
+      args[i] = value;
+      offset += size;
+    }
+    return [this.factory(...args), offset];
+  }
+}
+
 // ── Struct ────────────────────────────────────────────────────────────────────
 
 /** Constraint type for the shape record of a {@link StructCodec}. */

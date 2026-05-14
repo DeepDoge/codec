@@ -23,8 +23,6 @@ export type NullableOutput<T extends NullableGeneric> =
   | Codec.InferOutput<T>
   | null;
 
-/** @deprecated Use {@link NullableOutput} instead. */
-export type NullableValue<T extends NullableGeneric> = NullableOutput<T>;
 
 /**
  * Codec for nullable values — either a present value or `null`.
@@ -126,112 +124,6 @@ export class NullableCodec<T extends NullableGeneric>
   }
 }
 
-// ── Optional (deprecated) ─────────────────────────────────────────────────────
-
-/** Constraint type for the inner codec of {@link OptionalCodec}. */
-export type OptionalGeneric = Codec<any>;
-
-/**
- * The input type accepted by an `OptionalCodec<T>`:
- * either the inner codec's input type or `undefined`.
- */
-export type OptionalInput<T extends OptionalGeneric> =
-  | Codec.InferInput<T>
-  | undefined;
-
-/**
- * The decoded value type produced by an `OptionalCodec<T>`:
- * either the inner codec's output type or `undefined`.
- */
-export type OptionalOutput<T extends OptionalGeneric> =
-  | Codec.InferOutput<T>
-  | undefined;
-
-/** @deprecated Use {@link OptionalOutput} instead. */
-export type OptionalValue<T extends OptionalGeneric> = OptionalOutput<T>;
-
-/**
- * Codec for optional values — either a present value or `undefined`.
- *
- * @deprecated Use the `"field?"` key syntax on {@link StructCodec} instead:
- *
- * ```ts
- * // Before
- * new StructCodec({ age: new OptionalCodec(U8) })
- *
- * // After
- * new StructCodec({ "age?": U8 })
- * ```
- *
- * Wire format:
- * - `0x00` → `undefined`
- * - `0x01` + payload → value encoded by the inner codec
- *
- * @template T - The inner codec type.
- */
-export class OptionalCodec<T extends OptionalGeneric>
-  extends Codec<OptionalOutput<T>, OptionalInput<T>> {
-  private readonly codec: T;
-
-  /** Always `{ kind: "variable" }`; the presence byte makes this variable-length. */
-  public readonly stride: Stride<"variable"> = { kind: "variable" };
-
-  /**
-   * @param codec - The inner codec used to encode/decode the present value.
-   */
-  constructor(codec: T) {
-    super();
-    this.codec = codec;
-  }
-
-  /**
-   * Encode an optional value as a presence-byte-prefixed binary sequence.
-   *
-   * @param value - The value to encode, or `undefined`.
-   * @param target - Optional pre-allocated buffer. When provided and `value`
-   *   is non-undefined, `target.subarray(1)` is passed to the inner codec as
-   *   its own `target`. If the inner codec writes into that subarray, `encoded`
-   *   will alias `target[1..]` and the subsequent `result.set(encoded, 1)` is
-   *   a same-buffer copy (harmless but a no-op). If the inner codec allocates
-   *   a fresh buffer instead, `set` copies it in correctly. Either way the
-   *   output is correct; callers must not rely on the inner codec's allocation
-   *   behaviour.
-   * @returns `Uint8Array<ArrayBuffer>`.
-   */
-  public encode(
-    value: OptionalInput<T>,
-    target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
-    if (value === undefined) {
-      const result = target ?? new Uint8Array(1);
-      result[0] = 0;
-      return result;
-    } else {
-      const encoded = this.codec.encode(value, target?.subarray(1));
-      const totalLen = 1 + encoded.length;
-      const result = target ?? new Uint8Array(totalLen);
-      result[0] = 1;
-      result.set(encoded, 1);
-      return result;
-    }
-  }
-
-  /**
-   * Decode an optional value from a presence-byte-prefixed binary sequence.
-   *
-   * @param data - Binary data starting with a presence byte.
-   * @returns `[undefined, 1]` or `[value, 1 + innerBytesConsumed]`.
-   */
-  public decode(data: Uint8Array): [OptionalOutput<T>, number] {
-    if (data[0] === 0) {
-      return [undefined, 1];
-    } else {
-      const [value, size] = this.codec.decode(data.subarray(1));
-      return [value, 1 + size];
-    }
-  }
-}
-
 // ── Tuple ─────────────────────────────────────────────────────────────────────
 
 /** Constraint type for the element array of a {@link TupleCodec}. */
@@ -253,8 +145,6 @@ export type TupleOutput<T extends TupleGeneric> = {
   -readonly [I in keyof T]: Codec.InferOutput<T[I]>;
 };
 
-/** @deprecated Use {@link TupleOutput} instead. */
-export type TupleValue<T extends TupleGeneric> = TupleOutput<T>;
 
 /**
  * Codec for fixed-count tuples of potentially heterogeneous types.
@@ -418,8 +308,6 @@ export type StructOutput<T extends StructGeneric> =
     >;
   };
 
-/** @deprecated Use {@link StructOutput} instead. */
-export type StructValue<T extends StructGeneric> = StructOutput<T>;
 
 /**
  * Transforms a `StructGeneric` shape into its fully-optional equivalent:
@@ -646,8 +534,6 @@ export type ArrayInput<T extends ArrayGeneric> = Codec.InferInput<T>[];
  */
 export type ArrayOutput<T extends ArrayGeneric> = Codec.InferOutput<T>[];
 
-/** @deprecated Use {@link ArrayOutput} instead. */
-export type ArrayValue<T extends ArrayGeneric> = ArrayOutput<T>;
 
 /**
  * Options for {@link ArrayCodec}.
@@ -792,8 +678,6 @@ export type UnionOutput<T extends UnionGeneric> = {
   };
 }[keyof T];
 
-/** @deprecated Use {@link UnionOutput} instead. */
-export type UnionValue<T extends UnionGeneric> = UnionOutput<T>;
 
 /**
  * Options for {@link UnionCodec}.
@@ -929,8 +813,6 @@ export type MappingOutput<T extends MappingGeneric> = Map<
   Codec.InferOutput<T[1]>
 >;
 
-/** @deprecated Use {@link MappingOutput} instead. */
-export type MappingValue<T extends MappingGeneric> = MappingOutput<T>;
 
 /**
  * Options for {@link MappingCodec}.

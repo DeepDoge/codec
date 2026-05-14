@@ -152,9 +152,13 @@ export abstract class Codec<O extends I, I = O> {
    * `transformer` function is called with that value and the raw bytes that
    * were consumed, and its return value becomes the final decoded result.
    *
-   * @template T - The final output type after transformation.
-   * @param transformer - Function applied to the decoded value. Receives
-   *   `(value: O, bytes: Uint8Array)` and must return the transformed value.
+    * @template T - The final output type after transformation. Must extend `O`,
+     *   so the transformer can narrow, validate, attach methods or getters,
+     *   add computed properties, or expose the raw bytes — but cannot return
+     *   a type unrelated to `O`.
+     * @param transformer - Function applied to the decoded value. Receives
+     *   `(value: O, bytes: Uint8Array)` where `bytes` are the raw bytes
+     *   consumed, and must return the transformed value of type `T`.
    * @returns A new {@link TransformCodec} that wraps this codec.
    *
    * @example
@@ -196,7 +200,9 @@ export abstract class Codec<O extends I, I = O> {
  *
  * @template O - Base output type produced by the inner codec.
  * @template I - Input type accepted by `encode`.
- * @template T - Final output type after the transformer is applied (extends `O`).
+ * @template T - Final output type after the transformer is applied. Must extend `O` —
+ *   can narrow, validate, attach methods/getters, add computed properties, or
+ *   expose raw bytes, but cannot be unrelated to `O`.
  * @template C - Concrete type of the inner codec.
  *
  * @example

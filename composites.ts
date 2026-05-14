@@ -1059,8 +1059,8 @@ export type EnumOptions = {
  * Codec for tagged unions.
  *
  * Variant indices are assigned in definition order.
- * **Adding, removing, or renaming variants changes existing indices** and
- * breaks compatibility with previously encoded data.
+ * **Adding or removing variants changes existing indices** and breaks
+ * compatibility with previously encoded data. Renaming variants is safe.
  *
  * Wire format: `<index> <payload>` where `<index>` is encoded by `indexer`
  * (default: `U8`). Decoded values are `{ kind, value }` objects.

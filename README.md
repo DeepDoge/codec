@@ -415,9 +415,9 @@ Wire format:
 <index> <payload>
 ```
 
-> **Note:** Variant indices are assigned in **definition order**. Adding,
-> removing, or renaming variants changes existing indices and breaks
-> compatibility with previously encoded data.
+> **Note:** Variant indices are assigned in **definition order**. Adding or
+> removing variants changes existing indices and breaks compatibility with
+> previously encoded data. Renaming variants is safe and does not affect indices.
 
 #### FixedEnumCodec
 

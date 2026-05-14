@@ -156,12 +156,14 @@ export type BytesOptions =
  * fixed4.encode(new Uint8Array([1, 2, 3, 4])); // [0x01, 0x02, 0x03, 0x04]
  * ```
  */
-export class BytesCodec extends Codec<Uint8Array> {
+export class BytesCodec<const O extends BytesOptions | undefined = undefined>
+  extends Codec<Uint8Array> {
   /**
    * `{ kind: "fixed", size: n }` in fixed-length mode, or
    * `{ kind: "variable" }` in variable-length mode.
    */
-  public readonly stride: Stride;
+  public readonly stride: O extends { size: number } ? Stride<"fixed">
+    : Stride<"variable">;
   /**
    * The codec used to encode the byte-size prefix in variable-length mode.
    * Not used in fixed-length mode (`size >= 0`). Defaults to {@link VarInt}.
@@ -171,11 +173,12 @@ export class BytesCodec extends Codec<Uint8Array> {
   /**
    * @param options - Optional configuration for fixed or variable length mode.
    */
-  constructor(options?: BytesOptions) {
+  constructor(options?: O) {
     super();
-    this.stride = options?.size !== undefined
-      ? { kind: "fixed", size: options.size } as const
-      : { kind: "variable" } as const;
+    this.stride =
+      (options?.size !== undefined
+        ? { kind: "fixed", size: options.size }
+        : { kind: "variable" }) as typeof this.stride;
     this.sizer = options?.sizer ?? VarInt;
   }
 
@@ -244,4 +247,4 @@ export class BytesCodec extends Codec<Uint8Array> {
  * Pre-built singleton instance of {@link BytesCodec} in variable-length mode
  * with the default {@link VarInt} length prefix.
  */
-export const Bytes: BytesCodec = new BytesCodec();
+export const Bytes: BytesCodec<undefined> = new BytesCodec();

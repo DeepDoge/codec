@@ -29,9 +29,6 @@ vlt install jsr:@nomadshiba/codec   # vlt
 
 ## Breaking Changes
 
-**Note for users upgrading:** The library changed significantly in `0.1.0` and
-`0.2.0`.
-
 See the [migrations](./migrations/) folder for upgrade instructions.
 
 ---
@@ -61,7 +58,7 @@ All codecs extend `Codec<O, I>` and implement:
 | -------- | ----------------------------------------------- | ------------------------------------------------------------------- |
 | `encode` | `(value: I, target?: Uint8Array) => Uint8Array` | Encode a value. Pass `target` to write into a pre-allocated buffer. |
 | `decode` | `(data: Uint8Array) => [O, number]`             | Decode and return `[value, bytesConsumed]`.                         |
-| `stride` | `Stride`                                        | `{ kind: "fixed"; size: number }` or `{ kind: "variable" }`.       |
+| `stride` | `Stride`                                        | `{ kind: "fixed"; size: number }` or `{ kind: "variable" }`.        |
 
 The optional `target` parameter on `encode` lets you write into a pre-allocated
 `Uint8Array` for performance-sensitive code, avoiding an extra allocation.
@@ -140,17 +137,17 @@ function decodeAll<T extends ArrayGeneric>(
 
 The full set of pairs exported by the library:
 
-| Generic type        | Input type           | Output type           | Used by             |
-| ------------------- | -------------------- | --------------------- | ------------------- |
-| `NullableGeneric`   | `NullableInput<T>`   | `NullableOutput<T>`   | `NullableCodec`     |
-| `TupleGeneric`      | `TupleInput<T>`      | `TupleOutput<T>`      | `TupleCodec`        |
-| `FixedTupleGeneric` | `TupleInput<T>`      | `TupleOutput<T>`      | `FixedTupleCodec`   |
-| `StructGeneric`     | `StructInput<T>`     | `StructOutput<T>`     | `StructCodec`       |
-| `FixedStructGeneric`| `StructInput<T>`     | `StructOutput<T>`     | `FixedStructCodec`  |
-| `ArrayGeneric`      | `ArrayInput<T>`      | `ArrayOutput<T>`      | `ArrayCodec`        |
-| `EnumGeneric`       | `EnumInput<T>`       | `EnumOutput<T>`       | `EnumCodec`         |
-| `FixedEnumGeneric`  | `EnumInput<T>`       | `EnumOutput<T>`       | `FixedEnumCodec`    |
-| `MappingGeneric`    | `MappingInput<T>`    | `MappingOutput<T>`    | `MappingCodec`      |
+| Generic type         | Input type         | Output type         | Used by            |
+| -------------------- | ------------------ | ------------------- | ------------------ |
+| `NullableGeneric`    | `NullableInput<T>` | `NullableOutput<T>` | `NullableCodec`    |
+| `TupleGeneric`       | `TupleInput<T>`    | `TupleOutput<T>`    | `TupleCodec`       |
+| `FixedTupleGeneric`  | `TupleInput<T>`    | `TupleOutput<T>`    | `FixedTupleCodec`  |
+| `StructGeneric`      | `StructInput<T>`   | `StructOutput<T>`   | `StructCodec`      |
+| `FixedStructGeneric` | `StructInput<T>`   | `StructOutput<T>`   | `FixedStructCodec` |
+| `ArrayGeneric`       | `ArrayInput<T>`    | `ArrayOutput<T>`    | `ArrayCodec`       |
+| `EnumGeneric`        | `EnumInput<T>`     | `EnumOutput<T>`     | `EnumCodec`        |
+| `FixedEnumGeneric`   | `EnumInput<T>`     | `EnumOutput<T>`     | `FixedEnumCodec`   |
+| `MappingGeneric`     | `MappingInput<T>`  | `MappingOutput<T>`  | `MappingCodec`     |
 
 For most application code you won't need these directly — `Codec.Infer<T>`
 covers the common case. They become useful when writing generic helpers,
@@ -245,7 +242,7 @@ import { NullableCodec, U8 } from "@nomadshiba/codec";
 
 const maybeU8 = new NullableCodec(U8);
 maybeU8.encode(null); // [0x00, 0x00]  (flag + zero-padded for fixed inner)
-maybeU8.encode(7);    // [0x01, 0x07]
+maybeU8.encode(7); // [0x01, 0x07]
 ```
 
 Wire format:
@@ -287,8 +284,8 @@ const bytes = Vec2.encode([1, 2]);
 const [vec] = Vec2.decode(bytes); // [1, 2]
 ```
 
-Wire format is identical to `TupleCodec` with all-fixed elements, so the two
-are wire-compatible for the same shape.
+Wire format is identical to `TupleCodec` with all-fixed elements, so the two are
+wire-compatible for the same shape.
 
 ---
 
@@ -338,15 +335,15 @@ Access the codec shape via `User.shape`.
 #### partial()
 
 Returns a new `StructCodec` where every field is optional. Required keys
-(`"field"`) become `"field?"`. Keys already optional are kept as-is. Field
-order and codecs are preserved.
+(`"field"`) become `"field?"`. Keys already optional are kept as-is. Field order
+and codecs are preserved.
 
 ```ts
 const User = new StructCodec({ id: U32, name: new StringCodec() });
 const PartialUser = User.partial();
 
-PartialUser.encode({});                      // all absent
-PartialUser.encode({ name: "Ada" });         // only name present
+PartialUser.encode({}); // all absent
+PartialUser.encode({ name: "Ada" }); // only name present
 PartialUser.encode({ id: 1, name: "Ada" }); // all present
 ```
 
@@ -365,8 +362,8 @@ const bytes = Point.encode({ x: 1, y: 2 });
 const [point] = Point.decode(bytes); // { x: 1, y: 2 }
 ```
 
-Wire format is identical to `StructCodec` with all-required fixed fields, so
-the two are wire-compatible for the same shape.
+Wire format is identical to `StructCodec` with all-required fixed fields, so the
+two are wire-compatible for the same shape.
 
 ---
 
@@ -395,8 +392,8 @@ Wire format:
 
 ### Enum
 
-Tagged unions. Variant indices are assigned in **definition order**.
-The default index codec is `U8` (supports up to 256 variants).
+Tagged unions. Variant indices are assigned in **definition order**. The default
+index codec is `U8` (supports up to 256 variants).
 
 ```ts
 import { EnumCodec, StringCodec, U8 } from "@nomadshiba/codec";
@@ -429,12 +426,12 @@ encoded size is constant: `indexer.stride.size + max(variant.stride.size)`.
 Shorter variant payloads are zero-padded to the maximum variant size.
 
 ```ts
-import { FixedEnumCodec, U8, U16 } from "@nomadshiba/codec";
+import { FixedEnumCodec, U16, U8 } from "@nomadshiba/codec";
 
 const Event = new FixedEnumCodec({ Click: U8, Scroll: U16 });
 // stride = { kind: "fixed", size: 3 }  (1 byte index + 2 byte max payload)
 
-Event.encode({ kind: "Click", value: 5 });    // [0x00, 0x05, 0x00] (padded)
+Event.encode({ kind: "Click", value: 5 }); // [0x00, 0x05, 0x00] (padded)
 Event.encode({ kind: "Scroll", value: 300 }); // [0x01, 0x01, 0x2c]
 ```
 
@@ -498,7 +495,10 @@ import { Codec, Stride, U64 } from "@nomadshiba/codec";
 class DateCodec extends Codec<Date, bigint> {
   readonly stride: Stride = { kind: "fixed", size: 8 };
 
-  encode(ms: bigint, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+  encode(
+    ms: bigint,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
     return U64.encode(ms, target);
   }
 

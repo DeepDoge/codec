@@ -23,7 +23,6 @@ export type NullableOutput<T extends NullableGeneric> =
   | Codec.InferOutput<T>
   | null;
 
-
 /**
  * Codec for nullable values — either a present value or `null`.
  *
@@ -52,25 +51,24 @@ export type NullableOutput<T extends NullableGeneric> =
  */
 export class NullableCodec<T extends NullableGeneric>
   extends Codec<NullableOutput<T>, NullableInput<T>> {
-  private readonly codec: T;
+  public readonly inner: T;
 
   /**
    * `{ kind: "fixed", size: 1 + inner.stride.size }` when the inner codec is
    * fixed-size; `{ kind: "variable" }` otherwise.
    */
-  public readonly stride: T["stride"] extends Stride<"fixed">
-    ? Stride<"fixed">
+  public readonly stride: T["stride"] extends Stride<"fixed"> ? Stride<"fixed">
     : Stride<"variable">;
 
   /**
-   * @param codec - The inner codec used to encode/decode the present value.
+   * @param inner - The inner codec used to encode/decode the present value.
    */
-  constructor(codec: T) {
+  constructor(inner: T) {
     super();
-    this.codec = codec;
+    this.inner = inner;
     this.stride = (
-      codec.stride.kind === "fixed"
-        ? { kind: "fixed", size: 1 + codec.stride.size }
+      inner.stride.kind === "fixed"
+        ? { kind: "fixed", size: 1 + inner.stride.size }
         : { kind: "variable" }
     ) as typeof this.stride;
   }
@@ -95,7 +93,7 @@ export class NullableCodec<T extends NullableGeneric>
       result.fill(0, 0, size);
       return result;
     } else {
-      const encoded = this.codec.encode(value, target?.subarray(1));
+      const encoded = this.inner.encode(value, target?.subarray(1));
       const totalLen = 1 + encoded.length;
       const result = target ?? new Uint8Array(totalLen);
       result[0] = 1;
@@ -118,7 +116,7 @@ export class NullableCodec<T extends NullableGeneric>
       const size = this.stride.kind === "fixed" ? this.stride.size : 1;
       return [null, size];
     } else {
-      const [value, size] = this.codec.decode(data.subarray(1));
+      const [value, size] = this.inner.decode(data.subarray(1));
       return [value, 1 + size];
     }
   }
@@ -144,7 +142,6 @@ export type TupleInput<T extends TupleGeneric> = {
 export type TupleOutput<T extends TupleGeneric> = {
   -readonly [I in keyof T]: Codec.InferOutput<T[I]>;
 };
-
 
 /**
  * Codec for fixed-count tuples of potentially heterogeneous types.
@@ -198,7 +195,10 @@ export class TupleCodec<const T extends TupleGeneric>
       }
       size += codec.stride.size;
     }
-    this.stride = (variable ? { kind: "variable" } : { kind: "fixed", size }) as typeof this.stride;
+    this.stride =
+      (variable
+        ? { kind: "variable" }
+        : { kind: "fixed", size }) as typeof this.stride;
   }
 
   /**
@@ -308,7 +308,6 @@ export type StructOutput<T extends StructGeneric> =
     >;
   };
 
-
 /**
  * Transforms a `StructGeneric` shape into its fully-optional equivalent:
  * required keys (`"field"`) become `"field?"`, while keys that are already
@@ -403,7 +402,10 @@ export class StructCodec<const T extends StructGeneric>
       }
       size += s.size;
     }
-    this.stride = (variable ? { kind: "variable" } : { kind: "fixed", size }) as typeof this.stride;
+    this.stride =
+      (variable
+        ? { kind: "variable" }
+        : { kind: "fixed", size }) as typeof this.stride;
   }
 
   /**
@@ -533,7 +535,6 @@ export type ArrayInput<T extends ArrayGeneric> = Codec.InferInput<T>[];
  * an array of the inner codec's output type.
  */
 export type ArrayOutput<T extends ArrayGeneric> = Codec.InferOutput<T>[];
-
 
 /**
  * Options for {@link ArrayCodec}.
@@ -678,7 +679,6 @@ export type EnumOutput<T extends EnumGeneric> = {
   };
 }[keyof T];
 
-
 /**
  * Options for {@link EnumCodec}.
  */
@@ -793,7 +793,9 @@ export class EnumCodec<const T extends EnumGeneric>
 // ── FixedEnum ─────────────────────────────────────────────────────────────────
 
 /** Constraint type for the variants record of a {@link FixedEnumCodec}: all variants must be fixed-size. */
-export type FixedEnumGeneric = { readonly [key: string]: Codec<any, any> & { stride: Stride<"fixed"> } };
+export type FixedEnumGeneric = {
+  readonly [key: string]: Codec<any, any> & { stride: Stride<"fixed"> };
+};
 
 /**
  * Options for {@link FixedEnumCodec}.
@@ -862,14 +864,17 @@ export class FixedEnumCodec<const T extends FixedEnumGeneric>
     super();
     this.variants = variants;
     this.keys = Object.keys(this.variants) as (keyof T)[];
-    this.indexer = options?.indexer ?? (new U8Codec() as Codec<number> & { stride: Stride<"fixed"> });
+    this.indexer = options?.indexer ??
+      (new U8Codec() as Codec<number> & { stride: Stride<"fixed"> });
 
     // Validate all variants are fixed-size (runtime guard for JS callers)
     for (const key of this.keys) {
       const codec = this.variants[key]!;
       if (codec.stride.kind !== "fixed") {
         throw new Error(
-          `FixedEnumCodec: variant "${String(key)}" must have a fixed-size codec`,
+          `FixedEnumCodec: variant "${
+            String(key)
+          }" must have a fixed-size codec`,
         );
       }
     }
@@ -911,7 +916,10 @@ export class FixedEnumCodec<const T extends FixedEnumGeneric>
     const result = target ?? new Uint8Array(this.stride.size);
     result.set(indexBytes, 0);
     // Write payload directly into the padded slot; remaining bytes stay zero
-    codec.encode(value.value as never, result.subarray(indexBytes.length) as Uint8Array<ArrayBuffer>);
+    codec.encode(
+      value.value as never,
+      result.subarray(indexBytes.length) as Uint8Array<ArrayBuffer>,
+    );
     return result;
   }
 
@@ -958,7 +966,6 @@ export type MappingOutput<T extends MappingGeneric> = Map<
   Codec.InferOutput<T[0]>,
   Codec.InferOutput<T[1]>
 >;
-
 
 /**
  * Options for {@link MappingCodec}.

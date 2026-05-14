@@ -44,6 +44,35 @@ export declare namespace Codec {
    * ```
    */
   export type InferOutput<T> = T extends Codec<infer O, infer I> ? O : never;
+
+  /**
+   * Compile-time guard that resolves to `T` only when `T` has a known,
+   * non-negative fixed `stride` (i.e. it is a fixed-size codec).
+   *
+   * Evaluates to `never` when:
+   * - `stride` is the widened `number` type (not a literal), or
+   * - `stride` is negative (variable-length codec).
+   *
+   * Used to reject variable-length codecs in positions that require a fixed
+   * byte size. Pass it as the parameter type so callers receive a `never`
+   * argument error when a variable-length codec is supplied.
+   *
+   * @template T - The codec type to check.
+   *
+   * @example
+   * ```ts
+   * import { Codec, U32, Str } from "@nomadshiba/codec";
+   *
+   * function requireFixed<T extends Codec<any>>(codec: Codec.FixedStrideGuard<T>) {}
+   *
+   * requireFixed(U32); // ok   — stride is 4
+   * requireFixed(Str); // error — stride is -1 (variable-length)
+   * ```
+   */
+  export type FixedStrideGuard<T extends Codec<any>> = number extends
+    T["stride"] ? never
+    : `${T["stride"]}` extends `-${any}` ? never
+    : T;
 }
 
 /**

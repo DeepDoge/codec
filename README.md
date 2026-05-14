@@ -517,7 +517,7 @@ Extend `Codec<O, I>` to implement your own.
 import { Codec, Stride, U64 } from "@nomadshiba/codec";
 
 class DateCodec extends Codec<Date, bigint> {
-  readonly stride: Stride = { kind: "fixed", size: 8 };
+  readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
 
   encode(
     ms: bigint,

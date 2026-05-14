@@ -69,29 +69,6 @@ export declare namespace Codec {
    * ```
    */
   export type InferOutput<T> = T extends Codec<infer O, infer I> ? O : never;
-
-  /**
-   * Compile-time guard that resolves to `T` only when `T` is a fixed-size
-   * codec (i.e. `T["stride"]` is assignable to `{ kind: "fixed" }`).
-   *
-   * Evaluates to `never` for variable-length codecs, causing a compile error
-   * at the call site when a variable-length codec is passed to a function that
-   * requires a fixed-size one.
-   *
-   * @template T - The codec type to check.
-   *
-   * @example
-   * ```ts
-   * import { Codec, U32, Str } from "@nomadshiba/codec";
-   *
-   * function requireFixed<T extends Codec<any>>(codec: Codec.FixedStrideGuard<T>) {}
-   *
-   * requireFixed(U32); // ok   — stride is { kind: "fixed", size: 4 }
-   * requireFixed(Str); // error — stride is { kind: "variable" }
-   * ```
-   */
-  export type FixedStrideGuard<T extends Codec<any>> = T["stride"] extends
-    { kind: "fixed" } ? T : never;
 }
 
 /**

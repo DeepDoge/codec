@@ -9,16 +9,15 @@ type _Stride =
  *   encodes to exactly `size` bytes.
  * - `Stride<"variable">` — `{ kind: "variable" }`: the encoded size depends on
  *   the value; the codec is self-delimiting (e.g. length-prefixed).
- * - `Stride` (no argument) — the full union of both variants.
  *
- * Use plain object literals to construct stride values:
+ * A kind argument is required — you must explicitly choose one:
  *
  * ```ts
- * readonly stride: Stride = { kind: "fixed", size: 4 };
- * readonly stride: Stride = { kind: "variable" };
+ * readonly stride: Stride<"fixed"> = { kind: "fixed", size: 4 };
+ * readonly stride: Stride<"variable"> = { kind: "variable" };
  * ```
  */
-export type Stride<K extends _Stride["kind"] = _Stride["kind"]> = Extract<
+export type Stride<K extends _Stride["kind"]> = Extract<
   _Stride,
   { kind: K }
 >;
@@ -91,7 +90,7 @@ export declare namespace Codec {
  *
  * // Custom codec: Date stored as a u64 millisecond timestamp
  * class DateCodec extends Codec<Date, bigint> {
- *   readonly stride: Stride = { kind: "fixed", size: 8 };
+ *   readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
  *
  *   encode(ms: bigint, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
  *     return U64.encode(ms, target);
@@ -114,7 +113,7 @@ export abstract class Codec<O extends I, I = O> {
    * Composite codecs (`TupleCodec`, `StructCodec`) derive their stride from
    * their elements: fixed when all elements are fixed, variable otherwise.
    */
-  public abstract readonly stride: Stride;
+  public abstract readonly stride: Stride<"fixed"> | Stride<"variable">;
 
   /**
    * Encode `value` to its binary representation.

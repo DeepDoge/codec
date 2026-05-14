@@ -5,9 +5,9 @@
 - [-] Rename `stride` to `size`.
 - [x] Rename `lengthCodec` to `sizeCodec` (`BytesCodec`) / keep `lengthCodec`
       (`StringCodec`) — names now fit each codec's semantics.
-- [ ] Rename `TupleCodec.codecs` to `TupleCodec.variantCodecs`.
-- [ ] Rename `ArrayCodec.codec` to `ArrayCodec.itemCodec`.
-- [ ] Remove "Codec" suffix from inner codecs.
+- [x] Rename `TupleCodec.codecs` to `TupleCodec.variantCodecs`.
+- [x] Rename `ArrayCodec.codec` to `ArrayCodec.itemCodec`.
+- [x] Remove "Codec" suffix from inner codecs.
 - [ ] Rename union back to enum.
 - [ ] Have alternatives for fixed sized enums. using the max size.
 - [x] Make `NullableCodec` add 1 byte to the size and if the inner is fixed stay

@@ -281,7 +281,7 @@ Deno.test("string - roundtrip", () => {
 });
 
 Deno.test("string - custom length codec (U32)", () => {
-  const stringU32 = new StringCodec({ lengthCodec: U32 });
+  const stringU32 = new StringCodec({ sizer: U32 });
   const [decoded] = stringU32.decode(stringU32.encode("hello"));
   assertEquals(decoded, "hello");
   // U32 length prefix is 4 bytes, VarInt would be 1 byte for "hello" (5)
@@ -322,7 +322,7 @@ Deno.test("bytes - fixed size error", () => {
 });
 
 Deno.test("bytes - custom size codec (U32)", () => {
-  const bytesU32 = new BytesCodec({ sizeCodec: U32 });
+  const bytesU32 = new BytesCodec({ sizer: U32 });
   const val = new Uint8Array([1, 2, 3]);
   const [decoded] = bytesU32.decode(bytesU32.encode(val));
   assertEquals(Array.from(decoded), Array.from(val));
@@ -577,7 +577,7 @@ Deno.test("Array - nested arrays", () => {
 });
 
 Deno.test("Array - custom count codec (U32)", () => {
-  const numsU32 = new ArrayCodec(U16, { countCodec: U32 });
+  const numsU32 = new ArrayCodec(U16, { counter: U32 });
   const val = [1, 513, 1000];
   const [decoded] = numsU32.decode(numsU32.encode(val));
   assertEquals(decoded, val);
@@ -645,7 +645,7 @@ Deno.test("Union - complex payloads", () => {
 Deno.test("Union - custom index codec (U32)", () => {
   const MyUnion = new UnionCodec(
     { A: U8, B: new StringCodec() },
-    { indexCodec: U32 },
+    { indexer: U32 },
   );
 
   const valA = { kind: "A", value: 5 } as const;
@@ -694,7 +694,7 @@ Deno.test("Mapping - complex types", () => {
 
 Deno.test("Mapping - custom count codec (U32)", () => {
   const DictU32 = new MappingCodec([new StringCodec(), U8], {
-    countCodec: U32,
+    counter: U32,
   });
   const val = new Map([["x", 1], ["y", 2]]);
   const [decoded] = DictU32.decode(DictU32.encode(val));

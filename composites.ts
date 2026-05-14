@@ -172,7 +172,7 @@ export class TupleCodec<const T extends TupleGeneric>
   /**
    * The element codecs in definition order.
    */
-  public readonly codecs: T;
+  public readonly variants: T;
 
   /**
    * `{ kind: "fixed", size: n }` when all elements have a fixed stride
@@ -184,14 +184,14 @@ export class TupleCodec<const T extends TupleGeneric>
     : Stride<"fixed">;
 
   /**
-   * @param codecs - Ordered array of element codecs.
+   * @param variants - Ordered array of element codecs.
    */
-  constructor(codecs: T) {
+  constructor(variants: T) {
     super();
-    this.codecs = codecs;
+    this.variants = variants;
     let size = 0;
     let variable = false;
-    for (const codec of codecs) {
+    for (const codec of variants) {
       if (codec.stride.kind === "variable") {
         variable = true;
         break;
@@ -213,8 +213,8 @@ export class TupleCodec<const T extends TupleGeneric>
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     const parts: Uint8Array<ArrayBuffer>[] = [];
-    for (let i = 0; i < this.codecs.length; i++) {
-      const codec = this.codecs[i]!;
+    for (let i = 0; i < this.variants.length; i++) {
+      const codec = this.variants[i]!;
       const part = codec.encode(value[i]!);
       parts.push(part);
     }
@@ -241,8 +241,8 @@ export class TupleCodec<const T extends TupleGeneric>
   public decode(data: Uint8Array): [TupleOutput<T>, number] {
     const result: unknown[] = [];
     let offset = 0;
-    for (let i = 0; i < this.codecs.length; i++) {
-      const codec = this.codecs[i]!;
+    for (let i = 0; i < this.variants.length; i++) {
+      const codec = this.variants[i]!;
       const [value, size] = codec.decode(data.subarray(offset));
       result[i] = value;
       offset += size;
@@ -543,14 +543,14 @@ export type ArrayOptions = {
    * Codec used to encode the element count prefix. Defaults to
    * {@link VarInt}.
    */
-  countCodec?: Codec<number>;
+  counter?: Codec<number>;
 };
 
 /**
  * Codec for variable-length arrays of a single element type.
  *
  * Wire format: `<count> <elem0> <elem1> …` where `<count>` is encoded by
- * `countCodec` (default: {@link VarInt}). Elements are concatenated in order;
+ * `counter` (default: {@link VarInt}). Elements are concatenated in order;
  * each element is self-delimiting.
  *
  * Always variable-length (`stride = -1`).
@@ -566,7 +566,7 @@ export type ArrayOptions = {
  * nums.encode([1, 513]); // [0x02, 0x00, 0x01, 0x02, 0x01]
  *
  * // Custom count codec
- * const numsU32 = new ArrayCodec(U16, { countCodec: U32 });
+ * const numsU32 = new ArrayCodec(U16, { counter: U32 });
  * ```
  */
 export class ArrayCodec<T extends ArrayGeneric>
@@ -577,20 +577,20 @@ export class ArrayCodec<T extends ArrayGeneric>
    * The codec used to encode the element count prefix.
    * Defaults to {@link VarInt}.
    */
-  public readonly countCodec: Codec<number>;
+  public readonly counter: Codec<number>;
   /**
    * The codec used to encode/decode each individual array element.
    */
-  public readonly codec: T;
+  public readonly item: T;
 
   /**
-   * @param codec - The element codec.
+   * @param item - The element codec.
    * @param options - Optional configuration for the count prefix codec.
    */
-  constructor(codec: T, options?: ArrayOptions) {
+  constructor(item: T, options?: ArrayOptions) {
     super();
-    this.codec = codec;
-    this.countCodec = options?.countCodec ?? VarInt;
+    this.item = item;
+    this.counter = options?.counter ?? VarInt;
   }
 
   /**
@@ -607,7 +607,7 @@ export class ArrayCodec<T extends ArrayGeneric>
     const parts: Uint8Array<ArrayBuffer>[] = [];
 
     for (const item of value) {
-      const part = this.codec.encode(item);
+      const part = this.item.encode(item);
       parts.push(part);
     }
 
@@ -622,7 +622,7 @@ export class ArrayCodec<T extends ArrayGeneric>
       offset += part.length;
     }
 
-    const countPrefix = this.countCodec.encode(value.length);
+    const countPrefix = this.counter.encode(value.length);
     const totalLen = countPrefix.length + elementsData.length;
     const result = target ?? new Uint8Array(totalLen);
     result.set(countPrefix, 0);
@@ -637,12 +637,12 @@ export class ArrayCodec<T extends ArrayGeneric>
    * @returns `[elements, totalBytesConsumed]`.
    */
   public decode(data: Uint8Array): [ArrayOutput<T>, number] {
-    const [count, bytesRead] = this.countCodec.decode(data);
+    const [count, bytesRead] = this.counter.decode(data);
     const result: ArrayOutput<T> = [];
     let offset = bytesRead;
 
     for (let i = 0; i < count; i++) {
-      const [value, size] = this.codec.decode(data.subarray(offset));
+      const [value, size] = this.item.decode(data.subarray(offset));
       result.push(value);
       offset += size;
     }
@@ -689,7 +689,7 @@ export type UnionOptions = {
    *
    * Use a wider codec (e.g. `U16`) if the union has more than 256 variants.
    */
-  indexCodec?: Codec<number>;
+  indexer?: Codec<number>;
 };
 
 /**
@@ -699,7 +699,7 @@ export type UnionOptions = {
  * **Adding, removing, or renaming variants changes existing indices** and
  * breaks compatibility with previously encoded data.
  *
- * Wire format: `<index> <payload>` where `<index>` is encoded by `indexCodec`
+ * Wire format: `<index> <payload>` where `<index>` is encoded by `indexer`
  * (default: `U8`). Decoded values are `{ kind, value }` objects.
  *
  * @template T - Record mapping variant names to codecs.
@@ -731,7 +731,7 @@ export class UnionCodec<const T extends UnionGeneric>
    * The codec used to encode the variant index. Defaults to `U8`.
    * Accessible for runtime inspection or sub-classing.
    */
-  public readonly indexCodec: Codec<number>;
+  public readonly indexer: Codec<number>;
   private readonly keys: (keyof T)[];
 
   /**
@@ -742,7 +742,7 @@ export class UnionCodec<const T extends UnionGeneric>
     super();
     this.variants = variants;
     this.keys = Object.keys(this.variants).sort() as (keyof T)[];
-    this.indexCodec = options?.indexCodec ?? new U8Codec();
+    this.indexer = options?.indexer ?? new U8Codec();
   }
 
   /**
@@ -763,7 +763,7 @@ export class UnionCodec<const T extends UnionGeneric>
     }
     const codec = this.variants[value.kind]!;
     const encodedValue = codec.encode(value.value as never);
-    const indexBytes = this.indexCodec.encode(index);
+    const indexBytes = this.indexer.encode(index);
     const totalLen = indexBytes.length + encodedValue.length;
     const result = target ?? new Uint8Array(totalLen);
     result.set(indexBytes, 0);
@@ -779,7 +779,7 @@ export class UnionCodec<const T extends UnionGeneric>
    * @throws {Error} If the decoded index is out of range.
    */
   public decode(data: Uint8Array): [UnionOutput<T>, number] {
-    const [index, indexSize] = this.indexCodec.decode(data);
+    const [index, indexSize] = this.indexer.decode(data);
     if (index >= this.keys.length) {
       throw new Error(`Invalid union index: ${index}`);
     }
@@ -821,7 +821,7 @@ export type MappingOptions = {
   /**
    * Codec used to encode the entry count. Defaults to {@link VarInt}.
    */
-  countCodec?: Codec<number>;
+  counter?: Codec<number>;
 };
 
 /**
@@ -848,7 +848,7 @@ export type MappingOptions = {
  * Dict.decode(b); // [Map { "x" => 1, "y" => 2 }, size]
  *
  * // Custom count codec
- * const DictU32 = new MappingCodec([new StringCodec(), U8], { countCodec: U32 });
+ * const DictU32 = new MappingCodec([new StringCodec(), U8], { counter: U32 });
  * ```
  */
 export class MappingCodec<const T extends MappingGeneric>
@@ -864,7 +864,7 @@ export class MappingCodec<const T extends MappingGeneric>
    * @returns The `[keyCodec, valueCodec]` tuple.
    */
   public get entryCodec(): T {
-    return this.#entriesCodec.codec.codecs;
+    return this.#entriesCodec.item.variants;
   }
 
   /**

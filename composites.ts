@@ -790,6 +790,152 @@ export class EnumCodec<const T extends EnumGeneric>
   }
 }
 
+// ── FixedEnum ─────────────────────────────────────────────────────────────────
+
+/** Constraint type for the variants record of a {@link FixedEnumCodec}: all variants must be fixed-size. */
+export type FixedEnumGeneric = { readonly [key: string]: Codec<any, any> & { stride: Stride<"fixed"> } };
+
+/**
+ * Options for {@link FixedEnumCodec}.
+ */
+export type FixedEnumOptions = {
+  /**
+   * Codec used to encode the variant index. Must be fixed-size. Defaults to `U8`.
+   *
+   * Use a wider codec (e.g. `U16`) if the union has more than 256 variants.
+   */
+  indexer?: Codec<number> & { stride: Stride<"fixed"> };
+};
+
+/**
+ * A fixed-size variant of {@link EnumCodec}.
+ *
+ * All variant codecs **must** be fixed-size. The encoded size is constant:
+ * `indexer.stride.size + max(variant.stride.size)`. Shorter variant payloads
+ * are zero-padded to the maximum variant size on encode and only the required
+ * bytes are consumed from that slot on decode.
+ *
+ * Wire format: `<index> <payload padded to maxVariantSize>`
+ *
+ * @template T - Record mapping variant names to fixed-size codecs.
+ *
+ * @example
+ * ```ts
+ * import { FixedEnumCodec, U8, U16 } from "@nomadshiba/codec";
+ *
+ * const Event = new FixedEnumCodec({ Click: U8, Scroll: U16 });
+ * // stride = { kind: "fixed", size: 1 (index) + 2 (max payload) } = 3
+ *
+ * Event.encode({ kind: "Click", value: 5 });   // [0x00, 0x05, 0x00] (padded)
+ * Event.encode({ kind: "Scroll", value: 300 }); // [0x01, 0x01, 0x2c]
+ * const [e] = Event.decode(bytes); // { kind: "Click", value: 5 }
+ * ```
+ */
+export class FixedEnumCodec<const T extends FixedEnumGeneric>
+  extends Codec<EnumOutput<T>, EnumInput<T>> {
+  /** `{ kind: "fixed", size: indexer.stride.size + maxVariantSize }` */
+  public readonly stride: Stride<"fixed">;
+
+  /**
+   * The variants record passed to the constructor. Useful for inspecting
+   * variant codecs at runtime.
+   */
+  public readonly variants: T;
+
+  /**
+   * The fixed-size codec used to encode the variant index. Defaults to `U8`.
+   */
+  public readonly indexer: Codec<number> & { stride: Stride<"fixed"> };
+
+  /** The size of the largest variant payload in bytes. */
+  public readonly maxVariantSize: number;
+
+  private readonly keys: (keyof T)[];
+
+  /**
+   * @param variants - Record mapping variant names to fixed-size codecs.
+   * @param options - Optional configuration for the index codec.
+   * @throws {Error} If any variant codec is not fixed-size.
+   * @throws {Error} If the indexer codec is not fixed-size.
+   */
+  constructor(variants: T, options?: FixedEnumOptions) {
+    super();
+    this.variants = variants;
+    this.keys = Object.keys(this.variants) as (keyof T)[];
+    this.indexer = options?.indexer ?? (new U8Codec() as Codec<number> & { stride: Stride<"fixed"> });
+
+    // Validate all variants are fixed-size (runtime guard for JS callers)
+    for (const key of this.keys) {
+      const codec = this.variants[key]!;
+      if (codec.stride.kind !== "fixed") {
+        throw new Error(
+          `FixedEnumCodec: variant "${String(key)}" must have a fixed-size codec`,
+        );
+      }
+    }
+
+    if (this.indexer.stride.kind !== "fixed") {
+      throw new Error("FixedEnumCodec: indexer must have a fixed-size codec");
+    }
+
+    this.maxVariantSize = this.keys.reduce<number>((max, key) => {
+      const s = (this.variants[key as string]!.stride as Stride<"fixed">).size;
+      return s > max ? s : max;
+    }, 0);
+
+    this.stride = {
+      kind: "fixed",
+      size: this.indexer.stride.size + this.maxVariantSize,
+    };
+  }
+
+  /**
+   * Encode a union variant. The payload is written into a zero-padded slot of
+   * `maxVariantSize` bytes so every encoded value has the same total length.
+   *
+   * @param value - `{ kind, value }` object identifying the variant and its payload.
+   * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
+   * @returns Fixed-size `Uint8Array` with index bytes followed by the padded payload.
+   * @throws {Error} If `value.kind` is not a known variant name.
+   */
+  public encode(
+    value: EnumInput<T>,
+    target?: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> {
+    const index = this.keys.indexOf(value.kind);
+    if (index === -1) {
+      throw new Error(`Invalid union variant: ${String(value.kind)}`);
+    }
+    const codec = this.variants[value.kind]!;
+    const indexBytes = this.indexer.encode(index);
+    const result = target ?? new Uint8Array(this.stride.size);
+    result.set(indexBytes, 0);
+    // Write payload directly into the padded slot; remaining bytes stay zero
+    codec.encode(value.value as never, result.subarray(indexBytes.length) as Uint8Array<ArrayBuffer>);
+    return result;
+  }
+
+  /**
+   * Decode a union variant. Only `stride.size` bytes are consumed regardless
+   * of the variant's actual payload size.
+   *
+   * @param data - Binary data starting with a variant index.
+   * @returns `[{ kind, value }, stride.size]`.
+   * @throws {Error} If the decoded index is out of range.
+   */
+  public decode(data: Uint8Array): [EnumOutput<T>, number] {
+    const indexSize = this.indexer.stride.size;
+    const [index] = this.indexer.decode(data);
+    if (index >= this.keys.length) {
+      throw new Error(`Invalid union index: ${index}`);
+    }
+    const key = this.keys[index]!;
+    const codec = this.variants[key]!;
+    const [value] = codec.decode(data.subarray(indexSize));
+    return [{ kind: key, value } as never, this.stride.size];
+  }
+}
+
 // ── Mapping ───────────────────────────────────────────────────────────────────
 
 /** Constraint type for the `[keyCodec, valueCodec]` pair of a {@link MappingCodec}. */

@@ -9,7 +9,7 @@
 - [x] Rename `ArrayCodec.codec` to `ArrayCodec.itemCodec`.
 - [x] Remove "Codec" suffix from inner codecs.
 - [x] Rename union back to enum.
-- [ ] Have alternatives for fixed sized enums. using the max size.
+- [x] Have alternatives for fixed sized enums. using the max size.
 - [x] Make `NullableCodec` add 1 byte to the size and if the inner is fixed stay
       fixed.
 - [x] Don't sort enum variants by key.

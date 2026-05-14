@@ -1,5 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
-
 import { Codec } from "./codec.ts";
 import { U8Codec } from "./primitives.ts";
 import { VarInt } from "./varint.ts";
@@ -64,6 +62,8 @@ export class NullableCodec<T extends NullableGeneric>
   }
 
   /**
+   * Encode a nullable value as a presence-byte-prefixed binary sequence.
+   *
    * @param value - The value to encode, or `null`.
    * @param target - Optional pre-allocated buffer. When provided and `value`
    *   is non-null, `target.subarray(1)` is passed to the inner codec as its
@@ -94,6 +94,8 @@ export class NullableCodec<T extends NullableGeneric>
   }
 
   /**
+   * Decode a nullable value from a presence-byte-prefixed binary sequence.
+   *
    * @param data - Binary data starting with a presence byte.
    * @returns `[null, 1]` or `[value, 1 + innerBytesConsumed]`.
    */
@@ -166,6 +168,8 @@ export class OptionalCodec<T extends OptionalGeneric>
   }
 
   /**
+   * Encode an optional value as a presence-byte-prefixed binary sequence.
+   *
    * @param value - The value to encode, or `undefined`.
    * @param target - Optional pre-allocated buffer. When provided and `value`
    *   is non-undefined, `target.subarray(1)` is passed to the inner codec as
@@ -196,6 +200,8 @@ export class OptionalCodec<T extends OptionalGeneric>
   }
 
   /**
+   * Decode an optional value from a presence-byte-prefixed binary sequence.
+   *
    * @param data - Binary data starting with a presence byte.
    * @returns `[undefined, 1]` or `[value, 1 + innerBytesConsumed]`.
    */
@@ -284,6 +290,8 @@ export class TupleCodec<const T extends TupleGeneric>
   }
 
   /**
+   * Encode a tuple of values by concatenating each element's encoding in order.
+   *
    * @param value - Tuple of values, one per codec in order.
    * @param target - Optional pre-allocated buffer.
    * @returns `Uint8Array<ArrayBuffer>` of concatenated element encodings.
@@ -313,6 +321,8 @@ export class TupleCodec<const T extends TupleGeneric>
   }
 
   /**
+   * Decode a tuple by reading each element in definition order.
+   *
    * @param data - Binary data. Elements are read in definition order.
    * @returns `[tuple, totalBytesConsumed]`.
    */
@@ -482,6 +492,8 @@ export class StructCodec<const T extends StructGeneric>
   }
 
   /**
+   * Encode a struct value by concatenating each field's encoding in definition order.
+   *
    * @param value - Object with fields matching the codec shape. Optional
    *   fields (declared with `"?"`) may be omitted or set to `undefined`.
    * @param target - Optional pre-allocated buffer.
@@ -525,6 +537,8 @@ export class StructCodec<const T extends StructGeneric>
   }
 
   /**
+   * Decode a struct by reading each field in definition order.
+   *
    * @param data - Binary data.
    * @returns `[object, bytesConsumed]`. Optional fields absent in the wire
    *   data are omitted from the returned object (i.e. not set to `undefined`
@@ -646,7 +660,14 @@ export class ArrayCodec<T extends ArrayGeneric>
   extends Codec<ArrayOutput<T>, ArrayInput<T>> {
   /** Always `-1`. */
   public readonly stride = -1;
+  /**
+   * The codec used to encode the element count prefix.
+   * Defaults to {@link VarInt}.
+   */
   public readonly countCodec: Codec<number>;
+  /**
+   * The codec used to encode/decode each individual array element.
+   */
   public readonly codec: T;
 
   /**
@@ -660,6 +681,8 @@ export class ArrayCodec<T extends ArrayGeneric>
   }
 
   /**
+   * Encode an array by writing a count prefix followed by each element.
+   *
    * @param value - Array of elements to encode.
    * @param target - Optional pre-allocated buffer.
    * @returns `Uint8Array<ArrayBuffer>` with count prefix followed by elements.
@@ -695,6 +718,8 @@ export class ArrayCodec<T extends ArrayGeneric>
   }
 
   /**
+   * Decode an array by reading the count prefix then decoding that many elements.
+   *
    * @param data - Binary data starting with a count prefix.
    * @returns `[elements, totalBytesConsumed]`.
    */
@@ -791,6 +816,10 @@ export class UnionCodec<const T extends UnionGeneric>
    */
   public readonly variants: T;
 
+  /**
+   * The codec used to encode the variant index. Defaults to `U8`.
+   * Accessible for runtime inspection or sub-classing.
+   */
   public readonly indexCodec: Codec<number>;
   private readonly keys: (keyof T)[];
 
@@ -806,6 +835,8 @@ export class UnionCodec<const T extends UnionGeneric>
   }
 
   /**
+   * Encode a union variant by writing its alphabetical index followed by the payload.
+   *
    * @param value - `{ kind, value }` object identifying the variant and its payload.
    * @param target - Optional pre-allocated buffer.
    * @returns `Uint8Array<ArrayBuffer>` with the variant index followed by the payload.
@@ -830,6 +861,8 @@ export class UnionCodec<const T extends UnionGeneric>
   }
 
   /**
+   * Decode a union variant by reading the index then dispatching to the appropriate codec.
+   *
    * @param data - Binary data starting with a variant index.
    * @returns `[{ kind, value }, bytesConsumed]`.
    * @throws {Error} If the decoded index is out of range.
@@ -915,6 +948,12 @@ export class MappingCodec<const T extends MappingGeneric>
   public readonly stride = -1;
   readonly #entriesCodec: ArrayCodec<TupleCodec<T>>;
 
+  /**
+   * The `[keyCodec, valueCodec]` tuple passed to the constructor.
+   * Useful for inspecting or reusing the entry codecs at runtime.
+   *
+   * @returns The `[keyCodec, valueCodec]` tuple.
+   */
   public get entryCodec(): T {
     return this.#entriesCodec.codec.codecs;
   }
@@ -929,6 +968,8 @@ export class MappingCodec<const T extends MappingGeneric>
   }
 
   /**
+   * Encode a `Map` as a count-prefixed sequence of `[key, value]` entry pairs.
+   *
    * @param value - The `Map` to encode.
    * @param target - Optional pre-allocated buffer.
    * @returns `Uint8Array<ArrayBuffer>`.
@@ -937,10 +978,16 @@ export class MappingCodec<const T extends MappingGeneric>
     value: MappingInput<T>,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
-    return this.#entriesCodec.encode(Array.from(value.entries()) as any, target);
+    return this.#entriesCodec.encode(
+      Array.from(value.entries()) as any,
+      target,
+    );
   }
 
   /**
+   * Decode binary data into a `Map` by reading a count prefix then decoding that
+   * many `[key, value]` entry pairs.
+   *
    * @param data - Binary data starting with a count prefix.
    * @returns `[Map, bytesConsumed]`.
    */

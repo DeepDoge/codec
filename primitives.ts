@@ -33,6 +33,8 @@ export class I8Codec extends Codec<number> {
   public readonly stride = 1;
 
   /**
+   * Encode a signed 8-bit integer to its binary representation.
+   *
    * @param value - A signed 8-bit integer (−128…127).
    * @param target - Optional pre-allocated 1-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` containing the encoded byte.
@@ -48,6 +50,8 @@ export class I8Codec extends Codec<number> {
   }
 
   /**
+   * Decode a signed 8-bit integer from binary data.
+   *
    * @param data - Binary data (at least 1 byte).
    * @returns `[value, 1]`.
    */
@@ -82,6 +86,8 @@ export class U8Codec extends Codec<number> {
   public readonly stride = 1;
 
   /**
+   * Encode an unsigned 8-bit integer to its binary representation.
+   *
    * @param value - An unsigned 8-bit integer (0…255).
    * @param target - Optional pre-allocated 1-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` containing the encoded byte.
@@ -97,6 +103,8 @@ export class U8Codec extends Codec<number> {
   }
 
   /**
+   * Decode an unsigned 8-bit integer from binary data.
+   *
    * @param data - Binary data (at least 1 byte).
    * @returns `[value, 1]`.
    */
@@ -110,7 +118,7 @@ export class U8Codec extends Codec<number> {
   }
 }
 
-/** Pre-built singleton instance of {@link U8Codec} (big-endian). */
+/** Pre-built singleton instance of {@link U8Codec}. */
 export const U8: U8Codec = new U8Codec();
 
 /**
@@ -141,6 +149,8 @@ export class I16Codec extends Codec<number> {
   }
 
   /**
+   * Encode a signed 16-bit integer to its binary representation.
+   *
    * @param value - A signed 16-bit integer.
    * @param target - Optional pre-allocated 2-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` of length 2.
@@ -156,6 +166,8 @@ export class I16Codec extends Codec<number> {
   }
 
   /**
+   * Decode a signed 16-bit integer from binary data.
+   *
    * @param data - Binary data (at least 2 bytes).
    * @returns `[value, 2]`.
    */
@@ -200,6 +212,8 @@ export class U16Codec extends Codec<number> {
   }
 
   /**
+   * Encode an unsigned 16-bit integer to its binary representation.
+   *
    * @param value - An unsigned 16-bit integer.
    * @param target - Optional pre-allocated 2-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` of length 2.
@@ -215,6 +229,8 @@ export class U16Codec extends Codec<number> {
   }
 
   /**
+   * Decode an unsigned 16-bit integer from binary data.
+   *
    * @param data - Binary data (at least 2 bytes).
    * @returns `[value, 2]`.
    */
@@ -259,6 +275,8 @@ export class I32Codec extends Codec<number> {
   }
 
   /**
+   * Encode a signed 32-bit integer to its binary representation.
+   *
    * @param value - A signed 32-bit integer.
    * @param target - Optional pre-allocated 4-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` of length 4.
@@ -274,6 +292,8 @@ export class I32Codec extends Codec<number> {
   }
 
   /**
+   * Decode a signed 32-bit integer from binary data.
+   *
    * @param data - Binary data (at least 4 bytes).
    * @returns `[value, 4]`.
    */
@@ -318,6 +338,8 @@ export class U32Codec extends Codec<number> {
   }
 
   /**
+   * Encode an unsigned 32-bit integer to its binary representation.
+   *
    * @param value - An unsigned 32-bit integer.
    * @param target - Optional pre-allocated 4-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` of length 4.
@@ -333,6 +355,8 @@ export class U32Codec extends Codec<number> {
   }
 
   /**
+   * Decode an unsigned 32-bit integer from binary data.
+   *
    * @param data - Binary data (at least 4 bytes).
    * @returns `[value, 4]`.
    */
@@ -378,6 +402,8 @@ export class I64Codec extends Codec<bigint> {
   }
 
   /**
+   * Encode a signed 64-bit integer to its binary representation.
+   *
    * @param value - A signed 64-bit integer as `bigint`.
    * @param target - Optional pre-allocated 8-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` of length 8.
@@ -393,6 +419,8 @@ export class I64Codec extends Codec<bigint> {
   }
 
   /**
+   * Decode a signed 64-bit integer from binary data.
+   *
    * @param data - Binary data (at least 8 bytes).
    * @returns `[value, 8]`.
    */
@@ -438,6 +466,8 @@ export class U64Codec extends Codec<bigint> {
   }
 
   /**
+   * Encode an unsigned 64-bit integer to its binary representation.
+   *
    * @param value - An unsigned 64-bit integer as `bigint`.
    * @param target - Optional pre-allocated 8-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` of length 8.
@@ -453,6 +483,8 @@ export class U64Codec extends Codec<bigint> {
   }
 
   /**
+   * Decode an unsigned 64-bit integer from binary data.
+   *
    * @param data - Binary data (at least 8 bytes).
    * @returns `[value, 8]`.
    */
@@ -502,6 +534,8 @@ export class F32Codec extends Codec<number> {
   }
 
   /**
+   * Encode a JavaScript number as a 32-bit IEEE 754 float.
+   *
    * @param value - A number, encoded as a 32-bit float (precision is reduced).
    * @param target - Optional pre-allocated 4-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` of length 4.
@@ -517,6 +551,8 @@ export class F32Codec extends Codec<number> {
   }
 
   /**
+   * Decode a 32-bit IEEE 754 float from binary data.
+   *
    * @param data - Binary data (at least 4 bytes).
    * @returns `[value, 4]` where `value` is a 32-bit float promoted to `number`.
    */
@@ -562,6 +598,8 @@ export class F64Codec extends Codec<number> {
   }
 
   /**
+   * Encode a JavaScript number as a 64-bit IEEE 754 float.
+   *
    * @param value - A JavaScript `number` (64-bit float).
    * @param target - Optional pre-allocated 8-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` of length 8.
@@ -577,6 +615,8 @@ export class F64Codec extends Codec<number> {
   }
 
   /**
+   * Decode a 64-bit IEEE 754 float from binary data.
+   *
    * @param data - Binary data (at least 8 bytes).
    * @returns `[value, 8]`.
    */
@@ -613,6 +653,8 @@ export class BoolCodec extends Codec<boolean> {
   public readonly stride = 1;
 
   /**
+   * Encode a boolean value as a single byte (`0x01` for `true`, `0x00` for `false`).
+   *
    * @param value - A boolean value.
    * @param target - Optional pre-allocated 1-byte buffer.
    * @returns `Uint8Array<ArrayBuffer>` containing `0x00` or `0x01`.
@@ -627,6 +669,8 @@ export class BoolCodec extends Codec<boolean> {
   }
 
   /**
+   * Decode a boolean from binary data. Any non-zero byte decodes as `true`.
+   *
    * @param data - Binary data (at least 1 byte).
    * @returns `[value, 1]` where any non-zero byte decodes as `true`.
    */

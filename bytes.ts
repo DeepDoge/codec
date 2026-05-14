@@ -43,6 +43,10 @@ export type StringOptions = {
 export class StringCodec extends Codec<string> {
   /** Always `-1`; strings are variable-length. */
   public readonly stride = -1;
+  /**
+   * The codec used to encode the byte-length prefix that precedes the UTF-8
+   * payload. Defaults to {@link VarInt}.
+   */
   public readonly lengthCodec: Codec<number>;
   readonly #encoder = new TextEncoder();
   readonly #decoder = new TextDecoder();
@@ -57,6 +61,8 @@ export class StringCodec extends Codec<string> {
   }
 
   /**
+   * Encode a string to a length-prefixed UTF-8 byte sequence.
+   *
    * @param value - The string to encode as UTF-8.
    * @param target - Optional pre-allocated buffer (must be large enough).
    * @returns `Uint8Array<ArrayBuffer>` containing the length prefix followed
@@ -77,6 +83,8 @@ export class StringCodec extends Codec<string> {
   }
 
   /**
+   * Decode a length-prefixed UTF-8 string from binary data.
+   *
    * @param data - Binary data starting with a length-prefixed UTF-8 string.
    * @returns `[string, bytesConsumed]`.
    */
@@ -154,6 +162,10 @@ export class BytesCodec extends Codec<Uint8Array> {
    * variable-length mode.
    */
   public readonly stride: number;
+  /**
+   * The codec used to encode the byte-length prefix in variable-length mode.
+   * Not used in fixed-length mode (`size >= 0`). Defaults to {@link VarInt}.
+   */
   public readonly lengthCodec: Codec<number>;
 
   /**

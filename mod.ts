@@ -7,8 +7,8 @@
  * - `decode(data)` — deserialise and return `[value, bytesConsumed]`.
  * - `stride` — a `Stride` discriminated union: `{ kind: "fixed"; size: number }`
  *   for fixed-size codecs, or `{ kind: "variable" }` for variable-size codecs.
-
- *   exported from this module) to construct or compare stride values.
+ *   Use plain object literals exported from this module to construct or compare
+ *   stride values.
  *
  * Primitives default to big-endian (network byte order). Little-endian
  * singletons (`U16LE`, `I32LE`, etc.) are available for x86/Bitcoin use cases.

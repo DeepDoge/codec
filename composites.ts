@@ -150,8 +150,9 @@ export type TupleOutput<T extends TupleGeneric> = {
  * is self-delimiting: fixed-size elements use their `stride`, variable-size
  * elements encode their own size.
  *
- * `stride` is the sum of all element strides when all are fixed; `-1` if any
- * element is variable.
+ * `stride` is `{ kind: "fixed", size: n }` (sum of all element strides) when
+ * all elements are fixed-size; `{ kind: "variable" }` if any element is
+ * variable.
  *
  * @template T - Readonly array of element codec types.
  *
@@ -458,7 +459,7 @@ export type PartialShape<T extends StructGeneric> = {
  * with previously encoded data.
  *
  * `stride` follows the same rules as `TupleCodec`. Optional fields always
- * contribute `-1` (variable-length) due to the presence byte.
+ * contribute `{ kind: "variable" }` due to the presence byte.
  *
  * @template T - Record mapping field names to codecs. Append `"?"` to a key
  *   to mark that field as optional.
@@ -839,7 +840,7 @@ export type ArrayOptions = {
  * `counter` (default: {@link VarInt}). Elements are concatenated in order;
  * each element is self-delimiting.
  *
- * Always variable-length (`stride = -1`).
+ * Always variable-length (`stride = { kind: "variable" }`).
  *
  * @template T - Element codec type.
  *
@@ -1272,7 +1273,7 @@ export type MappingOptions = {
  * <count> <key0> <value0> <key1> <value1> …
  * ```
  *
- * Always variable-length (`stride = -1`).
+ * Always variable-length (`stride = { kind: "variable" }`).
  *
  * @template T - Readonly tuple `[keyCodec, valueCodec]`.
  *

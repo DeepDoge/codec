@@ -22,7 +22,7 @@ export type StringOptions = {
  * the UTF-8 encoding (not the character count), encoded with the configured
  * `sizer` (default: {@link VarInt}).
  *
- * Always variable-length (`stride = -1`).
+ * Always variable-length (`stride = { kind: "variable" }`).
  *
  * @example
  * ```ts

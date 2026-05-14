@@ -5,7 +5,10 @@
  * - `encode(value, target?)` — serialise a value to a `Uint8Array<ArrayBuffer>`.
  *   Pass an optional `target` buffer to avoid allocation.
  * - `decode(data)` — deserialise and return `[value, bytesConsumed]`.
- * - `stride` — `>= 0` for fixed-size types, `< 0` for variable-size types.
+ * - `stride` — a `Stride` discriminated union: `{ kind: "fixed"; size: number }`
+ *   for fixed-size codecs, or `{ kind: "variable" }` for variable-size codecs.
+
+ *   exported from this module) to construct or compare stride values.
  *
  * Primitives default to big-endian (network byte order). Little-endian
  * singletons (`U16LE`, `I32LE`, etc.) are available for x86/Bitcoin use cases.

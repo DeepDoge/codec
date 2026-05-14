@@ -1,3 +1,28 @@
+type _Stride =
+  | { readonly kind: "fixed"; readonly size: number }
+  | { readonly kind: "variable" };
+
+/**
+ * Describes the byte-size behaviour of a codec.
+ *
+ * - `Stride<"fixed">` — `{ kind: "fixed"; size: number }`: the codec always
+ *   encodes to exactly `size` bytes.
+ * - `Stride<"variable">` — `{ kind: "variable" }`: the encoded size depends on
+ *   the value; the codec is self-delimiting (e.g. length-prefixed).
+ * - `Stride` (no argument) — the full union of both variants.
+ *
+ * Use plain object literals to construct stride values:
+ *
+ * ```ts
+ * readonly stride: Stride = { kind: "fixed", size: 4 };
+ * readonly stride: Stride = { kind: "variable" };
+ * ```
+ */
+export type Stride<K extends _Stride["kind"] = _Stride["kind"]> = Extract<
+  _Stride,
+  { kind: K }
+>;
+
 /**
  * Type inference helper for codecs.
  *
@@ -46,16 +71,12 @@ export declare namespace Codec {
   export type InferOutput<T> = T extends Codec<infer O, infer I> ? O : never;
 
   /**
-   * Compile-time guard that resolves to `T` only when `T` has a known,
-   * non-negative fixed `stride` (i.e. it is a fixed-size codec).
+   * Compile-time guard that resolves to `T` only when `T` is a fixed-size
+   * codec (i.e. `T["stride"]` is assignable to `{ kind: "fixed" }`).
    *
-   * Evaluates to `never` when:
-   * - `stride` is the widened `number` type (not a literal), or
-   * - `stride` is negative (variable-length codec).
-   *
-   * Used to reject variable-length codecs in positions that require a fixed
-   * byte size. Pass it as the parameter type so callers receive a `never`
-   * argument error when a variable-length codec is supplied.
+   * Evaluates to `never` for variable-length codecs, causing a compile error
+   * at the call site when a variable-length codec is passed to a function that
+   * requires a fixed-size one.
    *
    * @template T - The codec type to check.
    *
@@ -65,14 +86,12 @@ export declare namespace Codec {
    *
    * function requireFixed<T extends Codec<any>>(codec: Codec.FixedStrideGuard<T>) {}
    *
-   * requireFixed(U32); // ok   — stride is 4
-   * requireFixed(Str); // error — stride is -1 (variable-length)
+   * requireFixed(U32); // ok   — stride is { kind: "fixed", size: 4 }
+   * requireFixed(Str); // error — stride is { kind: "variable" }
    * ```
    */
-  export type FixedStrideGuard<T extends Codec<any>> = number extends
-    T["stride"] ? never
-    : `${T["stride"]}` extends `-${any}` ? never
-    : T;
+  export type FixedStrideGuard<T extends Codec<any>> =
+    T["stride"] extends { kind: "fixed" } ? T : never;
 }
 
 /**
@@ -81,19 +100,21 @@ export declare namespace Codec {
  * A codec converts between a JavaScript value and its binary
  * `Uint8Array<ArrayBuffer>` representation.
  *
- * - `stride >= 0` — the encoded size is always exactly `stride` bytes.
- * - `stride < 0` — the encoded size is variable; the codec is self-delimiting.
+ * - `stride.kind === "fixed"` — the encoded size is always exactly
+ *   `stride.size` bytes.
+ * - `stride.kind === "variable"` — the encoded size depends on the value;
+ *   the codec is self-delimiting (e.g. length-prefixed).
  *
  * @template O - The output type returned by `decode`.
  * @template I - The input type accepted by `encode`. Defaults to `O`.
  *
  * @example
  * ```ts
- * import { Codec, U64 } from "@nomadshiba/codec";
+ * import { Codec, Stride, U64 } from "@nomadshiba/codec";
  *
  * // Custom codec: Date stored as a u64 millisecond timestamp
  * class DateCodec extends Codec<Date, bigint> {
- *   readonly stride = 8;
+ *   readonly stride: Stride = { kind: "fixed", size: 8 };
  *
  *   encode(ms: bigint, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
  *     return U64.encode(ms, target);
@@ -108,14 +129,15 @@ export declare namespace Codec {
  */
 export abstract class Codec<O extends I, I = O> {
   /**
-   * The fixed byte size of encoded values, or a negative number for
-   * variable-length codecs.
+   * Describes the byte-size behaviour of this codec.
+   *
+   * - `{ kind: "fixed", size: n }` — always encodes to exactly `n` bytes.
+   * - `{ kind: "variable" }` — encoded size depends on the value.
    *
    * Composite codecs (`TupleCodec`, `StructCodec`) derive their stride from
-   * their elements: the sum of all element strides when all are fixed, or `-1`
-   * if any element is variable.
+   * their elements: fixed when all elements are fixed, variable otherwise.
    */
-  public abstract readonly stride: number;
+  public abstract readonly stride: Stride;
 
   /**
    * Encode `value` to its binary representation.
@@ -218,9 +240,9 @@ export class TransformCodec<
   C extends Codec<O, I> = Codec<O, I>,
 > extends Codec<T, I> {
   /**
-   * The fixed byte size of encoded values, inherited from the inner codec.
+   * The stride of this codec, inherited from the inner codec.
    */
-  public readonly stride: number;
+  public readonly stride: Stride;
 
   /**
    * The wrapped inner codec that handles encoding and the initial decoding

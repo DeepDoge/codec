@@ -1,4 +1,4 @@
-import { Codec } from "./codec.ts";
+import { Codec, type Stride } from "./codec.ts";
 import { U8Codec } from "./primitives.ts";
 import { VarInt } from "./varint.ts";
 
@@ -50,8 +50,8 @@ export class NullableCodec<T extends NullableGeneric>
   extends Codec<NullableOutput<T>, NullableInput<T>> {
   private readonly codec: T;
 
-  /** Always `-1`; the presence byte makes this variable-length. */
-  public readonly stride = -1;
+  /** Always `{ kind: "variable" }`; the presence byte makes this variable-length. */
+  public readonly stride: Stride<"variable"> = { kind: "variable" };
 
   /**
    * @param codec - The inner codec used to encode/decode the present value.
@@ -156,8 +156,8 @@ export class OptionalCodec<T extends OptionalGeneric>
   extends Codec<OptionalOutput<T>, OptionalInput<T>> {
   private readonly codec: T;
 
-  /** Always `-1`; the presence byte makes this variable-length. */
-  public readonly stride = -1;
+  /** Always `{ kind: "variable" }`; the presence byte makes this variable-length. */
+  public readonly stride: Stride<"variable"> = { kind: "variable" };
 
   /**
    * @param codec - The inner codec used to encode/decode the present value.
@@ -268,10 +268,13 @@ export class TupleCodec<const T extends TupleGeneric>
   public readonly codecs: T;
 
   /**
-   * Sum of all element strides (fixed-size), or `-1` if any element is
+   * `{ kind: "fixed", size: n }` when all elements have a fixed stride
+   * (where `n` is their sum), or `{ kind: "variable" }` if any element is
    * variable-length.
    */
-  public readonly stride: number;
+  public readonly stride: Stride<"variable"> extends T[number]["stride"]
+    ? Stride<"variable">
+    : Stride<"fixed">;
 
   /**
    * @param codecs - Ordered array of element codecs.
@@ -279,14 +282,16 @@ export class TupleCodec<const T extends TupleGeneric>
   constructor(codecs: T) {
     super();
     this.codecs = codecs;
-    this.stride = 0;
+    let size = 0;
+    let variable = false;
     for (const codec of codecs) {
-      if (codec.stride < 0) {
-        this.stride = -1;
+      if (codec.stride.kind === "variable") {
+        variable = true;
         break;
       }
-      this.stride += codec.stride;
+      size += codec.stride.size;
     }
+    this.stride = (variable ? { kind: "variable" } : { kind: "fixed", size }) as typeof this.stride;
   }
 
   /**
@@ -448,10 +453,14 @@ export type PartialShape<T extends StructGeneric> = {
 export class StructCodec<const T extends StructGeneric>
   extends Codec<StructOutput<T>, StructInput<T>> {
   /**
-   * Sum of all field strides (fixed-size), or `-1` if any field is
-   * variable-length (including all optional fields).
+   * `{ kind: "fixed", size: n }` when all fields have a fixed stride
+   * (where `n` is their sum), or `{ kind: "variable" }` if any field is
+   * variable-length or optional (optional fields contribute a presence byte).
    */
-  public readonly stride: number;
+  public readonly stride: Stride<"variable"> extends T[keyof T]["stride"]
+    ? Stride<"variable">
+    : `${string}?` extends keyof T ? Stride<"variable">
+    : Stride<"fixed">;
 
   /**
    * The codec shape passed to the constructor. Useful for inspecting field
@@ -474,21 +483,22 @@ export class StructCodec<const T extends StructGeneric>
     this.shape = shape;
     this.keys = Object.keys(shape) as typeof this.keys;
 
-    // stride: optional fields are always variable-length (-1).
-    let stride = 0;
+    // Optional fields are always variable-length due to the presence byte.
+    let size = 0;
+    let variable = false;
     for (const key of this.keys) {
       if (key.endsWith("?")) {
-        stride = -1;
+        variable = true;
         break;
       }
       const s = shape[key]!.stride;
-      if (s < 0) {
-        stride = -1;
+      if (s.kind === "variable") {
+        variable = true;
         break;
       }
-      stride += s;
+      size += s.size;
     }
-    this.stride = stride;
+    this.stride = (variable ? { kind: "variable" } : { kind: "fixed", size }) as typeof this.stride;
   }
 
   /**
@@ -658,8 +668,8 @@ export type ArrayOptions = {
  */
 export class ArrayCodec<T extends ArrayGeneric>
   extends Codec<ArrayOutput<T>, ArrayInput<T>> {
-  /** Always `-1`. */
-  public readonly stride = -1;
+  /** Always `{ kind: "variable" }`. */
+  public readonly stride: Stride<"variable"> = { kind: "variable" };
   /**
    * The codec used to encode the element count prefix.
    * Defaults to {@link VarInt}.
@@ -807,8 +817,8 @@ export type UnionOptions = {
  */
 export class UnionCodec<const T extends UnionGeneric>
   extends Codec<UnionOutput<T>, UnionInput<T>> {
-  /** Always `-1`. */
-  public readonly stride = -1;
+  /** Always `{ kind: "variable" }`. */
+  public readonly stride: Stride<"variable"> = { kind: "variable" };
 
   /**
    * The variants record passed to the constructor. Useful for inspecting
@@ -944,8 +954,8 @@ export type MappingOptions = {
  */
 export class MappingCodec<const T extends MappingGeneric>
   extends Codec<MappingOutput<T>, MappingInput<T>> {
-  /** Always `-1`. */
-  public readonly stride = -1;
+  /** Always `{ kind: "variable" }`. */
+  public readonly stride: Stride<"variable"> = { kind: "variable" };
   readonly #entriesCodec: ArrayCodec<TupleCodec<T>>;
 
   /**

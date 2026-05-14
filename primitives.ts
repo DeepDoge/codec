@@ -1,4 +1,4 @@
-import { Codec } from "./codec.ts";
+import { Codec, type Stride } from "./codec.ts";
 
 /**
  * Options for multi-byte numeric codecs.
@@ -29,8 +29,8 @@ export type NumericOptions = {
  * ```
  */
 export class I8Codec extends Codec<number> {
-  /** Always `1`. */
-  public readonly stride = 1;
+  /** Always `{ kind: "fixed", size: 1 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 1 };
 
   /**
    * Encode a signed 8-bit integer to its binary representation.
@@ -82,8 +82,8 @@ export const I8: I8Codec = new I8Codec();
  * ```
  */
 export class U8Codec extends Codec<number> {
-  /** Always `1`. */
-  public readonly stride = 1;
+  /** Always `{ kind: "fixed", size: 1 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 1 };
 
   /**
    * Encode an unsigned 8-bit integer to its binary representation.
@@ -136,8 +136,8 @@ export const U8: U8Codec = new U8Codec();
  * ```
  */
 export class I16Codec extends Codec<number> {
-  /** Always `2`. */
-  public readonly stride = 2;
+  /** Always `{ kind: "fixed", size: 2 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 2 };
   readonly #littleEndian: boolean;
 
   /**
@@ -199,8 +199,8 @@ export const I16: I16Codec = new I16Codec();
  * ```
  */
 export class U16Codec extends Codec<number> {
-  /** Always `2`. */
-  public readonly stride = 2;
+  /** Always `{ kind: "fixed", size: 2 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 2 };
   readonly #littleEndian: boolean;
 
   /**
@@ -262,8 +262,8 @@ export const U16: U16Codec = new U16Codec();
  * ```
  */
 export class I32Codec extends Codec<number> {
-  /** Always `4`. */
-  public readonly stride = 4;
+  /** Always `{ kind: "fixed", size: 4 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 4 };
   readonly #littleEndian: boolean;
 
   /**
@@ -325,8 +325,8 @@ export const I32: I32Codec = new I32Codec();
  * ```
  */
 export class U32Codec extends Codec<number> {
-  /** Always `4`. */
-  public readonly stride = 4;
+  /** Always `{ kind: "fixed", size: 4 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 4 };
   readonly #littleEndian: boolean;
 
   /**
@@ -389,8 +389,8 @@ export const U32: U32Codec = new U32Codec();
  * ```
  */
 export class I64Codec extends Codec<bigint> {
-  /** Always `8`. */
-  public readonly stride = 8;
+  /** Always `{ kind: "fixed", size: 8 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
   readonly #littleEndian: boolean;
 
   /**
@@ -453,8 +453,8 @@ export const I64: I64Codec = new I64Codec();
  * ```
  */
 export class U64Codec extends Codec<bigint> {
-  /** Always `8`. */
-  public readonly stride = 8;
+  /** Always `{ kind: "fixed", size: 8 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
   readonly #littleEndian: boolean;
 
   /**
@@ -521,8 +521,8 @@ export const U64: U64Codec = new U64Codec();
  * ```
  */
 export class F32Codec extends Codec<number> {
-  /** Always `4`. */
-  public readonly stride = 4;
+  /** Always `{ kind: "fixed", size: 4 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 4 };
   readonly #littleEndian: boolean;
 
   /**
@@ -585,8 +585,8 @@ export const F32: F32Codec = new F32Codec();
  * ```
  */
 export class F64Codec extends Codec<number> {
-  /** Always `8`. */
-  public readonly stride = 8;
+  /** Always `{ kind: "fixed", size: 8 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
   readonly #littleEndian: boolean;
 
   /**
@@ -649,8 +649,8 @@ export const F64: F64Codec = new F64Codec();
  * ```
  */
 export class BoolCodec extends Codec<boolean> {
-  /** Always `1`. */
-  public readonly stride = 1;
+  /** Always `{ kind: "fixed", size: 1 }`. */
+  public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 1 };
 
   /**
    * Encode a boolean value as a single byte (`0x01` for `true`, `0x00` for `false`).
@@ -769,7 +769,8 @@ export const F64LE: F64Codec = new F64Codec({ endian: "le" });
  * ```
  */
 export class VoidCodec extends Codec<void, null | undefined | void> {
-  public override readonly stride = 0;
+  /** Always `{ kind: "fixed", size: 0 }`. */
+  public override readonly stride: Stride<"fixed"> = { kind: "fixed", size: 0 };
 
   /**
    * Encode a void-like value into the target buffer.

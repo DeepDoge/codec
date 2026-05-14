@@ -1,4 +1,4 @@
-import { Codec } from "./codec.ts";
+import { Codec, type Stride } from "./codec.ts";
 import { VarInt } from "./varint.ts";
 
 /**
@@ -41,8 +41,8 @@ export type StringOptions = {
  * ```
  */
 export class StringCodec extends Codec<string> {
-  /** Always `-1`; strings are variable-length. */
-  public readonly stride = -1;
+  /** Always `{ kind: "variable" }`; strings are variable-length. */
+  public readonly stride: Stride<"variable"> = { kind: "variable" };
   /**
    * The codec used to encode the byte-length prefix that precedes the UTF-8
    * payload. Defaults to {@link VarInt}.
@@ -158,10 +158,10 @@ export type BytesOptions =
  */
 export class BytesCodec extends Codec<Uint8Array> {
   /**
-   * Fixed byte size when in fixed-length mode (`>= 0`), or `-1` for
-   * variable-length mode.
+   * `{ kind: "fixed", size: n }` in fixed-length mode, or
+   * `{ kind: "variable" }` in variable-length mode.
    */
-  public readonly stride: number;
+  public readonly stride: Stride;
   /**
    * The codec used to encode the byte-length prefix in variable-length mode.
    * Not used in fixed-length mode (`size >= 0`). Defaults to {@link VarInt}.
@@ -173,28 +173,33 @@ export class BytesCodec extends Codec<Uint8Array> {
    */
   constructor(options?: BytesOptions) {
     super();
-    this.stride = options?.size ?? -1;
+    this.stride = options?.size !== undefined
+      ? { kind: "fixed", size: options.size } as const
+      : { kind: "variable" } as const;
     this.lengthCodec = options?.lengthCodec ?? VarInt;
   }
 
   /**
+   * Encode a byte array, writing a length prefix in variable-length mode or
+   * copying raw bytes in fixed-length mode.
+   *
    * @param value - The byte array to encode.
    * @param target - Optional pre-allocated buffer (must be large enough).
    * @returns `Uint8Array<ArrayBuffer>` containing the encoded bytes (with or
    *   without a length prefix depending on the mode).
-   * @throws {RangeError} In fixed-length mode if `value.length !== stride`.
+   * @throws {RangeError} In fixed-length mode if `value.length !== stride.size`.
    */
   public encode(
     value: Uint8Array,
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
-    if (this.stride >= 0) {
-      if (value.length !== this.stride) {
+    if (this.stride.kind === "fixed") {
+      if (value.length !== this.stride.size) {
         throw new RangeError(
-          `Expected byte array of length ${this.stride}, got ${value.length}`,
+          `Expected byte array of length ${this.stride.size}, got ${value.length}`,
         );
       }
-      const result = target ?? new Uint8Array(this.stride);
+      const result = target ?? new Uint8Array(this.stride.size);
       result.set(value);
       return result;
     } else {
@@ -209,21 +214,24 @@ export class BytesCodec extends Codec<Uint8Array> {
   }
 
   /**
+   * Decode a byte array, reading a length prefix in variable-length mode or
+   * consuming a fixed number of bytes in fixed-length mode.
+   *
    * @param data - Binary data to decode.
    * @returns `[bytes, bytesConsumed]` — a subarray view into `data`.
    * @throws {RangeError} In fixed-length mode if `data` is shorter than
-   *   `stride`.
+   *   `stride.size`.
    */
   public decode(
     data: Uint8Array,
   ): [Uint8Array, number] {
-    if (this.stride >= 0) {
-      if (data.length < this.stride) {
+    if (this.stride.kind === "fixed") {
+      if (data.length < this.stride.size) {
         throw new RangeError(
-          `Expected at least ${this.stride} bytes, got ${data.length}`,
+          `Expected at least ${this.stride.size} bytes, got ${data.length}`,
         );
       }
-      return [data.subarray(0, this.stride), this.stride];
+      return [data.subarray(0, this.stride.size), this.stride.size];
     } else {
       const [length, bytesRead] = this.lengthCodec.decode(data);
       const decoded = data.subarray(bytesRead, bytesRead + length);

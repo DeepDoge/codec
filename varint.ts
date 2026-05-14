@@ -1,4 +1,4 @@
-import { Codec } from "./codec.ts";
+import { Codec, type Stride } from "./codec.ts";
 
 /**
  * Codec for non-negative integers using unsigned LEB128 encoding.
@@ -28,8 +28,8 @@ import { Codec } from "./codec.ts";
  * ```
  */
 export class VarIntCodec extends Codec<number> {
-  /** Always `-1`; VarInt is variable-length. */
-  public readonly stride = -1;
+  /** Always `{ kind: "variable" }`; VarInt is variable-length. */
+  public readonly stride: Stride<"variable"> = { kind: "variable" };
 
   /**
    * Encode a non-negative integer using unsigned LEB128.

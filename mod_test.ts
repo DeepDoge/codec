@@ -28,6 +28,7 @@ import {
   U8,
   UnionCodec,
   VarInt,
+
 } from "./mod.ts";
 
 // VarInt Tests
@@ -67,7 +68,7 @@ Deno.test("I8 - roundtrip", () => {
     const [decoded] = I8.decode(I8.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(I8.stride, 1);
+  assertEquals(I8.stride, { kind: "fixed", size: 1 });
 });
 
 Deno.test("U8 - roundtrip", () => {
@@ -76,7 +77,7 @@ Deno.test("U8 - roundtrip", () => {
     const [decoded] = U8.decode(U8.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(U8.stride, 1);
+  assertEquals(U8.stride, { kind: "fixed", size: 1 });
 });
 
 Deno.test("I16 - roundtrip", () => {
@@ -85,7 +86,7 @@ Deno.test("I16 - roundtrip", () => {
     const [decoded] = I16.decode(I16.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(I16.stride, 2);
+  assertEquals(I16.stride, { kind: "fixed", size: 2 });
 });
 
 Deno.test("U16 - roundtrip", () => {
@@ -94,7 +95,7 @@ Deno.test("U16 - roundtrip", () => {
     const [decoded] = U16.decode(U16.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(U16.stride, 2);
+  assertEquals(U16.stride, { kind: "fixed", size: 2 });
 });
 
 Deno.test("I32 - roundtrip", () => {
@@ -103,7 +104,7 @@ Deno.test("I32 - roundtrip", () => {
     const [decoded] = I32.decode(I32.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(I32.stride, 4);
+  assertEquals(I32.stride, { kind: "fixed", size: 4 });
 });
 
 Deno.test("U32 - roundtrip", () => {
@@ -112,7 +113,7 @@ Deno.test("U32 - roundtrip", () => {
     const [decoded] = U32.decode(U32.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(U32.stride, 4);
+  assertEquals(U32.stride, { kind: "fixed", size: 4 });
 });
 
 Deno.test("I64 - roundtrip", () => {
@@ -127,7 +128,7 @@ Deno.test("I64 - roundtrip", () => {
     const [decoded] = I64.decode(I64.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(I64.stride, 8);
+  assertEquals(I64.stride, { kind: "fixed", size: 8 });
 });
 
 Deno.test("U64 - roundtrip", () => {
@@ -142,7 +143,7 @@ Deno.test("U64 - roundtrip", () => {
     const [decoded] = U64.decode(U64.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(U64.stride, 8);
+  assertEquals(U64.stride, { kind: "fixed", size: 8 });
 });
 
 Deno.test("F32 - roundtrip", () => {
@@ -151,7 +152,7 @@ Deno.test("F32 - roundtrip", () => {
     const [decoded] = F32.decode(F32.encode(Math.fround(val)));
     assertEquals(decoded, Math.fround(val));
   }
-  assertEquals(F32.stride, 4);
+  assertEquals(F32.stride, { kind: "fixed", size: 4 });
 });
 
 Deno.test("F64 - roundtrip", () => {
@@ -160,7 +161,7 @@ Deno.test("F64 - roundtrip", () => {
     const [decoded] = F64.decode(F64.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(F64.stride, 8);
+  assertEquals(F64.stride, { kind: "fixed", size: 8 });
 });
 
 // Little-endian variant tests
@@ -170,7 +171,7 @@ Deno.test("I16LE - roundtrip", () => {
     const [decoded] = I16LE.decode(I16LE.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(I16LE.stride, 2);
+  assertEquals(I16LE.stride, { kind: "fixed", size: 2 });
   // Verify little-endian encoding
   const encoded = I16LE.encode(513);
   assertEquals(Array.from(encoded), [0x01, 0x02]); // LE: 0x0201 = 513
@@ -182,7 +183,7 @@ Deno.test("U16LE - roundtrip", () => {
     const [decoded] = U16LE.decode(U16LE.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(U16LE.stride, 2);
+  assertEquals(U16LE.stride, { kind: "fixed", size: 2 });
   // Verify little-endian encoding differs from big-endian
   const encodedLE = U16LE.encode(513);
   const encodedBE = U16.encode(513);
@@ -196,7 +197,7 @@ Deno.test("I32LE - roundtrip", () => {
     const [decoded] = I32LE.decode(I32LE.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(I32LE.stride, 4);
+  assertEquals(I32LE.stride, { kind: "fixed", size: 4 });
 });
 
 Deno.test("U32LE - roundtrip", () => {
@@ -205,7 +206,7 @@ Deno.test("U32LE - roundtrip", () => {
     const [decoded] = U32LE.decode(U32LE.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(U32LE.stride, 4);
+  assertEquals(U32LE.stride, { kind: "fixed", size: 4 });
 });
 
 Deno.test("I64LE - roundtrip", () => {
@@ -220,7 +221,7 @@ Deno.test("I64LE - roundtrip", () => {
     const [decoded] = I64LE.decode(I64LE.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(I64LE.stride, 8);
+  assertEquals(I64LE.stride, { kind: "fixed", size: 8 });
 });
 
 Deno.test("U64LE - roundtrip", () => {
@@ -235,7 +236,7 @@ Deno.test("U64LE - roundtrip", () => {
     const [decoded] = U64LE.decode(U64LE.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(U64LE.stride, 8);
+  assertEquals(U64LE.stride, { kind: "fixed", size: 8 });
 });
 
 Deno.test("F32LE - roundtrip", () => {
@@ -244,7 +245,7 @@ Deno.test("F32LE - roundtrip", () => {
     const [decoded] = F32LE.decode(F32LE.encode(Math.fround(val)));
     assertEquals(decoded, Math.fround(val));
   }
-  assertEquals(F32LE.stride, 4);
+  assertEquals(F32LE.stride, { kind: "fixed", size: 4 });
 });
 
 Deno.test("F64LE - roundtrip", () => {
@@ -253,7 +254,7 @@ Deno.test("F64LE - roundtrip", () => {
     const [decoded] = F64LE.decode(F64LE.encode(val));
     assertEquals(decoded, val);
   }
-  assertEquals(F64LE.stride, 8);
+  assertEquals(F64LE.stride, { kind: "fixed", size: 8 });
 });
 
 // Bool Codec
@@ -264,7 +265,7 @@ Deno.test("Bool - roundtrip", () => {
   assertEquals(f, false);
   assertEquals(Array.from(Bool.encode(true)), [0x01]);
   assertEquals(Array.from(Bool.encode(false)), [0x00]);
-  assertEquals(Bool.stride, 1);
+  assertEquals(Bool.stride, { kind: "fixed", size: 1 });
 });
 
 // String Codec
@@ -276,7 +277,7 @@ Deno.test("string - roundtrip", () => {
     );
     assertEquals(decoded, val);
   }
-  assertEquals(new StringCodec().stride, -1);
+  assertEquals(new StringCodec().stride, { kind: "variable" });
 });
 
 Deno.test("string - custom length codec (U32)", () => {
@@ -301,7 +302,7 @@ Deno.test("bytes - roundtrip variable", () => {
     const [decoded] = new BytesCodec().decode(new BytesCodec().encode(val));
     assertEquals(Array.from(decoded), Array.from(val));
   }
-  assertEquals(new BytesCodec().stride, -1);
+  assertEquals(new BytesCodec().stride, { kind: "variable" });
 });
 
 Deno.test("bytes - roundtrip fixed size", () => {
@@ -309,7 +310,7 @@ Deno.test("bytes - roundtrip fixed size", () => {
   const val = new Uint8Array([1, 2, 3, 4]);
   const [decoded] = fixedBytes.decode(fixedBytes.encode(val));
   assertEquals(Array.from(decoded), Array.from(val));
-  assertEquals(fixedBytes.stride, 4);
+  assertEquals(fixedBytes.stride, { kind: "fixed", size: 4 });
 });
 
 Deno.test("bytes - fixed size error", () => {
@@ -338,7 +339,7 @@ Deno.test("Nullable - null", () => {
   const [decoded] = opt.decode(opt.encode(null));
   assertEquals(decoded, null);
   assertEquals(Array.from(opt.encode(null)), [0x00]);
-  assertEquals(opt.stride, -1);
+  assertEquals(opt.stride, { kind: "variable" });
 });
 
 Deno.test("Nullable - present value", () => {
@@ -362,7 +363,7 @@ Deno.test("Tuple - fixed stride elements", () => {
   const val: [number, number] = [5, 513];
   const [decoded] = t.decode(t.encode(val));
   assertEquals(decoded, val);
-  assertEquals(t.stride, 3); // 1 + 2
+  assertEquals(t.stride, { kind: "fixed", size: 3 }); // 1 + 2
 });
 
 Deno.test("Tuple - variable stride elements", () => {
@@ -370,7 +371,7 @@ Deno.test("Tuple - variable stride elements", () => {
   const val: [number, string] = [7, "hi"];
   const [decoded] = t.decode(t.encode(val));
   assertEquals(decoded, val);
-  assertEquals(t.stride, -1);
+  assertEquals(t.stride, { kind: "variable" });
 });
 
 Deno.test("Tuple - mixed stride elements", () => {
@@ -378,7 +379,7 @@ Deno.test("Tuple - mixed stride elements", () => {
   const val: [number, string, number] = [42, "test", 1000];
   const [decoded] = t.decode(t.encode(val));
   assertEquals(decoded, val);
-  assertEquals(t.stride, -1);
+  assertEquals(t.stride, { kind: "variable" });
 });
 
 Deno.test("Tuple - all items self-delimit", () => {
@@ -419,7 +420,7 @@ Deno.test("Struct - simple", () => {
   const val = { id: 42, name: "Ada" };
   const [decoded] = User.decode(User.encode(val));
   assertEquals(decoded, val);
-  assertEquals(User.stride, -1);
+  assertEquals(User.stride, { kind: "variable" });
 });
 
 Deno.test("Struct - all fixed stride", () => {
@@ -427,7 +428,7 @@ Deno.test("Struct - all fixed stride", () => {
   const val = { x: 1, y: -2, z: 3 };
   const [decoded] = Point.decode(Point.encode(val));
   assertEquals(decoded, val);
-  assertEquals(Point.stride, 12); // 3 * 4
+  assertEquals(Point.stride, { kind: "fixed", size: 12 }); // 3 * 4
 });
 
 Deno.test("Struct - nested", () => {
@@ -460,7 +461,7 @@ Deno.test("Struct - optional field absent", () => {
   assertEquals(decoded.age, undefined);
   // wire: [varint(3), 'A','d','a', 0x00]
   assertEquals(encoded[encoded.length - 1], 0x00);
-  assertEquals(S.stride, -1);
+  assertEquals(S.stride, { kind: "variable" });
 });
 
 Deno.test("Struct - optional field present", () => {
@@ -537,7 +538,7 @@ Deno.test("Array - fixed stride elements", () => {
   const val = [1, 513, 1000];
   const [decoded] = nums.decode(nums.encode(val));
   assertEquals(decoded, val);
-  assertEquals(nums.stride, -1);
+  assertEquals(nums.stride, { kind: "variable" });
 });
 
 Deno.test("Array - empty", () => {
@@ -593,7 +594,7 @@ Deno.test("Union - simple variants", () => {
   const [decodedB] = MyUnion.decode(MyUnion.encode(valB));
   assertEquals(decodedB, valB);
 
-  assertEquals(MyUnion.stride, -1);
+  assertEquals(MyUnion.stride, { kind: "variable" });
 });
 
 Deno.test("Union - variant sorting", () => {
@@ -663,7 +664,7 @@ Deno.test("Mapping - simple", () => {
   const val = new Map([["x", 1], ["y", 2]]);
   const [decoded] = Dict.decode(Dict.encode(val));
   assertEquals(Array.from(decoded.entries()), Array.from(val.entries()));
-  assertEquals(Dict.stride, -1);
+  assertEquals(Dict.stride, { kind: "variable" });
 });
 
 Deno.test("Mapping - empty", () => {

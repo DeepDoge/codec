@@ -72,14 +72,12 @@ import { Codec, StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
 
 const User = new StructCodec({ id: U32, name: new StringCodec() });
 
-type User = Codec.Infer<typeof User>; // { id: number; name: string }
 type UserInput = Codec.InferInput<typeof User>; // { id: number; name: string }
-type UserOut = Codec.InferOutput<typeof User>; // { id: number; name: string }
+type UserOut = Codec.InferOutput<typeof User>;  // { id: number; name: string }
 ```
 
 | Utility                | Description                               |
 | ---------------------- | ----------------------------------------- |
-| `Codec.Infer<T>`       | Alias for `InferOutput<T>`. Decoded type. |
 | `Codec.InferOutput<T>` | Type returned by `decode`.                |
 | `Codec.InferInput<T>`  | Type accepted by `encode`.                |
 
@@ -98,9 +96,9 @@ functions or higher-order codecs:
   instance.
 
 ```ts
-// StructGeneric = { readonly [key: string]: Codec<any> }
-// NullableGeneric = Codec<any>
-// TupleGeneric = readonly Codec<any>[]
+// StructGeneric = { readonly [key: string]: Codec }
+// NullableGeneric = Codec
+// TupleGeneric = readonly Codec[]
 // etc.
 ```
 
@@ -149,7 +147,7 @@ The full set of pairs exported by the library:
 | `FixedEnumGeneric`   | `EnumInput<T>`     | `EnumOutput<T>`     | `FixedEnumCodec`   |
 | `MappingGeneric`     | `MappingInput<T>`  | `MappingOutput<T>`  | `MappingCodec`     |
 
-For most application code you won't need these directly — `Codec.Infer<T>`
+For most application code you won't need these directly — `Codec.InferOutput<T>`
 covers the common case. They become useful when writing generic helpers,
 higher-order codecs, or libraries built on top of this one.
 
@@ -417,7 +415,8 @@ Wire format:
 
 > **Note:** Variant indices are assigned in **definition order**. Adding or
 > removing variants changes existing indices and breaks compatibility with
-> previously encoded data. Renaming variants is safe and does not affect indices.
+> previously encoded data. Renaming variants is safe and does not affect
+> indices.
 
 #### FixedEnumCodec
 
@@ -465,7 +464,7 @@ import { U64 } from "@nomadshiba/codec";
 // Decode a u64 timestamp directly as a Date
 const DateCodec = U64.transform((ms) => new Date(Number(ms)));
 
-type Decoded = Codec.Infer<typeof DateCodec>; // Date
+type Decoded = Codec.InferOutput<typeof DateCodec>; // Date
 
 DateCodec.encode(BigInt(Date.now())); // still encodes as u64
 const [date] = DateCodec.decode(bytes); // returns Date
@@ -485,8 +484,8 @@ original wrapped codec.
 
 The transformed type `T` must extend the codec's base decoded type `O`. This
 means the transformer can produce any subtype of `O` — narrowing values,
-attaching methods or getters, computing a hash, or capturing the raw bytes —
-but cannot return something entirely unrelated to `O`.
+attaching methods or getters, computing a hash, or capturing the raw bytes — but
+cannot return something entirely unrelated to `O`.
 
 ```ts
 // Narrow with a branded type
@@ -511,18 +510,31 @@ const RichPoint = Point.transform((p, bytes) => ({
 
 ## Custom Codecs
 
-Extend `Codec<O, I>` to implement your own.
+Extend `Codec<O, I>` for variable-size codecs, or extend `FixedCodec<O, I>` for
+fixed-size codecs. When extending `FixedCodec`, `stride` is just a number
+(`FixedCodec` narrows the `stride` type to `{ kind: "fixed"; size: number }`).
 
 ```ts
-import { Codec, Stride, U64 } from "@nomadshiba/codec";
+import { Codec, FixedCodec, U64, Stride } from "@nomadshiba/codec";
 
-class DateCodec extends Codec<Date, bigint> {
-  readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
+// Variable-size codec — extend Codec directly
+class PascalStringCodec extends Codec<string> {
+  readonly stride: Stride<"variable"> = { kind: "variable" };
 
-  encode(
-    ms: bigint,
-    target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  encode(value: string, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+    // ...
+  }
+
+  decode(data: Uint8Array): [string, number] {
+    // ...
+  }
+}
+
+// Fixed-size codec — extend FixedCodec
+class DateCodec extends FixedCodec<Date, bigint> {
+  readonly stride = 8;
+
+  encode(ms: bigint, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
     return U64.encode(ms, target);
   }
 

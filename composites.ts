@@ -1,11 +1,11 @@
-import { Codec, type Stride } from "./codec.ts";
+import { Codec, type FixedCodec, type Stride } from "./codec.ts";
 import { U8Codec } from "./primitives.ts";
 import { VarInt } from "./varint.ts";
 
 // ── Nullable ──────────────────────────────────────────────────────────────────
 
 /** Constraint type for the inner codec of {@link NullableCodec}. */
-export type NullableGeneric = Codec<any>;
+export type NullableGeneric = Codec;
 
 /**
  * The input type accepted by a `NullableCodec<T>`:
@@ -125,7 +125,7 @@ export class NullableCodec<T extends NullableGeneric>
 // ── Tuple ─────────────────────────────────────────────────────────────────────
 
 /** Constraint type for the element array of a {@link TupleCodec}. */
-export type TupleGeneric = readonly Codec<any>[];
+export type TupleGeneric = readonly Codec[];
 
 /**
  * Derives the input tuple type from a `TupleGeneric`:
@@ -170,7 +170,7 @@ export class TupleCodec<const T extends TupleGeneric>
   /**
    * The element codecs in definition order.
    */
-  public readonly variants: T;
+  public readonly items: T;
 
   /**
    * `{ kind: "fixed", size: n }` when all elements have a fixed stride
@@ -190,17 +190,17 @@ export class TupleCodec<const T extends TupleGeneric>
   private readonly factory: (...args: unknown[]) => TupleOutput<T>;
 
   /**
-   * @param variants - Ordered array of element codecs.
+   * @param items - Ordered array of element codecs.
    */
-  constructor(variants: T) {
+  constructor(items: T) {
     super();
-    this.variants = variants;
-    const params = Array.from({ length: variants.length }, (_, i) => `a${i}`);
+    this.items = items;
+    const params = Array.from({ length: items.length }, (_, i) => `a${i}`);
     const body = `return [${params.join(", ")}];`;
     this.factory = new Function(...params, body) as typeof this.factory;
     let size = 0;
     let variable = false;
-    for (const codec of variants) {
+    for (const codec of items) {
       if (codec.stride.kind === "variable") {
         variable = true;
         break;
@@ -225,8 +225,8 @@ export class TupleCodec<const T extends TupleGeneric>
     target?: Uint8Array<ArrayBuffer>,
   ): Uint8Array<ArrayBuffer> {
     const parts: Uint8Array<ArrayBuffer>[] = [];
-    for (let i = 0; i < this.variants.length; i++) {
-      const codec = this.variants[i]!;
+    for (let i = 0; i < this.items.length; i++) {
+      const codec = this.items[i]!;
       const part = codec.encode(value[i]!);
       parts.push(part);
     }
@@ -251,10 +251,10 @@ export class TupleCodec<const T extends TupleGeneric>
    * @returns `[tuple, totalBytesConsumed]`.
    */
   public decode(data: Uint8Array): [TupleOutput<T>, number] {
-    const args: unknown[] = new Array(this.variants.length);
+    const args: unknown[] = new Array(this.items.length);
     let offset = 0;
-    for (let i = 0; i < this.variants.length; i++) {
-      const [value, size] = this.variants[i]!.decode(data.subarray(offset));
+    for (let i = 0; i < this.items.length; i++) {
+      const [value, size] = this.items[i]!.decode(data.subarray(offset));
       args[i] = value;
       offset += size;
     }
@@ -268,9 +268,7 @@ export class TupleCodec<const T extends TupleGeneric>
  * Constraint type for the element array of a {@link FixedTupleCodec}: all
  * elements must be fixed-size.
  */
-export type FixedTupleGeneric = readonly (Codec<any, any> & {
-  stride: Stride<"fixed">;
-})[];
+export type FixedTupleGeneric = readonly FixedCodec[];
 
 /**
  * A fixed-size variant of {@link TupleCodec}.
@@ -305,21 +303,21 @@ export class FixedTupleCodec<const T extends FixedTupleGeneric>
   /**
    * The element codecs in definition order.
    */
-  public readonly variants: T;
+  public readonly items: T;
 
   private readonly factory: (...args: unknown[]) => TupleOutput<T>;
 
   /**
-   * @param variants - Ordered array of fixed-size element codecs.
+   * @param items - Ordered array of fixed-size element codecs.
    * @throws {Error} If any element codec does not have a fixed-size stride.
    */
-  constructor(variants: T) {
+  constructor(items: T) {
     super();
-    this.variants = variants;
+    this.items = items;
 
     let size = 0;
-    for (let i = 0; i < variants.length; i++) {
-      const codec = variants[i]!;
+    for (let i = 0; i < items.length; i++) {
+      const codec = items[i]!;
       if (codec.stride.kind !== "fixed") {
         throw new Error(
           `FixedTupleCodec: element at index ${i} must have a fixed-size codec`,
@@ -330,7 +328,7 @@ export class FixedTupleCodec<const T extends FixedTupleGeneric>
 
     this.stride = { kind: "fixed", size };
 
-    const params = Array.from({ length: variants.length }, (_, i) => `a${i}`);
+    const params = Array.from({ length: items.length }, (_, i) => `a${i}`);
     const body = `return [${params.join(", ")}];`;
     this.factory = new Function(...params, body) as typeof this.factory;
   }
@@ -349,8 +347,8 @@ export class FixedTupleCodec<const T extends FixedTupleGeneric>
   ): Uint8Array<ArrayBuffer> {
     const result = target ?? new Uint8Array(this.stride.size);
     let offset = 0;
-    for (let i = 0; i < this.variants.length; i++) {
-      const codec = this.variants[i]!;
+    for (let i = 0; i < this.items.length; i++) {
+      const codec = this.items[i]!;
       codec.encode(value[i]!, result.subarray(offset));
       offset += codec.stride.size;
     }
@@ -364,10 +362,10 @@ export class FixedTupleCodec<const T extends FixedTupleGeneric>
    * @returns `[tuple, totalBytesConsumed]`.
    */
   public decode(data: Uint8Array): [TupleOutput<T>, number] {
-    const args: unknown[] = new Array(this.variants.length);
+    const args: unknown[] = new Array(this.items.length);
     let offset = 0;
-    for (let i = 0; i < this.variants.length; i++) {
-      const codec = this.variants[i]!;
+    for (let i = 0; i < this.items.length; i++) {
+      const codec = this.items[i]!;
       const [value, size] = codec.decode(data.subarray(offset));
       args[i] = value;
       offset += size;
@@ -379,7 +377,7 @@ export class FixedTupleCodec<const T extends FixedTupleGeneric>
 // ── Struct ────────────────────────────────────────────────────────────────────
 
 /** Constraint type for the shape record of a {@link StructCodec}. */
-export type StructGeneric = { readonly [key: string]: Codec<any> };
+export type StructGeneric = { readonly [key: string]: Codec };
 
 /**
  * Extracts only the keys that end with `"?"` from a `StructGeneric`, stripped
@@ -525,10 +523,12 @@ export class StructCodec<const T extends StructGeneric>
    *
    * `null` when the struct has no optional fields.
    */
-  private readonly optionalFactories: Map<
-    bigint,
-    (...args: unknown[]) => StructOutput<T>
-  > | null;
+  private readonly optionalFactories:
+    | Map<
+      bigint,
+      (...args: unknown[]) => StructOutput<T>
+    >
+    | null;
 
   /** Required field keys (no `"?"` suffix), in definition order. */
   private readonly requiredKeys: Extract<keyof T, string>[];
@@ -722,10 +722,13 @@ export class StructCodec<const T extends StructGeneric>
       this.optionalFactories!.set(mask, factory);
     }
 
-    return [(factory as (...args: unknown[]) => StructOutput<T>)(
-      ...reqArgs,
-      ...optArgs,
-    ), offset];
+    return [
+      (factory as (...args: unknown[]) => StructOutput<T>)(
+        ...reqArgs,
+        ...optArgs,
+      ),
+      offset,
+    ];
   }
 
   /**
@@ -748,7 +751,7 @@ export class StructCodec<const T extends StructGeneric>
    * ```
    */
   public partial(): StructCodec<PartialShape<T>> {
-    const partialShape: { [key: string]: Codec<any, any> } = {};
+    const partialShape: { [key: string]: Codec } = {};
     for (const rawKey of this.keys) {
       const optKey = rawKey.endsWith("?") ? rawKey : `${rawKey}?`;
       partialShape[optKey] = this.shape[rawKey]!;
@@ -765,7 +768,7 @@ export class StructCodec<const T extends StructGeneric>
  * are permitted.
  */
 export type FixedStructGeneric = {
-  readonly [key: string]: Codec<any, any> & { stride: Stride<"fixed"> };
+  readonly [key: string]: FixedCodec;
 };
 
 /**
@@ -885,7 +888,7 @@ export class FixedStructCodec<const T extends FixedStructGeneric>
 // ── Array ─────────────────────────────────────────────────────────────────────
 
 /** Constraint type for the element codec of an {@link ArrayCodec}. */
-export type ArrayGeneric = Codec<any>;
+export type ArrayGeneric = Codec;
 
 /**
  * The input type accepted by an `ArrayCodec<T>`:
@@ -1018,7 +1021,7 @@ export class ArrayCodec<T extends ArrayGeneric>
 // ── Enum ──────────────────────────────────────────────────────────────────────
 
 /** Constraint type for the variants record of a {@link EnumCodec}. */
-export type EnumGeneric = { readonly [key: string]: Codec<any> };
+export type EnumGeneric = { readonly [key: string]: Codec };
 
 /**
  * The input type accepted by a `EnumCodec<T>`: a discriminated union
@@ -1157,7 +1160,7 @@ export class EnumCodec<const T extends EnumGeneric>
 
 /** Constraint type for the variants record of a {@link FixedEnumCodec}: all variants must be fixed-size. */
 export type FixedEnumGeneric = {
-  readonly [key: string]: Codec<any, any> & { stride: Stride<"fixed"> };
+  readonly [key: string]: FixedCodec;
 };
 
 /**
@@ -1169,7 +1172,7 @@ export type FixedEnumOptions = {
    *
    * Use a wider codec (e.g. `U16`) if the union has more than 256 variants.
    */
-  indexer?: Codec<number> & { stride: Stride<"fixed"> };
+  indexer?: FixedCodec<number>;
 };
 
 /**
@@ -1210,7 +1213,7 @@ export class FixedEnumCodec<const T extends FixedEnumGeneric>
   /**
    * The fixed-size codec used to encode the variant index. Defaults to `U8`.
    */
-  public readonly indexer: Codec<number> & { stride: Stride<"fixed"> };
+  public readonly indexer: FixedCodec<number>;
 
   /** The size of the largest variant payload in bytes. */
   public readonly maxVariantSize: number;
@@ -1227,8 +1230,7 @@ export class FixedEnumCodec<const T extends FixedEnumGeneric>
     super();
     this.variants = variants;
     this.keys = Object.keys(this.variants) as (keyof T)[];
-    this.indexer = options?.indexer ??
-      (new U8Codec() as Codec<number> & { stride: Stride<"fixed"> });
+    this.indexer = options?.indexer ?? new U8Codec();
 
     // Validate all variants are fixed-size (runtime guard for JS callers)
     for (const key of this.keys) {
@@ -1310,7 +1312,7 @@ export class FixedEnumCodec<const T extends FixedEnumGeneric>
 // ── Mapping ───────────────────────────────────────────────────────────────────
 
 /** Constraint type for the `[keyCodec, valueCodec]` pair of a {@link MappingCodec}. */
-export type MappingGeneric = readonly [Codec<any>, Codec<any>];
+export type MappingGeneric = readonly [Codec, Codec];
 
 /**
  * The input type accepted by a `MappingCodec<T>`:
@@ -1380,7 +1382,7 @@ export class MappingCodec<const T extends MappingGeneric>
    * @returns The `[keyCodec, valueCodec]` tuple.
    */
   public get entryCodec(): T {
-    return this.#entriesCodec.item.variants;
+    return this.#entriesCodec.item.items;
   }
 
   /**

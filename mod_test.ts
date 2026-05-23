@@ -3,6 +3,7 @@ import {
   ArrayCodec,
   Bool,
   BytesCodec,
+  EnumCodec,
   F32,
   F32LE,
   F64,
@@ -26,9 +27,7 @@ import {
   U64,
   U64LE,
   U8,
-  EnumCodec,
   VarInt,
-
 } from "./mod.ts";
 
 // VarInt Tests

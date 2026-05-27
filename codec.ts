@@ -81,7 +81,7 @@ export declare namespace Codec {
  * class DateCodec extends FixedCodec<Date, bigint> {
  *   readonly stride = 8;
  *
- *   encode(ms: bigint, target?: Uint8Array<ArrayBuffer>): [Uint8Array<ArrayBuffer>] {
+ *   encode(ms: bigint, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
  *     return U64.encode(ms, target);
  *   }
  *
@@ -131,7 +131,7 @@ export abstract class Codec<O extends I = any, I = O> {
   public abstract encode(
     value: I,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>, ...unknown[]];
+  ): Uint8Array<ArrayBuffer>;
 
   /**
    * Decode binary data and return the value together with the number of bytes
@@ -147,7 +147,7 @@ export abstract class Codec<O extends I = any, I = O> {
    */
   public abstract decode(
     data: Uint8Array,
-  ): [O, number, ...unknown[]];
+  ): [O, number];
 
   /**
    * Decode binary data and return only the value, discarding the byte count.
@@ -161,20 +161,6 @@ export abstract class Codec<O extends I = any, I = O> {
   public decodeAndReturnValue(data: Uint8Array): O {
     const [value] = this.decode(data);
     return value;
-  }
-
-  /**
-   * Encode `value` and return only the bytes, discarding the tuple wrapper.
-   *
-   * Convenience wrapper around {@link Codec.encode} for callers that want a
-   * plain `Uint8Array` without destructuring the single-element tuple.
-   *
-   * @param value - The value to encode.
-   * @returns The encoded `Uint8Array`.
-   */
-  public encodeAndReturnBytes(value: I): Uint8Array {
-    const [bytes] = this.encode(value);
-    return bytes;
   }
 
   /**
@@ -312,9 +298,8 @@ export class TransformCodec<
   encode(
     value: I,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
-    const [bytes] = this.inner.encode(value, target);
-    return [bytes];
+  ): Uint8Array<ArrayBuffer> {
+    return this.inner.encode(value, target);
   }
 
   /**

@@ -42,11 +42,11 @@ export class I8Codec extends Codec<number> {
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(1);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setInt8(0, value);
-    return [arr];
+    return arr;
   }
 
   /**
@@ -95,11 +95,11 @@ export class U8Codec extends Codec<number> {
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(1);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setUint8(0, value);
-    return [arr];
+    return arr;
   }
 
   /**
@@ -158,11 +158,11 @@ export class I16Codec extends Codec<number> {
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(2);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setInt16(0, value, this.#littleEndian);
-    return [arr];
+    return arr;
   }
 
   /**
@@ -221,11 +221,11 @@ export class U16Codec extends Codec<number> {
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(2);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setUint16(0, value, this.#littleEndian);
-    return [arr];
+    return arr;
   }
 
   /**
@@ -284,11 +284,11 @@ export class I32Codec extends Codec<number> {
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(4);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setInt32(0, value, this.#littleEndian);
-    return [arr];
+    return arr;
   }
 
   /**
@@ -347,11 +347,11 @@ export class U32Codec extends Codec<number> {
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(4);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setUint32(0, value, this.#littleEndian);
-    return [arr];
+    return arr;
   }
 
   /**
@@ -411,11 +411,11 @@ export class I64Codec extends Codec<bigint> {
   public encode(
     value: bigint,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(8);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setBigInt64(0, value, this.#littleEndian);
-    return [arr];
+    return arr;
   }
 
   /**
@@ -475,11 +475,11 @@ export class U64Codec extends Codec<bigint> {
   public encode(
     value: bigint,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(8);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setBigUint64(0, value, this.#littleEndian);
-    return [arr];
+    return arr;
   }
 
   /**
@@ -543,11 +543,11 @@ export class F32Codec extends Codec<number> {
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(4);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setFloat32(0, value, this.#littleEndian);
-    return [arr];
+    return arr;
   }
 
   /**
@@ -607,11 +607,11 @@ export class F64Codec extends Codec<number> {
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(8);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setFloat64(0, value, this.#littleEndian);
-    return [arr];
+    return arr;
   }
 
   /**
@@ -662,10 +662,10 @@ export class BoolCodec extends Codec<boolean> {
   public encode(
     value: boolean,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const arr = target ?? new Uint8Array(1);
     arr[0] = value ? 1 : 0;
-    return [arr];
+    return arr;
   }
 
   /**
@@ -784,8 +784,8 @@ export class VoidCodec extends Codec<void, null | undefined | void> {
   public override encode(
     _value: void | null | undefined,
     target: Uint8Array<ArrayBuffer> = new Uint8Array(0),
-  ): [Uint8Array<ArrayBuffer>] {
-    return [target];
+  ): Uint8Array<ArrayBuffer> {
+    return target;
   }
 
   /**

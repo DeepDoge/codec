@@ -71,15 +71,15 @@ export class StringCodec extends Codec<string> {
   public encode(
     value: string,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     const utf8 = this.#encoder.encode(value);
-    const [lengthPrefix] = this.sizer.encode(utf8.length);
+    const lengthPrefix = this.sizer.encode(utf8.length);
     const totalLen = lengthPrefix.length + utf8.length;
 
     const result = target ?? new Uint8Array(totalLen);
     result.set(lengthPrefix, 0);
     result.set(utf8, lengthPrefix.length);
-    return [result];
+    return result;
   }
 
   /**
@@ -195,7 +195,7 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined>
   public encode(
     value: Uint8Array,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     if (this.stride.kind === "fixed") {
       if (value.length !== this.stride.size) {
         throw new RangeError(
@@ -204,15 +204,15 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined>
       }
       const result = target ?? new Uint8Array(this.stride.size);
       result.set(value);
-      return [result];
+      return result;
     } else {
-      const [lengthPrefix] = this.sizer.encode(value.length);
+      const lengthPrefix = this.sizer.encode(value.length);
       const totalLen = lengthPrefix.length + value.length;
 
       const result = target ?? new Uint8Array(totalLen);
       result.set(lengthPrefix, 0);
       result.set(value, lengthPrefix.length);
-      return [result];
+      return result;
     }
   }
 

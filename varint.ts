@@ -43,7 +43,7 @@ export class VarIntCodec extends Codec<number> {
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): Uint8Array<ArrayBuffer> {
     if (value < 0 || !Number.isSafeInteger(value)) {
       throw new RangeError("Value must be a non-negative safe integer");
     }
@@ -56,7 +56,7 @@ export class VarIntCodec extends Codec<number> {
 
     const result = target ?? new Uint8Array(parts.length);
     result.set(parts);
-    return [result];
+    return result;
   }
 
   /**

@@ -1,21 +1,26 @@
 {
-  "name": "@nomadshiba/codec",
-  "version": "0.3.0-preview.8",
-  "license": "LGPL-2.1-only",
-  "exports": "./mod.ts",
-  "compilerOptions": {
-    "lib": [
-      "deno.window",
-      "deno.unstable",
-      "esnext"
-    ]
-  },
-  "imports": {
-    "@std/assert": "jsr:@std/assert@^1.0.19"
-  },
-  "lint": {
-    "rules": {
-      "exclude": ["no-explicit-any"]
-    }
-  }
+	"name": "@nomadshiba/codec",
+	"version": "0.3.0-preview.8",
+	"license": "LGPL-2.1-only",
+	"exports": "./mod.ts",
+	"compilerOptions": {
+		"lib": [
+			"deno.window",
+			"deno.unstable",
+			"esnext"
+		]
+	},
+	"imports": {
+		"@std/assert": "jsr:@std/assert@^1.0.19"
+	},
+	"lint": {
+		"rules": {
+			"exclude": ["no-explicit-any"]
+		}
+	},
+	"fmt": {
+		"useTabs": true,
+		"indentWidth": 4,
+		"lineWidth": 160
+	}
 }

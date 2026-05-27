@@ -3,8 +3,8 @@
  * Not exported — use {@link Stride} instead.
  */
 type StrideGeneric =
-  | { readonly kind: "fixed"; readonly size: number }
-  | { readonly kind: "variable" };
+	| { readonly kind: "fixed"; readonly size: number }
+	| { readonly kind: "variable" };
 
 /**
  * Describes the byte-size behaviour of a codec.
@@ -19,9 +19,8 @@ type StrideGeneric =
  * @template K - When provided, narrows to the specific kind; defaults to the
  *   union of both kinds.
  */
-export type Stride<K extends StrideGeneric["kind"] = StrideGeneric["kind"]> =
-  StrideGeneric["kind"] extends K ? StrideGeneric
-    : Extract<StrideGeneric, { kind: K }>;
+export type Stride<K extends StrideGeneric["kind"] = StrideGeneric["kind"]> = StrideGeneric["kind"] extends K ? StrideGeneric
+	: Extract<StrideGeneric, { kind: K }>;
 
 /**
  * Type inference helpers for codecs.
@@ -33,32 +32,32 @@ export type Stride<K extends StrideGeneric["kind"] = StrideGeneric["kind"]> =
  * ```
  */
 export declare namespace Codec {
-  // For infers we dont use the `infer` keyword
-  // because in some cases the `extends` check causes infinite recursion.
+	// For infers we dont use the `infer` keyword
+	// because in some cases the `extends` check causes infinite recursion.
 
-  /**
-   * Infers the input type that a codec accepts for encoding.
-   *
-   * @template T - The codec type to infer from
-   * @example
-   * ```ts
-   * const codec = new U32Codec();
-   * type Input = Codec.InferInput<typeof codec>; // number
-   * ```
-   */
-  export type InferInput<T extends Codec> = T["_INPUT_"];
+	/**
+	 * Infers the input type that a codec accepts for encoding.
+	 *
+	 * @template T - The codec type to infer from
+	 * @example
+	 * ```ts
+	 * const codec = new U32Codec();
+	 * type Input = Codec.InferInput<typeof codec>; // number
+	 * ```
+	 */
+	export type InferInput<T extends Codec> = T["_INPUT_"];
 
-  /**
-   * Infers the output type that a codec returns from decoding.
-   *
-   * @template T - The codec type to infer from
-   * @example
-   * ```ts
-   * const codec = new U32Codec();
-   * type Output = Codec.InferOutput<typeof codec>; // number
-   * ```
-   */
-  export type InferOutput<T extends Codec> = T["_OUTPUT_"];
+	/**
+	 * Infers the output type that a codec returns from decoding.
+	 *
+	 * @template T - The codec type to infer from
+	 * @example
+	 * ```ts
+	 * const codec = new U32Codec();
+	 * type Output = Codec.InferOutput<typeof codec>; // number
+	 * ```
+	 */
+	export type InferOutput<T extends Codec> = T["_OUTPUT_"];
 }
 
 /**
@@ -93,118 +92,118 @@ export declare namespace Codec {
  * ```
  */
 export abstract class Codec<O extends I = any, I = O> {
-  /**
-   * @internal
-   * @undocumented Not part of the public API. May be removed or changed at any time without notice.
-   */
-  public readonly _INPUT_!: I;
+	/**
+	 * @internal
+	 * @undocumented Not part of the public API. May be removed or changed at any time without notice.
+	 */
+	public readonly _INPUT_!: I;
 
-  /**
-   * @internal
-   * @undocumented Not part of the public API. May be removed or changed at any time without notice.
-   */
-  public readonly _OUTPUT_!: O;
+	/**
+	 * @internal
+	 * @undocumented Not part of the public API. May be removed or changed at any time without notice.
+	 */
+	public readonly _OUTPUT_!: O;
 
-  /**
-   * Describes the byte-size behaviour of this codec.
-   *
-   * - `{ kind: "fixed", size: n }` — always encodes to exactly `n` bytes.
-   * - `{ kind: "variable" }` — encoded size depends on the value.
-   *
-   * Composite codecs (`TupleCodec`, `StructCodec`, etc.) derive their stride
-   * from their elements: fixed when all elements are fixed, variable otherwise.
-   */
-  public abstract readonly stride: Stride;
+	/**
+	 * Describes the byte-size behaviour of this codec.
+	 *
+	 * - `{ kind: "fixed", size: n }` — always encodes to exactly `n` bytes.
+	 * - `{ kind: "variable" }` — encoded size depends on the value.
+	 *
+	 * Composite codecs (`TupleCodec`, `StructCodec`, etc.) derive their stride
+	 * from their elements: fixed when all elements are fixed, variable otherwise.
+	 */
+	public abstract readonly stride: Stride;
 
-  /**
-   * Encode `value` to its binary representation.
-   *
-   * @param value - The value to encode.
-   * @param target - Optional pre-allocated buffer to write into. When provided
-   *   it must be large enough to hold the encoded bytes. The same buffer is
-   *   returned, which avoids a heap allocation in hot paths.
-   * @returns A tuple `[Uint8Array<ArrayBuffer>]` containing the encoded bytes.
-   *   Returns `[target]` when one is supplied, otherwise a freshly allocated
-   *   buffer wrapped in a tuple. Use {@link encodeAndReturnBytes} to unwrap
-   *   the bytes directly.
-   */
-  public abstract encode(
-    value: I,
-    target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer>;
+	/**
+	 * Encode `value` to its binary representation.
+	 *
+	 * @param value - The value to encode.
+	 * @param target - Optional pre-allocated buffer to write into. When provided
+	 *   it must be large enough to hold the encoded bytes. The same buffer is
+	 *   returned, which avoids a heap allocation in hot paths.
+	 * @returns A tuple `[Uint8Array<ArrayBuffer>]` containing the encoded bytes.
+	 *   Returns `[target]` when one is supplied, otherwise a freshly allocated
+	 *   buffer wrapped in a tuple. Use {@link encodeAndReturnBytes} to unwrap
+	 *   the bytes directly.
+	 */
+	public abstract encode(
+		value: I,
+		target?: Uint8Array<ArrayBuffer>,
+	): Uint8Array<ArrayBuffer>;
 
-  /**
-   * Decode binary data and return the value together with the number of bytes
-   * consumed.
-   *
-   * The returned byte count lets callers advance a cursor when decoding
-   * multiple values from a single buffer (e.g. inside composite codecs).
-   *
-   * @param data - Binary data to decode. May be longer than needed; only the
-   *   leading bytes required by this codec are consumed.
-   * @returns `[value, bytesConsumed]` — the decoded value and the number of
-   *   bytes read from `data`.
-   */
-  public abstract decode(
-    data: Uint8Array,
-  ): [O, number];
+	/**
+	 * Decode binary data and return the value together with the number of bytes
+	 * consumed.
+	 *
+	 * The returned byte count lets callers advance a cursor when decoding
+	 * multiple values from a single buffer (e.g. inside composite codecs).
+	 *
+	 * @param data - Binary data to decode. May be longer than needed; only the
+	 *   leading bytes required by this codec are consumed.
+	 * @returns `[value, bytesConsumed]` — the decoded value and the number of
+	 *   bytes read from `data`.
+	 */
+	public abstract decode(
+		data: Uint8Array,
+	): [O, number];
 
-  /**
-   * Decode binary data and return only the value, discarding the byte count.
-   *
-   * Convenience wrapper around {@link Codec.decode} for callers that don't
-   * need to track cursor position.
-   *
-   * @param data - Binary data to decode.
-   * @returns The decoded value.
-   */
-  public decodeAndReturnValue(data: Uint8Array): O {
-    const [value] = this.decode(data);
-    return value;
-  }
+	/**
+	 * Decode binary data and return only the value, discarding the byte count.
+	 *
+	 * Convenience wrapper around {@link Codec.decode} for callers that don't
+	 * need to track cursor position.
+	 *
+	 * @param data - Binary data to decode.
+	 * @returns The decoded value.
+	 */
+	public decodeAndReturnValue(data: Uint8Array): O {
+		const [value] = this.decode(data);
+		return value;
+	}
 
-  /**
-   * Wrap this codec with a post-decode transformation.
-   *
-   * `encode` is unchanged — the inner codec handles serialisation as usual.
-   * Only `decode` is affected: after the inner codec decodes a value the
-   * `transformer` function is called with that value and the raw bytes that
-   * were consumed, and its return value becomes the final decoded result.
-   *
-   * @template T - The final output type after transformation. Must extend `O`,
-   *   so the transformer can narrow, validate, attach methods or getters,
-   *   add computed properties, or expose the raw bytes — but cannot return
-   *   a type unrelated to `O`.
-   * @param transformer - Function applied to the decoded value. Receives
-   *   `(value: O, bytes: Uint8Array)` where `bytes` are the raw bytes
-   *   consumed, and must return the transformed value of type `T`.
-   * @returns A new {@link TransformCodec} that wraps this codec.
-   *
-   * @example
-   * ```ts
-   * import { U64 } from "@nomadshiba/codec";
-   *
-   * // Decode a u64 timestamp as a Date
-   * const DateCodec = U64.transform((ms) => new Date(Number(ms)));
-   * type Decoded = Codec.InferOutput<typeof DateCodec>; // Date
-   * ```
-   *
-   * @example
-   * ```ts
-   * import { U32 } from "@nomadshiba/codec";
-   *
-   * // Validate on decode
-   * const bounded = U32.transform((value) => {
-   *   if (value > 1000) throw new RangeError("value out of range");
-   *   return value;
-   * });
-   * ```
-   */
-  public transform<T extends O>(
-    transformer: (value: O, bytes: Uint8Array) => T,
-  ): TransformCodec<this, T, O, I> {
-    return new TransformCodec(this, transformer);
-  }
+	/**
+	 * Wrap this codec with a post-decode transformation.
+	 *
+	 * `encode` is unchanged — the inner codec handles serialisation as usual.
+	 * Only `decode` is affected: after the inner codec decodes a value the
+	 * `transformer` function is called with that value and the raw bytes that
+	 * were consumed, and its return value becomes the final decoded result.
+	 *
+	 * @template T - The final output type after transformation. Must extend `O`,
+	 *   so the transformer can narrow, validate, attach methods or getters,
+	 *   add computed properties, or expose the raw bytes — but cannot return
+	 *   a type unrelated to `O`.
+	 * @param transformer - Function applied to the decoded value. Receives
+	 *   `(value: O, bytes: Uint8Array)` where `bytes` are the raw bytes
+	 *   consumed, and must return the transformed value of type `T`.
+	 * @returns A new {@link TransformCodec} that wraps this codec.
+	 *
+	 * @example
+	 * ```ts
+	 * import { U64 } from "@nomadshiba/codec";
+	 *
+	 * // Decode a u64 timestamp as a Date
+	 * const DateCodec = U64.transform((ms) => new Date(Number(ms)));
+	 * type Decoded = Codec.InferOutput<typeof DateCodec>; // Date
+	 * ```
+	 *
+	 * @example
+	 * ```ts
+	 * import { U32 } from "@nomadshiba/codec";
+	 *
+	 * // Validate on decode
+	 * const bounded = U32.transform((value) => {
+	 *   if (value > 1000) throw new RangeError("value out of range");
+	 *   return value;
+	 * });
+	 * ```
+	 */
+	public transform<T extends O>(
+		transformer: (value: O, bytes: Uint8Array) => T,
+	): TransformCodec<this, T, O, I> {
+		return new TransformCodec(this, transformer);
+	}
 }
 
 /**
@@ -217,7 +216,7 @@ export abstract class Codec<O extends I = any, I = O> {
  * @template I - The input type accepted by `encode`. Defaults to `O`.
  */
 export type FixedCodec<O extends I = any, I = O> = Codec<O, I> & {
-  stride: Stride<"fixed">;
+	stride: Stride<"fixed">;
 };
 
 /**
@@ -230,7 +229,7 @@ export type FixedCodec<O extends I = any, I = O> = Codec<O, I> & {
  * @template I - The input type accepted by `encode`. Defaults to `O`.
  */
 export type VariableCodec<O extends I = any, I = O> = Codec<O, I> & {
-  stride: Stride<"variable">;
+	stride: Stride<"variable">;
 };
 
 /**
@@ -260,58 +259,58 @@ export type VariableCodec<O extends I = any, I = O> = Codec<O, I> & {
  * ```
  */
 export class TransformCodec<
-  C extends Codec<O, I>,
-  T extends O,
-  O extends I = C["_OUTPUT_"], // O and I are needed here otherwise we get weird type errors if we use Codec.Infer(Output|Input)
-  I = C["_INPUT_"],
+	C extends Codec<O, I>,
+	T extends O,
+	O extends I = C["_OUTPUT_"], // O and I are needed here otherwise we get weird type errors if we use Codec.Infer(Output|Input)
+	I = C["_INPUT_"],
 > extends Codec<T, I> {
-  /**
-   * The stride of this codec, inherited from the inner codec.
-   */
-  public readonly stride: C["stride"];
+	/**
+	 * The stride of this codec, inherited from the inner codec.
+	 */
+	public readonly stride: C["stride"];
 
-  /**
-   * The wrapped inner codec that handles encoding and the initial decoding
-   * step before the transformer is applied.
-   */
-  public readonly inner: C;
-  private readonly transformer: (value: O, bytes: Uint8Array) => T;
+	/**
+	 * The wrapped inner codec that handles encoding and the initial decoding
+	 * step before the transformer is applied.
+	 */
+	public readonly inner: C;
+	private readonly transformer: (value: O, bytes: Uint8Array) => T;
 
-  /**
-   * @param inner - The codec to wrap.
-   * @param transformer - Function applied to each decoded value.
-   */
-  constructor(inner: C, transformer: (value: O, bytes: Uint8Array) => T) {
-    super();
-    this.inner = inner;
-    this.stride = inner.stride;
-    this.transformer = transformer;
-  }
+	/**
+	 * @param inner - The codec to wrap.
+	 * @param transformer - Function applied to each decoded value.
+	 */
+	constructor(inner: C, transformer: (value: O, bytes: Uint8Array) => T) {
+		super();
+		this.inner = inner;
+		this.stride = inner.stride;
+		this.transformer = transformer;
+	}
 
-  /**
-   * Encode a value using the inner codec.
-   *
-   * @param value - Value to encode.
-   * @param target - Optional pre-allocated buffer to write into.
-   * @returns `[Uint8Array<ArrayBuffer>]` binary representation wrapped in a tuple.
-   */
-  encode(
-    value: I,
-    target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
-    return this.inner.encode(value, target);
-  }
+	/**
+	 * Encode a value using the inner codec.
+	 *
+	 * @param value - Value to encode.
+	 * @param target - Optional pre-allocated buffer to write into.
+	 * @returns `[Uint8Array<ArrayBuffer>]` binary representation wrapped in a tuple.
+	 */
+	encode(
+		value: I,
+		target?: Uint8Array<ArrayBuffer>,
+	): Uint8Array<ArrayBuffer> {
+		return this.inner.encode(value, target);
+	}
 
-  /**
-   * Decode binary data using the inner codec, then apply the transformer.
-   *
-   * @param data - Binary data to decode.
-   * @returns `[transformedValue, bytesConsumed]`.
-   */
-  decode(data: Uint8Array): [T, number] {
-    const [value, size] = this.inner.decode(data);
-    const bytes = data.subarray(0, size);
-    const transformed = this.transformer(value, bytes);
-    return [transformed, size];
-  }
+	/**
+	 * Decode binary data using the inner codec, then apply the transformer.
+	 *
+	 * @param data - Binary data to decode.
+	 * @returns `[transformedValue, bytesConsumed]`.
+	 */
+	decode(data: Uint8Array): [T, number] {
+		const [value, size] = this.inner.decode(data);
+		const bytes = data.subarray(0, size);
+		const transformed = this.transformer(value, bytes);
+		return [transformed, size];
+	}
 }

@@ -8,7 +8,6 @@
  * - `stride` — a `Stride` discriminated union: `{ kind: "fixed"; size: number }`
  *   for fixed-size codecs, or `{ kind: "variable" }` for variable-size codecs.
  *
- *
  * Primitives default to big-endian (network byte order). Little-endian
  * singletons (`U16LE`, `I32LE`, etc.) are available for x86/Bitcoin use cases.
  *

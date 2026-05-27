@@ -131,7 +131,7 @@ export abstract class Codec<O extends I = any, I = O> {
   public abstract encode(
     value: I,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>];
+  ): [Uint8Array<ArrayBuffer>, ...unknown[]];
 
   /**
    * Decode binary data and return the value together with the number of bytes
@@ -145,7 +145,9 @@ export abstract class Codec<O extends I = any, I = O> {
    * @returns `[value, bytesConsumed]` — the decoded value and the number of
    *   bytes read from `data`.
    */
-  public abstract decode(data: Uint8Array): [O, number];
+  public abstract decode(
+    data: Uint8Array,
+  ): [O, number, ...unknown[]];
 
   /**
    * Decode binary data and return only the value, discarding the byte count.
@@ -311,7 +313,8 @@ export class TransformCodec<
     value: I,
     target?: Uint8Array<ArrayBuffer>,
   ): [Uint8Array<ArrayBuffer>] {
-    return this.inner.encode(value, target);
+    const [bytes] = this.inner.encode(value, target);
+    return [bytes];
   }
 
   /**

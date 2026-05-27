@@ -74,15 +74,15 @@ export class NullableCodec<T extends NullableGeneric>
   }
 
   /**
-    * Encode a nullable value.
-    *
-    * For fixed-size inner codecs the output is always `stride.size` bytes:
-    * `[0x00, 0x00, …]` for `null`, `[0x01, …payload…]` for a value.
-    *
-    * @param value - The value to encode, or `null`.
-    * @param target - Optional pre-allocated buffer.
-    * @returns `[Uint8Array<ArrayBuffer>]`.
-    */
+   * Encode a nullable value.
+   *
+   * For fixed-size inner codecs the output is always `stride.size` bytes:
+   * `[0x00, 0x00, …]` for `null`, `[0x01, …payload…]` for a value.
+   *
+   * @param value - The value to encode, or `null`.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `[Uint8Array<ArrayBuffer>]`.
+   */
   public encode(
     value: NullableInput<T>,
     target?: Uint8Array<ArrayBuffer>,
@@ -141,6 +141,14 @@ export type TupleInput<T extends TupleGeneric> = {
  */
 export type TupleOutput<T extends TupleGeneric> = {
   -readonly [I in keyof T]: Codec.InferOutput<T[I]>;
+};
+
+/**
+ * Maps each index of a `TupleGeneric` to `number`, representing the byte
+ * offset of that element within the encoded/decoded buffer.
+ */
+export type TupleOffsets<T extends TupleGeneric> = {
+  -readonly [I in keyof T]: number;
 };
 
 /**
@@ -214,51 +222,57 @@ export class TupleCodec<const T extends TupleGeneric>
   }
 
   /**
-    * Encode a tuple of values by concatenating each element's encoding in order.
-    *
-    * @param value - Tuple of values, one per codec in order.
-    * @param target - Optional pre-allocated buffer.
-    * @returns `[Uint8Array<ArrayBuffer>]` of concatenated element encodings.
-    */
+   * Encode a tuple of values by concatenating each element's encoding in order.
+   *
+   * @param value - Tuple of values, one per codec in order.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `[Uint8Array<ArrayBuffer>, offsets]` where `offsets[i]` is the
+   *   byte offset of element `i` within the returned buffer.
+   */
   public encode(
     value: TupleInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
-    const parts: Uint8Array<ArrayBuffer>[] = [];
+  ): [Uint8Array<ArrayBuffer>, TupleOffsets<T>] {
+    const items: Uint8Array<ArrayBuffer>[] = [];
     for (let i = 0; i < this.items.length; i++) {
       const codec = this.items[i]!;
-      const [part] = codec.encode(value[i]!);
-      parts.push(part);
+      const [item] = codec.encode(value[i]!);
+      items.push(item);
     }
 
-    const combinedLength = parts.reduce(
+    const combinedLength = items.reduce(
       (sum, part) => sum + part.length,
       0,
     );
     const combined = target ?? new Uint8Array(combinedLength);
+    const offsets = new Array(items.length) as TupleOffsets<T>;
     let offset = 0;
-    for (const part of parts) {
-      combined.set(part, offset);
-      offset += part.length;
+    for (let i = 0; i < items.length; i++) {
+      offsets[i] = offset;
+      combined.set(items[i]!, offset);
+      offset += items[i]!.length;
     }
-    return [combined];
+    return [combined, offsets];
   }
 
   /**
    * Decode a tuple by reading each element in definition order.
    *
    * @param data - Binary data. Elements are read in definition order.
-   * @returns `[tuple, totalBytesConsumed]`.
+   * @returns `[tuple, totalBytesConsumed, offsets]` where `offsets[i]` is the
+   *   byte offset of element `i` within `data`.
    */
-  public decode(data: Uint8Array): [TupleOutput<T>, number] {
+  public decode(data: Uint8Array): [TupleOutput<T>, number, TupleOffsets<T>] {
     const args: unknown[] = new Array(this.items.length);
+    const offsets = new Array(this.items.length) as TupleOffsets<T>;
     let offset = 0;
     for (let i = 0; i < this.items.length; i++) {
+      offsets[i] = offset;
       const [value, size] = this.items[i]!.decode(data.subarray(offset));
       args[i] = value;
       offset += size;
     }
-    return [this.factory(...args), offset];
+    return [this.factory(...args), offset, offsets];
   }
 }
 
@@ -318,6 +332,16 @@ export type StructOutput<T extends StructGeneric> =
       OptionalCodecFor<T, K>
     >;
   };
+
+/**
+ * Maps each field of a `StructGeneric` to `number`, representing the byte
+ * offset of that field within the encoded/decoded buffer. Keys use the
+ * stripped name (no `"?"` suffix). Optional fields are always present in the
+ * offsets object — they point to the presence byte.
+ */
+export type StructOffsets<T extends StructGeneric> =
+  & { -readonly [K in RequiredKeys<T>]: number }
+  & { -readonly [K in OptionalKeys<T>]?: number };
 
 /**
  * Transforms a `StructGeneric` shape into its fully-optional equivalent:
@@ -448,7 +472,7 @@ export class StructCodec<const T extends StructGeneric>
       this.factory = null;
       this.optionalFactories = new Map();
     } else {
-      const keys = this.keys as string[];
+      const keys = this.keys;
       const body = `return { ${keys.join(", ")} };`;
       this.factory = new Function(...keys, body) as typeof this.factory;
       this.optionalFactories = null;
@@ -481,25 +505,32 @@ export class StructCodec<const T extends StructGeneric>
   }
 
   /**
-    * Encode a struct value by concatenating each field's encoding in definition order.
-    *
-    * @param value - Object with fields matching the codec shape. Optional
-    *   fields (declared with `"?"`) may be omitted or set to `undefined`.
-    * @param target - Optional pre-allocated buffer.
-    * @returns `[Uint8Array<ArrayBuffer>]`.
-    */
+   * Encode a struct value by concatenating each field's encoding in definition order.
+   *
+   * @param value - Object with fields matching the codec shape. Optional
+   *   fields (declared with `"?"`) may be omitted or set to `undefined`.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `[Uint8Array<ArrayBuffer>, offsets]` where `offsets[field]` is
+   *   the byte offset of that field within the returned buffer. For optional
+   *   fields the offset points to the presence byte.
+   */
   public encode(
     value: StructInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): [Uint8Array<ArrayBuffer>, StructOffsets<T>] {
     const parts: Uint8Array<ArrayBuffer>[] = [];
+    const reqOffsets: unknown[] = new Array(this.requiredKeys.length);
+    const optOffsets: unknown[] = [];
+    let reqIdx = 0;
+    let mask = 0n;
 
-    for (const rawKey of this.keys) {
+    for (let i = 0; i < this.keys.length; i++) {
+      const rawKey = this.keys[i];
       const codec = this.shape[rawKey]!;
 
       if (rawKey.endsWith("?")) {
         const fieldKey = rawKey.slice(0, -1) as keyof typeof value;
-        const fieldValue = (value as any)[fieldKey];
+        const fieldValue = value[fieldKey];
 
         if (fieldValue === undefined) {
           parts.push(new Uint8Array([0x00]));
@@ -509,32 +540,71 @@ export class StructCodec<const T extends StructGeneric>
           presenced[0] = 0x01;
           presenced.set(encoded, 1);
           parts.push(presenced);
+          mask |= this.optionalBits[i]!;
+          optOffsets.push(0); // placeholder, filled in second pass
         }
       } else {
-        const [encoded] = codec.encode((value as any)[rawKey]);
+        const [encoded] = codec.encode(value[rawKey as never]);
         parts.push(encoded);
+        reqOffsets[reqIdx++] = 0; // placeholder, filled in second pass
       }
     }
 
     const totalLen = parts.reduce((sum, p) => sum + p.length, 0);
     const result = target ?? new Uint8Array(totalLen);
+
+    // Second pass: write bytes and compute real offsets in parallel.
     let offset = 0;
-    for (const part of parts) {
-      result.set(part, offset);
-      offset += part.length;
+    let rIdx = 0;
+    let oIdx = 0;
+    for (let i = 0; i < this.keys.length; i++) {
+      const rawKey = this.keys[i];
+      if (rawKey.endsWith("?")) {
+        const fieldKey = rawKey.slice(0, -1) as keyof typeof value;
+        const fieldValue = value[fieldKey];
+        if (fieldValue !== undefined) {
+          optOffsets[oIdx++] = offset;
+        }
+      } else {
+        reqOffsets[rIdx++] = offset;
+      }
+      result.set(parts[i]!, offset);
+      offset += parts[i]!.length;
     }
-    return [result];
+
+    // Reuse the same factory (per mask) to build the offsets object so it
+    // shares the same hidden class as the decoded value object.
+    let factory = this.factory ?? this.optionalFactories!.get(mask);
+    if (factory === undefined) {
+      const reqParams = this.requiredKeys;
+      const optParams: string[] = [];
+      const optLen = this.optionalKeys.length;
+      for (let i = 0; i < optLen; i++) {
+        if (mask & (1n << BigInt(i))) {
+          optParams.push(this.optionalKeys[i]!.slice(0, -1));
+        }
+      }
+      const allParams = [...reqParams, ...optParams];
+      const body = `return { ${allParams.join(", ")} };`;
+      factory = new Function(...allParams, body) as (
+        ...args: unknown[]
+      ) => StructOutput<T>;
+      this.optionalFactories!.set(mask, factory);
+    }
+
+    return [result, factory(...reqOffsets, ...optOffsets)];
   }
 
   /**
    * Decode a struct by reading each field in definition order.
    *
    * @param data - Binary data.
-   * @returns `[object, bytesConsumed]`. Optional fields absent in the wire
-   *   data are omitted from the returned object (i.e. not set to `undefined`
-   *   explicitly, matching TypeScript's optional property semantics).
+   * @returns `[object, bytesConsumed, offsets]` where `offsets[field]` is the
+   *   byte offset of that field within `data`. For optional fields the offset
+   *   points to the presence byte; absent optional fields are omitted from the
+   *   returned object (matching TypeScript's optional property semantics).
    */
-  public decode(data: Uint8Array): [StructOutput<T>, number] {
+  public decode(data: Uint8Array): [StructOutput<T>, number, StructOffsets<T>] {
     let offset = 0;
 
     if (this.factory !== null) {
@@ -542,14 +612,15 @@ export class StructCodec<const T extends StructGeneric>
       // construct the object via the pre-compiled factory so V8 can assign
       // a stable hidden class instead of falling back to a hash map.
       const args: unknown[] = new Array(this.keys.length);
+      const offsets: unknown[] = new Array(this.keys.length);
       for (let i = 0; i < this.keys.length; i++) {
-        const [fieldValue, size] = this.shape[this.keys[i]!]!.decode(
-          data.subarray(offset),
-        );
+        const codec = this.shape[this.keys[i]!];
+        const [fieldValue, size] = codec.decode(data.subarray(offset));
         args[i] = fieldValue;
+        offsets[i] = offset;
         offset += size;
       }
-      return [this.factory(...args), offset];
+      return [this.factory(...args), offset, this.factory(...offsets)];
     }
 
     // Struct has optional fields.
@@ -567,6 +638,8 @@ export class StructCodec<const T extends StructGeneric>
     // tracked by the bitmask and simply omitted from the factory params.
     const reqArgs: unknown[] = new Array(reqLen);
     const optArgs: unknown[] = [];
+    const reqOffsets: unknown[] = new Array(reqLen);
+    const optOffsets: unknown[] = [];
     let mask = 0n;
     let reqIdx = 0;
 
@@ -576,17 +649,21 @@ export class StructCodec<const T extends StructGeneric>
 
       if (rawKey.endsWith("?")) {
         const presenceByte = data[offset]!;
+        const fieldOffset = offset;
         offset += 1;
 
         if (presenceByte !== 0x00) {
           const [fieldValue, size] = codec.decode(data.subarray(offset));
           optArgs.push(fieldValue);
+          optOffsets.push(fieldOffset);
           mask |= this.optionalBits[i]!;
           offset += size;
         }
       } else {
         const [fieldValue, size] = codec.decode(data.subarray(offset));
-        reqArgs[reqIdx++] = fieldValue;
+        reqArgs[reqIdx] = fieldValue;
+        reqOffsets[reqIdx] = offset;
+        reqIdx++;
         offset += size;
       }
     }
@@ -595,7 +672,7 @@ export class StructCodec<const T extends StructGeneric>
     if (factory === undefined) {
       // Build a factory for this exact combination of present optional fields.
       // Required params come first, then only the present optional params.
-      const reqParams = this.requiredKeys as string[];
+      const reqParams = this.requiredKeys;
       const optParams: string[] = [];
       for (let i = 0; i < optLen; i++) {
         if (mask & (1n << BigInt(i))) {
@@ -612,11 +689,9 @@ export class StructCodec<const T extends StructGeneric>
     }
 
     return [
-      (factory as (...args: unknown[]) => StructOutput<T>)(
-        ...reqArgs,
-        ...optArgs,
-      ),
+      factory(...reqArgs, ...optArgs),
       offset,
+      factory(...reqOffsets, ...optOffsets),
     ];
   }
 
@@ -725,16 +800,17 @@ export class ArrayCodec<T extends ArrayGeneric>
   }
 
   /**
-    * Encode an array by writing a count prefix followed by each element.
-    *
-    * @param value - Array of elements to encode.
-    * @param target - Optional pre-allocated buffer.
-    * @returns `[Uint8Array<ArrayBuffer>]` with count prefix followed by elements.
-    */
+   * Encode an array by writing a count prefix followed by each element.
+   *
+   * @param value - Array of elements to encode.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `[Uint8Array<ArrayBuffer>, offsets]` where `offsets[i]` is the
+   *   byte offset of element `i` within the returned buffer.
+   */
   public encode(
     value: ArrayInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): [Uint8Array<ArrayBuffer>, number[]] {
     const parts: Uint8Array<ArrayBuffer>[] = [];
 
     for (const item of value) {
@@ -746,39 +822,44 @@ export class ArrayCodec<T extends ArrayGeneric>
       (sum, part) => sum + part.length,
       0,
     );
-    const elementsData = new Uint8Array(combinedLength);
-    let offset = 0;
-    for (const part of parts) {
-      elementsData.set(part, offset);
-      offset += part.length;
-    }
 
     const [countPrefix] = this.counter.encode(value.length);
-    const totalLen = countPrefix.length + elementsData.length;
+    const totalLen = countPrefix.length + combinedLength;
     const result = target ?? new Uint8Array(totalLen);
     result.set(countPrefix, 0);
-    result.set(elementsData, countPrefix.length);
-    return [result];
+
+    const offsets: number[] = new Array(parts.length);
+    let offset = countPrefix.length;
+    for (let i = 0; i < parts.length; i++) {
+      offsets[i] = offset;
+      result.set(parts[i]!, offset);
+      offset += parts[i]!.length;
+    }
+
+    return [result, offsets];
   }
 
   /**
    * Decode an array by reading the count prefix then decoding that many elements.
    *
    * @param data - Binary data starting with a count prefix.
-   * @returns `[elements, totalBytesConsumed]`.
+   * @returns `[elements, totalBytesConsumed, offsets]` where `offsets[i]` is
+   *   the byte offset of element `i` within `data`.
    */
-  public decode(data: Uint8Array): [ArrayOutput<T>, number] {
+  public decode(data: Uint8Array): [ArrayOutput<T>, number, number[]] {
     const [count, bytesRead] = this.counter.decode(data);
     const result: ArrayOutput<T> = [];
+    const offsets: number[] = new Array(count);
     let offset = bytesRead;
 
     for (let i = 0; i < count; i++) {
+      offsets[i] = offset;
       const [value, size] = this.item.decode(data.subarray(offset));
       result.push(value);
       offset += size;
     }
 
-    return [result, offset];
+    return [result, offset, offsets];
   }
 }
 
@@ -876,13 +957,13 @@ export class EnumCodec<const T extends EnumGeneric>
   }
 
   /**
-    * Encode a union variant by writing its definition-order index followed by the payload.
-    *
-    * @param value - `{ kind, value }` object identifying the variant and its payload.
-    * @param target - Optional pre-allocated buffer.
-    * @returns `[Uint8Array<ArrayBuffer>]` with the variant index followed by the payload.
-    * @throws {Error} If `value.kind` is not a known variant name.
-    */
+   * Encode a union variant by writing its definition-order index followed by the payload.
+   *
+   * @param value - `{ kind, value }` object identifying the variant and its payload.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `[Uint8Array<ArrayBuffer>]` with the variant index followed by the payload.
+   * @throws {Error} If `value.kind` is not a known variant name.
+   */
   public encode(
     value: EnumInput<T>,
     target?: Uint8Array<ArrayBuffer>,
@@ -1024,14 +1105,14 @@ export class PaddedEnumCodec<const T extends FixedEnumGeneric>
   }
 
   /**
-    * Encode a union variant. The payload is written into a zero-padded slot of
-    * `maxVariantSize` bytes so every encoded value has the same total length.
-    *
-    * @param value - `{ kind, value }` object identifying the variant and its payload.
-    * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
-    * @returns Fixed-size `[Uint8Array]` with index bytes followed by the padded payload.
-    * @throws {Error} If `value.kind` is not a known variant name.
-    */
+   * Encode a union variant. The payload is written into a zero-padded slot of
+   * `maxVariantSize` bytes so every encoded value has the same total length.
+   *
+   * @param value - `{ kind, value }` object identifying the variant and its payload.
+   * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
+   * @returns Fixed-size `[Uint8Array]` with index bytes followed by the padded payload.
+   * @throws {Error} If `value.kind` is not a known variant name.
+   */
   public encode(
     value: EnumInput<T>,
     target?: Uint8Array<ArrayBuffer>,
@@ -1159,18 +1240,19 @@ export class MappingCodec<const T extends MappingGeneric>
   }
 
   /**
-    * Encode a `Map` as a count-prefixed sequence of `[key, value]` entry pairs.
-    *
-    * @param value - The `Map` to encode.
-    * @param target - Optional pre-allocated buffer.
-    * @returns `[Uint8Array<ArrayBuffer>]`.
-    */
+   * Encode a `Map` as a count-prefixed sequence of `[key, value]` entry pairs.
+   *
+   * @param value - The `Map` to encode.
+   * @param target - Optional pre-allocated buffer.
+   * @returns `[Uint8Array<ArrayBuffer>, offsets]` where `offsets[i]` is the
+   *   byte offset of entry `i` (the `[key, value]` tuple) within the returned buffer.
+   */
   public encode(
     value: MappingInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): [Uint8Array<ArrayBuffer>] {
+  ): [Uint8Array<ArrayBuffer>, number[]] {
     return this.#entriesCodec.encode(
-      Array.from(value.entries()) as any,
+      value.entries().toArray() as never,
       target,
     );
   }
@@ -1180,10 +1262,11 @@ export class MappingCodec<const T extends MappingGeneric>
    * many `[key, value]` entry pairs.
    *
    * @param data - Binary data starting with a count prefix.
-   * @returns `[Map, bytesConsumed]`.
+   * @returns `[Map, bytesConsumed, offsets]` where `offsets[i]` is the byte
+   *   offset of entry `i` within `data`.
    */
-  public decode(data: Uint8Array): [MappingOutput<T>, number] {
-    const [entries, size] = this.#entriesCodec.decode(data);
-    return [new Map(entries as any), size];
+  public decode(data: Uint8Array): [MappingOutput<T>, number, number[]] {
+    const [entries, size, offsets] = this.#entriesCodec.decode(data);
+    return [new Map(entries), size, offsets];
   }
 }

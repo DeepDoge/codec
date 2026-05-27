@@ -223,7 +223,7 @@ export abstract class Codec<O extends I = any, I = O> {
  * A codec that always encodes to a fixed number of bytes.
  *
  * Use this type when you need to constrain a generic parameter to a
- * fixed-size codec (e.g. for {@link FixedEnumCodec} variants).
+ * fixed-size codec (e.g. for {@link PaddedEnumCodec} variants).
  *
  * @template O - The output type returned by `decode`.
  * @template I - The input type accepted by `encode`. Defaults to `O`.

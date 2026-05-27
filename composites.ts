@@ -922,13 +922,13 @@ export class EnumCodec<const T extends EnumGeneric>
 
 // ── FixedEnum ─────────────────────────────────────────────────────────────────
 
-/** Constraint type for the variants record of a {@link FixedEnumCodec}: all variants must be fixed-size. */
+/** Constraint type for the variants record of a {@link PaddedEnumCodec}: all variants must be fixed-size. */
 export type FixedEnumGeneric = {
   readonly [key: string]: FixedCodec;
 };
 
 /**
- * Options for {@link FixedEnumCodec}.
+ * Options for {@link PaddedEnumCodec}.
  */
 export type FixedEnumOptions = {
   /**
@@ -953,9 +953,9 @@ export type FixedEnumOptions = {
  *
  * @example
  * ```ts
- * import { FixedEnumCodec, U8, U16 } from "@nomadshiba/codec";
+ * import { PaddedEnumCodec, U8, U16 } from "@nomadshiba/codec";
  *
- * const Event = new FixedEnumCodec({ Click: U8, Scroll: U16 });
+ * const Event = new PaddedEnumCodec({ Click: U8, Scroll: U16 });
  * // stride = { kind: "fixed", size: 1 (index) + 2 (max payload) } = 3
  *
  * Event.encode({ kind: "Click", value: 5 });   // [0x00, 0x05, 0x00] (padded)
@@ -963,7 +963,7 @@ export type FixedEnumOptions = {
  * const [e] = Event.decode(bytes); // { kind: "Click", value: 5 }
  * ```
  */
-export class FixedEnumCodec<const T extends FixedEnumGeneric>
+export class PaddedEnumCodec<const T extends FixedEnumGeneric>
   extends Codec<EnumOutput<T>, EnumInput<T>> {
   /** `{ kind: "fixed", size: indexer.stride.size + maxVariantSize }` */
   public readonly stride: Stride<"fixed">;
@@ -1001,7 +1001,7 @@ export class FixedEnumCodec<const T extends FixedEnumGeneric>
       const codec = this.variants[key]!;
       if (codec.stride.kind !== "fixed") {
         throw new Error(
-          `FixedEnumCodec: variant "${
+          `PaddedEnumCodec: variant "${
             String(key)
           }" must have a fixed-size codec`,
         );
@@ -1009,7 +1009,7 @@ export class FixedEnumCodec<const T extends FixedEnumGeneric>
     }
 
     if (this.indexer.stride.kind !== "fixed") {
-      throw new Error("FixedEnumCodec: indexer must have a fixed-size codec");
+      throw new Error("PaddedEnumCodec: indexer must have a fixed-size codec");
     }
 
     this.maxVariantSize = this.keys.reduce<number>((max, key) => {

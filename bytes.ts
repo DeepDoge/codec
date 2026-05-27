@@ -61,25 +61,25 @@ export class StringCodec extends Codec<string> {
   }
 
   /**
-   * Encode a string to a length-prefixed UTF-8 byte sequence.
-   *
-   * @param value - The string to encode as UTF-8.
-   * @param target - Optional pre-allocated buffer (must be large enough).
-   * @returns `Uint8Array<ArrayBuffer>` containing the length prefix followed
-   *   by the UTF-8 bytes.
-   */
+    * Encode a string to a length-prefixed UTF-8 byte sequence.
+    *
+    * @param value - The string to encode as UTF-8.
+    * @param target - Optional pre-allocated buffer (must be large enough).
+    * @returns `[Uint8Array<ArrayBuffer>]` containing the length prefix followed
+    *   by the UTF-8 bytes.
+    */
   public encode(
     value: string,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const utf8 = this.#encoder.encode(value);
-    const lengthPrefix = this.sizer.encode(utf8.length);
+    const [lengthPrefix] = this.sizer.encode(utf8.length);
     const totalLen = lengthPrefix.length + utf8.length;
 
     const result = target ?? new Uint8Array(totalLen);
     result.set(lengthPrefix, 0);
     result.set(utf8, lengthPrefix.length);
-    return result;
+    return [result];
   }
 
   /**
@@ -183,19 +183,19 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined>
   }
 
   /**
-   * Encode a byte array, writing a length prefix in variable-length mode or
-   * copying raw bytes in fixed-length mode.
-   *
-   * @param value - The byte array to encode.
-   * @param target - Optional pre-allocated buffer (must be large enough).
-   * @returns `Uint8Array<ArrayBuffer>` containing the encoded bytes (with or
-   *   without a length prefix depending on the mode).
-   * @throws {RangeError} In fixed-length mode if `value.length !== stride.size`.
-   */
+    * Encode a byte array, writing a length prefix in variable-length mode or
+    * copying raw bytes in fixed-length mode.
+    *
+    * @param value - The byte array to encode.
+    * @param target - Optional pre-allocated buffer (must be large enough).
+    * @returns `[Uint8Array<ArrayBuffer>]` containing the encoded bytes (with or
+    *   without a length prefix depending on the mode).
+    * @throws {RangeError} In fixed-length mode if `value.length !== stride.size`.
+    */
   public encode(
     value: Uint8Array,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     if (this.stride.kind === "fixed") {
       if (value.length !== this.stride.size) {
         throw new RangeError(
@@ -204,15 +204,15 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined>
       }
       const result = target ?? new Uint8Array(this.stride.size);
       result.set(value);
-      return result;
+      return [result];
     } else {
-      const lengthPrefix = this.sizer.encode(value.length);
+      const [lengthPrefix] = this.sizer.encode(value.length);
       const totalLen = lengthPrefix.length + value.length;
 
       const result = target ?? new Uint8Array(totalLen);
       result.set(lengthPrefix, 0);
       result.set(value, lengthPrefix.length);
-      return result;
+      return [result];
     }
   }
 

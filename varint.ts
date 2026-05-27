@@ -32,18 +32,18 @@ export class VarIntCodec extends Codec<number> {
   public readonly stride: Stride<"variable"> = { kind: "variable" };
 
   /**
-   * Encode a non-negative integer using unsigned LEB128.
-   *
-   * @param value - A non-negative safe integer (`0 ≤ value ≤ Number.MAX_SAFE_INTEGER`).
-   * @param target - Optional pre-allocated buffer. When supplied the bytes are
-   *   written at offset 0 and the same buffer is returned.
-   * @returns A `Uint8Array<ArrayBuffer>` containing the LEB128 encoding.
-   * @throws {RangeError} If `value` is negative or not a safe integer.
-   */
+    * Encode a non-negative integer using unsigned LEB128.
+    *
+    * @param value - A non-negative safe integer (`0 ≤ value ≤ Number.MAX_SAFE_INTEGER`).
+    * @param target - Optional pre-allocated buffer. When supplied the bytes are
+    *   written at offset 0 and the same buffer is returned.
+    * @returns A `[Uint8Array<ArrayBuffer>]` containing the LEB128 encoding.
+    * @throws {RangeError} If `value` is negative or not a safe integer.
+    */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     if (value < 0 || !Number.isSafeInteger(value)) {
       throw new RangeError("Value must be a non-negative safe integer");
     }
@@ -56,7 +56,7 @@ export class VarIntCodec extends Codec<number> {
 
     const result = target ?? new Uint8Array(parts.length);
     result.set(parts);
-    return result;
+    return [result];
   }
 
   /**

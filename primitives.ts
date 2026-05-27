@@ -33,20 +33,20 @@ export class I8Codec extends Codec<number> {
   public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 1 };
 
   /**
-   * Encode a signed 8-bit integer to its binary representation.
-   *
-   * @param value - A signed 8-bit integer (−128…127).
-   * @param target - Optional pre-allocated 1-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` containing the encoded byte.
-   */
+    * Encode a signed 8-bit integer to its binary representation.
+    *
+    * @param value - A signed 8-bit integer (−128…127).
+    * @param target - Optional pre-allocated 1-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` containing the encoded byte.
+    */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(1);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setInt8(0, value);
-    return arr;
+    return [arr];
   }
 
   /**
@@ -86,20 +86,20 @@ export class U8Codec extends Codec<number> {
   public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 1 };
 
   /**
-   * Encode an unsigned 8-bit integer to its binary representation.
-   *
-   * @param value - An unsigned 8-bit integer (0…255).
-   * @param target - Optional pre-allocated 1-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` containing the encoded byte.
-   */
+    * Encode an unsigned 8-bit integer to its binary representation.
+    *
+    * @param value - An unsigned 8-bit integer (0…255).
+    * @param target - Optional pre-allocated 1-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` containing the encoded byte.
+    */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(1);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setUint8(0, value);
-    return arr;
+    return [arr];
   }
 
   /**
@@ -149,20 +149,20 @@ export class I16Codec extends Codec<number> {
   }
 
   /**
-   * Encode a signed 16-bit integer to its binary representation.
-   *
-   * @param value - A signed 16-bit integer.
-   * @param target - Optional pre-allocated 2-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` of length 2.
-   */
+    * Encode a signed 16-bit integer to its binary representation.
+    *
+    * @param value - A signed 16-bit integer.
+    * @param target - Optional pre-allocated 2-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` of length 2.
+    */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(2);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setInt16(0, value, this.#littleEndian);
-    return arr;
+    return [arr];
   }
 
   /**
@@ -212,20 +212,20 @@ export class U16Codec extends Codec<number> {
   }
 
   /**
-   * Encode an unsigned 16-bit integer to its binary representation.
-   *
-   * @param value - An unsigned 16-bit integer.
-   * @param target - Optional pre-allocated 2-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` of length 2.
-   */
+    * Encode an unsigned 16-bit integer to its binary representation.
+    *
+    * @param value - An unsigned 16-bit integer.
+    * @param target - Optional pre-allocated 2-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` of length 2.
+    */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(2);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setUint16(0, value, this.#littleEndian);
-    return arr;
+    return [arr];
   }
 
   /**
@@ -275,20 +275,20 @@ export class I32Codec extends Codec<number> {
   }
 
   /**
-   * Encode a signed 32-bit integer to its binary representation.
-   *
-   * @param value - A signed 32-bit integer.
-   * @param target - Optional pre-allocated 4-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` of length 4.
-   */
+    * Encode a signed 32-bit integer to its binary representation.
+    *
+    * @param value - A signed 32-bit integer.
+    * @param target - Optional pre-allocated 4-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` of length 4.
+    */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(4);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setInt32(0, value, this.#littleEndian);
-    return arr;
+    return [arr];
   }
 
   /**
@@ -338,20 +338,20 @@ export class U32Codec extends Codec<number> {
   }
 
   /**
-   * Encode an unsigned 32-bit integer to its binary representation.
-   *
-   * @param value - An unsigned 32-bit integer.
-   * @param target - Optional pre-allocated 4-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` of length 4.
-   */
+    * Encode an unsigned 32-bit integer to its binary representation.
+    *
+    * @param value - An unsigned 32-bit integer.
+    * @param target - Optional pre-allocated 4-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` of length 4.
+    */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(4);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setUint32(0, value, this.#littleEndian);
-    return arr;
+    return [arr];
   }
 
   /**
@@ -402,20 +402,20 @@ export class I64Codec extends Codec<bigint> {
   }
 
   /**
-   * Encode a signed 64-bit integer to its binary representation.
-   *
-   * @param value - A signed 64-bit integer as `bigint`.
-   * @param target - Optional pre-allocated 8-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` of length 8.
-   */
+    * Encode a signed 64-bit integer to its binary representation.
+    *
+    * @param value - A signed 64-bit integer as `bigint`.
+    * @param target - Optional pre-allocated 8-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` of length 8.
+    */
   public encode(
     value: bigint,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(8);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setBigInt64(0, value, this.#littleEndian);
-    return arr;
+    return [arr];
   }
 
   /**
@@ -466,20 +466,20 @@ export class U64Codec extends Codec<bigint> {
   }
 
   /**
-   * Encode an unsigned 64-bit integer to its binary representation.
-   *
-   * @param value - An unsigned 64-bit integer as `bigint`.
-   * @param target - Optional pre-allocated 8-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` of length 8.
-   */
+    * Encode an unsigned 64-bit integer to its binary representation.
+    *
+    * @param value - An unsigned 64-bit integer as `bigint`.
+    * @param target - Optional pre-allocated 8-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` of length 8.
+    */
   public encode(
     value: bigint,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(8);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setBigUint64(0, value, this.#littleEndian);
-    return arr;
+    return [arr];
   }
 
   /**
@@ -534,20 +534,20 @@ export class F32Codec extends Codec<number> {
   }
 
   /**
-   * Encode a JavaScript number as a 32-bit IEEE 754 float.
-   *
-   * @param value - A number, encoded as a 32-bit float (precision is reduced).
-   * @param target - Optional pre-allocated 4-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` of length 4.
-   */
+    * Encode a JavaScript number as a 32-bit IEEE 754 float.
+    *
+    * @param value - A number, encoded as a 32-bit float (precision is reduced).
+    * @param target - Optional pre-allocated 4-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` of length 4.
+    */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(4);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setFloat32(0, value, this.#littleEndian);
-    return arr;
+    return [arr];
   }
 
   /**
@@ -598,20 +598,20 @@ export class F64Codec extends Codec<number> {
   }
 
   /**
-   * Encode a JavaScript number as a 64-bit IEEE 754 float.
-   *
-   * @param value - A JavaScript `number` (64-bit float).
-   * @param target - Optional pre-allocated 8-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` of length 8.
-   */
+    * Encode a JavaScript number as a 64-bit IEEE 754 float.
+    *
+    * @param value - A JavaScript `number` (64-bit float).
+    * @param target - Optional pre-allocated 8-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` of length 8.
+    */
   public encode(
     value: number,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(8);
     const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
     view.setFloat64(0, value, this.#littleEndian);
-    return arr;
+    return [arr];
   }
 
   /**
@@ -653,19 +653,19 @@ export class BoolCodec extends Codec<boolean> {
   public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 1 };
 
   /**
-   * Encode a boolean value as a single byte (`0x01` for `true`, `0x00` for `false`).
-   *
-   * @param value - A boolean value.
-   * @param target - Optional pre-allocated 1-byte buffer.
-   * @returns `Uint8Array<ArrayBuffer>` containing `0x00` or `0x01`.
-   */
+    * Encode a boolean value as a single byte (`0x01` for `true`, `0x00` for `false`).
+    *
+    * @param value - A boolean value.
+    * @param target - Optional pre-allocated 1-byte buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` containing `0x00` or `0x01`.
+    */
   public encode(
     value: boolean,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const arr = target ?? new Uint8Array(1);
     arr[0] = value ? 1 : 0;
-    return arr;
+    return [arr];
   }
 
   /**
@@ -773,19 +773,19 @@ export class VoidCodec extends Codec<void, null | undefined | void> {
   public override readonly stride: Stride<"fixed"> = { kind: "fixed", size: 0 };
 
   /**
-   * Encode a void-like value into the target buffer.
-   *
-   * Since void occupies zero bytes, the target is returned unchanged.
-   *
-   * @param _value - Ignored. Accepts `void`, `null`, or `undefined`.
-   * @param target - Optional pre-allocated buffer. Defaults to an empty array.
-   * @returns `target`, unchanged.
-   */
+    * Encode a void-like value into the target buffer.
+    *
+    * Since void occupies zero bytes, the target is returned unchanged.
+    *
+    * @param _value - Ignored. Accepts `void`, `null`, or `undefined`.
+    * @param target - Optional pre-allocated buffer. Defaults to an empty array.
+    * @returns `[target]`, unchanged.
+    */
   public override encode(
     _value: void | null | undefined,
     target: Uint8Array<ArrayBuffer> = new Uint8Array(0),
-  ): Uint8Array<ArrayBuffer> {
-    return target;
+  ): [Uint8Array<ArrayBuffer>] {
+    return [target];
   }
 
   /**

@@ -74,31 +74,31 @@ export class NullableCodec<T extends NullableGeneric>
   }
 
   /**
-   * Encode a nullable value.
-   *
-   * For fixed-size inner codecs the output is always `stride.size` bytes:
-   * `[0x00, 0x00, …]` for `null`, `[0x01, …payload…]` for a value.
-   *
-   * @param value - The value to encode, or `null`.
-   * @param target - Optional pre-allocated buffer.
-   * @returns `Uint8Array<ArrayBuffer>`.
-   */
+    * Encode a nullable value.
+    *
+    * For fixed-size inner codecs the output is always `stride.size` bytes:
+    * `[0x00, 0x00, …]` for `null`, `[0x01, …payload…]` for a value.
+    *
+    * @param value - The value to encode, or `null`.
+    * @param target - Optional pre-allocated buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]`.
+    */
   public encode(
     value: NullableInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     if (value === null) {
       const size = this.stride.kind === "fixed" ? this.stride.size : 1;
       const result = target ?? new Uint8Array(size);
       result.fill(0, 0, size);
-      return result;
+      return [result];
     } else {
-      const encoded = this.inner.encode(value, target?.subarray(1));
+      const [encoded] = this.inner.encode(value, target?.subarray(1));
       const totalLen = 1 + encoded.length;
       const result = target ?? new Uint8Array(totalLen);
       result[0] = 1;
       result.set(encoded, 1);
-      return result;
+      return [result];
     }
   }
 
@@ -214,20 +214,20 @@ export class TupleCodec<const T extends TupleGeneric>
   }
 
   /**
-   * Encode a tuple of values by concatenating each element's encoding in order.
-   *
-   * @param value - Tuple of values, one per codec in order.
-   * @param target - Optional pre-allocated buffer.
-   * @returns `Uint8Array<ArrayBuffer>` of concatenated element encodings.
-   */
+    * Encode a tuple of values by concatenating each element's encoding in order.
+    *
+    * @param value - Tuple of values, one per codec in order.
+    * @param target - Optional pre-allocated buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` of concatenated element encodings.
+    */
   public encode(
     value: TupleInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const parts: Uint8Array<ArrayBuffer>[] = [];
     for (let i = 0; i < this.items.length; i++) {
       const codec = this.items[i]!;
-      const part = codec.encode(value[i]!);
+      const [part] = codec.encode(value[i]!);
       parts.push(part);
     }
 
@@ -241,7 +241,7 @@ export class TupleCodec<const T extends TupleGeneric>
       combined.set(part, offset);
       offset += part.length;
     }
-    return combined;
+    return [combined];
   }
 
   /**
@@ -334,17 +334,17 @@ export class FixedTupleCodec<const T extends FixedTupleGeneric>
   }
 
   /**
-   * Encode a tuple of values by writing each element directly into a
-   * pre-allocated buffer in definition order.
-   *
-   * @param value - Tuple of values, one per codec in order.
-   * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
-   * @returns Fixed-size `Uint8Array<ArrayBuffer>`.
-   */
+    * Encode a tuple of values by writing each element directly into a
+    * pre-allocated buffer in definition order.
+    *
+    * @param value - Tuple of values, one per codec in order.
+    * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
+    * @returns Fixed-size `[Uint8Array<ArrayBuffer>]`.
+    */
   public encode(
     value: TupleInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const result = target ?? new Uint8Array(this.stride.size);
     let offset = 0;
     for (let i = 0; i < this.items.length; i++) {
@@ -352,7 +352,7 @@ export class FixedTupleCodec<const T extends FixedTupleGeneric>
       codec.encode(value[i]!, result.subarray(offset));
       offset += codec.stride.size;
     }
-    return result;
+    return [result];
   }
 
   /**
@@ -593,17 +593,17 @@ export class StructCodec<const T extends StructGeneric>
   }
 
   /**
-   * Encode a struct value by concatenating each field's encoding in definition order.
-   *
-   * @param value - Object with fields matching the codec shape. Optional
-   *   fields (declared with `"?"`) may be omitted or set to `undefined`.
-   * @param target - Optional pre-allocated buffer.
-   * @returns `Uint8Array<ArrayBuffer>`.
-   */
+    * Encode a struct value by concatenating each field's encoding in definition order.
+    *
+    * @param value - Object with fields matching the codec shape. Optional
+    *   fields (declared with `"?"`) may be omitted or set to `undefined`.
+    * @param target - Optional pre-allocated buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]`.
+    */
   public encode(
     value: StructInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const parts: Uint8Array<ArrayBuffer>[] = [];
 
     for (const rawKey of this.keys) {
@@ -616,14 +616,15 @@ export class StructCodec<const T extends StructGeneric>
         if (fieldValue === undefined) {
           parts.push(new Uint8Array([0x00]));
         } else {
-          const encoded = codec.encode(fieldValue);
+          const [encoded] = codec.encode(fieldValue);
           const presenced = new Uint8Array(1 + encoded.length);
           presenced[0] = 0x01;
           presenced.set(encoded, 1);
           parts.push(presenced);
         }
       } else {
-        parts.push(codec.encode((value as any)[rawKey]));
+        const [encoded] = codec.encode((value as any)[rawKey]);
+        parts.push(encoded);
       }
     }
 
@@ -634,7 +635,7 @@ export class StructCodec<const T extends StructGeneric>
       result.set(part, offset);
       offset += part.length;
     }
-    return result;
+    return [result];
   }
 
   /**
@@ -846,16 +847,16 @@ export class FixedStructCodec<const T extends FixedStructGeneric>
   }
 
   /**
-   * Encode a struct value by concatenating each field's encoding in definition order.
-   *
-   * @param value - Object with fields matching the codec shape.
-   * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
-   * @returns Fixed-size `Uint8Array<ArrayBuffer>`.
-   */
+    * Encode a struct value by concatenating each field's encoding in definition order.
+    *
+    * @param value - Object with fields matching the codec shape.
+    * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
+    * @returns Fixed-size `[Uint8Array<ArrayBuffer>]`.
+    */
   public encode(
     value: StructInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const result = target ?? new Uint8Array(this.stride.size);
     let offset = 0;
     for (const key of this.keys) {
@@ -863,7 +864,7 @@ export class FixedStructCodec<const T extends FixedStructGeneric>
       codec.encode((value as any)[key], result.subarray(offset));
       offset += codec.stride.size;
     }
-    return result;
+    return [result];
   }
 
   /**
@@ -961,20 +962,20 @@ export class ArrayCodec<T extends ArrayGeneric>
   }
 
   /**
-   * Encode an array by writing a count prefix followed by each element.
-   *
-   * @param value - Array of elements to encode.
-   * @param target - Optional pre-allocated buffer.
-   * @returns `Uint8Array<ArrayBuffer>` with count prefix followed by elements.
-   */
+    * Encode an array by writing a count prefix followed by each element.
+    *
+    * @param value - Array of elements to encode.
+    * @param target - Optional pre-allocated buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` with count prefix followed by elements.
+    */
   public encode(
     value: ArrayInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const parts: Uint8Array<ArrayBuffer>[] = [];
 
     for (const item of value) {
-      const part = this.item.encode(item);
+      const [part] = this.item.encode(item);
       parts.push(part);
     }
 
@@ -989,12 +990,12 @@ export class ArrayCodec<T extends ArrayGeneric>
       offset += part.length;
     }
 
-    const countPrefix = this.counter.encode(value.length);
+    const [countPrefix] = this.counter.encode(value.length);
     const totalLen = countPrefix.length + elementsData.length;
     const result = target ?? new Uint8Array(totalLen);
     result.set(countPrefix, 0);
     result.set(elementsData, countPrefix.length);
-    return result;
+    return [result];
   }
 
   /**
@@ -1112,29 +1113,29 @@ export class EnumCodec<const T extends EnumGeneric>
   }
 
   /**
-   * Encode a union variant by writing its definition-order index followed by the payload.
-   *
-   * @param value - `{ kind, value }` object identifying the variant and its payload.
-   * @param target - Optional pre-allocated buffer.
-   * @returns `Uint8Array<ArrayBuffer>` with the variant index followed by the payload.
-   * @throws {Error} If `value.kind` is not a known variant name.
-   */
+    * Encode a union variant by writing its definition-order index followed by the payload.
+    *
+    * @param value - `{ kind, value }` object identifying the variant and its payload.
+    * @param target - Optional pre-allocated buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]` with the variant index followed by the payload.
+    * @throws {Error} If `value.kind` is not a known variant name.
+    */
   public encode(
     value: EnumInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const index = this.keys.indexOf(value.kind);
     if (index === -1) {
       throw new Error(`Invalid union variant: ${String(value.kind)}`);
     }
     const codec = this.variants[value.kind]!;
-    const encodedValue = codec.encode(value.value as never);
-    const indexBytes = this.indexer.encode(index);
+    const [encodedValue] = codec.encode(value.value as never);
+    const [indexBytes] = this.indexer.encode(index);
     const totalLen = indexBytes.length + encodedValue.length;
     const result = target ?? new Uint8Array(totalLen);
     result.set(indexBytes, 0);
     result.set(encodedValue, indexBytes.length);
-    return result;
+    return [result];
   }
 
   /**
@@ -1260,24 +1261,24 @@ export class FixedEnumCodec<const T extends FixedEnumGeneric>
   }
 
   /**
-   * Encode a union variant. The payload is written into a zero-padded slot of
-   * `maxVariantSize` bytes so every encoded value has the same total length.
-   *
-   * @param value - `{ kind, value }` object identifying the variant and its payload.
-   * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
-   * @returns Fixed-size `Uint8Array` with index bytes followed by the padded payload.
-   * @throws {Error} If `value.kind` is not a known variant name.
-   */
+    * Encode a union variant. The payload is written into a zero-padded slot of
+    * `maxVariantSize` bytes so every encoded value has the same total length.
+    *
+    * @param value - `{ kind, value }` object identifying the variant and its payload.
+    * @param target - Optional pre-allocated buffer (must be at least `stride.size` bytes).
+    * @returns Fixed-size `[Uint8Array]` with index bytes followed by the padded payload.
+    * @throws {Error} If `value.kind` is not a known variant name.
+    */
   public encode(
     value: EnumInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     const index = this.keys.indexOf(value.kind);
     if (index === -1) {
       throw new Error(`Invalid union variant: ${String(value.kind)}`);
     }
     const codec = this.variants[value.kind]!;
-    const indexBytes = this.indexer.encode(index);
+    const [indexBytes] = this.indexer.encode(index);
     const result = target ?? new Uint8Array(this.stride.size);
     result.set(indexBytes, 0);
     // Write payload directly into the padded slot; remaining bytes stay zero
@@ -1285,7 +1286,7 @@ export class FixedEnumCodec<const T extends FixedEnumGeneric>
       value.value as never,
       result.subarray(indexBytes.length) as Uint8Array<ArrayBuffer>,
     );
-    return result;
+    return [result];
   }
 
   /**
@@ -1395,16 +1396,16 @@ export class MappingCodec<const T extends MappingGeneric>
   }
 
   /**
-   * Encode a `Map` as a count-prefixed sequence of `[key, value]` entry pairs.
-   *
-   * @param value - The `Map` to encode.
-   * @param target - Optional pre-allocated buffer.
-   * @returns `Uint8Array<ArrayBuffer>`.
-   */
+    * Encode a `Map` as a count-prefixed sequence of `[key, value]` entry pairs.
+    *
+    * @param value - The `Map` to encode.
+    * @param target - Optional pre-allocated buffer.
+    * @returns `[Uint8Array<ArrayBuffer>]`.
+    */
   public encode(
     value: MappingInput<T>,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer> {
+  ): [Uint8Array<ArrayBuffer>] {
     return this.#entriesCodec.encode(
       Array.from(value.entries()) as any,
       target,

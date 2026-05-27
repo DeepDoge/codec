@@ -81,7 +81,7 @@ export declare namespace Codec {
  * class DateCodec extends FixedCodec<Date, bigint> {
  *   readonly stride = 8;
  *
- *   encode(ms: bigint, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+ *   encode(ms: bigint, target?: Uint8Array<ArrayBuffer>): [Uint8Array<ArrayBuffer>] {
  *     return U64.encode(ms, target);
  *   }
  *
@@ -123,13 +123,15 @@ export abstract class Codec<O extends I = any, I = O> {
    * @param target - Optional pre-allocated buffer to write into. When provided
    *   it must be large enough to hold the encoded bytes. The same buffer is
    *   returned, which avoids a heap allocation in hot paths.
-   * @returns A `Uint8Array<ArrayBuffer>` containing the encoded bytes. Returns
-   *   `target` when one is supplied, otherwise a freshly allocated buffer.
+   * @returns A tuple `[Uint8Array<ArrayBuffer>]` containing the encoded bytes.
+   *   Returns `[target]` when one is supplied, otherwise a freshly allocated
+   *   buffer wrapped in a tuple. Use {@link encodeAndReturnBytes} to unwrap
+   *   the bytes directly.
    */
   public abstract encode(
     value: I,
     target?: Uint8Array<ArrayBuffer>,
-  ): Uint8Array<ArrayBuffer>;
+  ): [Uint8Array<ArrayBuffer>];
 
   /**
    * Decode binary data and return the value together with the number of bytes
@@ -157,6 +159,20 @@ export abstract class Codec<O extends I = any, I = O> {
   public decodeAndReturnValue(data: Uint8Array): O {
     const [value] = this.decode(data);
     return value;
+  }
+
+  /**
+   * Encode `value` and return only the bytes, discarding the tuple wrapper.
+   *
+   * Convenience wrapper around {@link Codec.encode} for callers that want a
+   * plain `Uint8Array` without destructuring the single-element tuple.
+   *
+   * @param value - The value to encode.
+   * @returns The encoded `Uint8Array`.
+   */
+  public encodeAndReturnBytes(value: I): Uint8Array {
+    const [bytes] = this.encode(value);
+    return bytes;
   }
 
   /**
@@ -289,9 +305,12 @@ export class TransformCodec<
    *
    * @param value - Value to encode.
    * @param target - Optional pre-allocated buffer to write into.
-   * @returns Binary representation as `Uint8Array<ArrayBuffer>`.
+   * @returns `[Uint8Array<ArrayBuffer>]` binary representation wrapped in a tuple.
    */
-  encode(value: I, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+  encode(
+    value: I,
+    target?: Uint8Array<ArrayBuffer>,
+  ): [Uint8Array<ArrayBuffer>] {
     return this.inner.encode(value, target);
   }
 

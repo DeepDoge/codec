@@ -1,4 +1,4 @@
-import { Codec, CodecWithOffsets, type FixedCodec, type Stride } from "./codec.ts";
+import { Codec, type FixedCodec, type Stride } from "./codec.ts";
 import { U8Codec } from "./primitives.ts";
 import { VarInt } from "./varint.ts";
 
@@ -171,19 +171,11 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 		: Stride<"fixed">;
 
 	/**
-	 * Factory function generated from the tuple arity.
-	 */
-	private readonly factory: (...args: unknown[]) => TupleOutput<T>;
-
-	/**
 	 * @param items - Ordered array of element codecs.
 	 */
 	constructor(items: T) {
 		super();
 		this.items = items;
-		const params = Array.from({ length: items.length }, (_, i) => `a${i}`);
-		const body = `return [${params.join(", ")}];`;
-		this.factory = new Function(...params, body) as typeof this.factory;
 		let size = 0;
 		let variable = false;
 		for (const codec of items) {
@@ -207,18 +199,21 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 		value: TupleInput<T>,
 		target?: Uint8Array<ArrayBuffer>,
 	): Uint8Array<ArrayBuffer> {
-		const parts: Uint8Array<ArrayBuffer>[] = [];
+		const parts = new Array<Uint8Array<ArrayBuffer>>(this.items.length);
 		for (let i = 0; i < this.items.length; i++) {
-			parts.push(this.items[i]!.encode(value[i]!));
+			const item = this.items[i]!;
+			const itemValue = value[i]!;
+			parts[i] = item.encode(itemValue);
 		}
-		const combinedLength = parts.reduce((sum, p) => sum + p.length, 0);
-		const combined = target ?? new Uint8Array(combinedLength);
+		const byteLength = parts.reduce((sum, p) => sum + p.length, 0);
+		const bytes = target ?? new Uint8Array(byteLength);
 		let offset = 0;
 		for (let i = 0; i < parts.length; i++) {
-			combined.set(parts[i]!, offset);
-			offset += parts[i]!.length;
+			const part = parts[i]!;
+			bytes.set(part, offset);
+			offset += part.length;
 		}
-		return combined;
+		return bytes;
 	}
 
 	/**
@@ -228,14 +223,15 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 	 * @returns `[tuple, totalBytesConsumed]`.
 	 */
 	public decode(data: Uint8Array): [TupleOutput<T>, number] {
-		const args: unknown[] = new Array(this.items.length);
+		const values = new Array<unknown>(this.items.length) as TupleOutput<T>;
 		let offset = 0;
 		for (let i = 0; i < this.items.length; i++) {
-			const [value, size] = this.items[i]!.decode(data.subarray(offset));
-			args[i] = value;
+			const item = this.items[i]!;
+			const [value, size] = item.decode(data.subarray(offset));
+			values[i] = value;
 			offset += size;
 		}
-		return [this.factory(...args), offset];
+		return [values, offset];
 	}
 }
 
@@ -918,99 +914,5 @@ export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingO
 	public decode(data: Uint8Array): [MappingOutput<T>, number] {
 		const [entries, size] = this.#entriesCodec.decode(data);
 		return [new Map(entries), size];
-	}
-}
-
-export type TupleOffsets<T extends TupleGeneric> = {
-	-readonly [I in keyof T]: T[I] extends CodecWithOffsets ? { offset: number; offsets: T[I]["_OFFSETS_"] } : { offset: number };
-};
-
-export class TupleWithOffsetCodec<const T extends TupleGeneric> extends CodecWithOffsets<TupleOutput<T>, TupleInput<T>, TupleOffsets<T>> {
-	public readonly items: T;
-
-	public readonly stride: Stride<"variable"> extends T[number]["stride"] ? Stride<"variable">
-		: Stride<"fixed">;
-
-	constructor(items: T) {
-		super();
-		this.items = items;
-		let size = 0;
-		let variable = false;
-		for (const codec of items) {
-			if (codec.stride.kind === "variable") {
-				variable = true;
-				break;
-			}
-			size += codec.stride.size;
-		}
-		this.stride = (variable ? { kind: "variable" } : { kind: "fixed", size }) as typeof this.stride;
-	}
-
-	public encode(
-		value: TupleInput<T>,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const items = new Array<Uint8Array<ArrayBuffer>>(this.items.length);
-		for (let i = 0; i < this.items.length; i++) {
-			items.push(this.items[i]!.encode(value[i]!));
-		}
-		const combinedLength = items.reduce((sum, p) => sum + p.length, 0);
-		const combined = target ?? new Uint8Array(combinedLength);
-		let offset = 0;
-		for (let i = 0; i < items.length; i++) {
-			combined.set(items[i]!, offset);
-			offset += items[i]!.length;
-		}
-		return combined;
-	}
-
-	public encodeWithOffsets(
-		value: TupleInput<T>,
-		target?: Uint8Array<ArrayBuffer>,
-	): { bytes: Uint8Array<ArrayBuffer>; offsets: TupleOffsets<T> } {
-		const items = new Array<Uint8Array<ArrayBuffer>>(this.items.length);
-		const offsets = new Array<number>(this.items.length) as TupleOffsets<T>;
-		for (let i = 0; i < this.items.length; i++) {
-			items[i] = this.items[i]!.encode(value[i]!);
-		}
-		const combinedLength = items.reduce((sum, p) => sum + p.length, 0);
-		const combined = target ?? new Uint8Array(combinedLength);
-		let offset = 0;
-		for (let i = 0; i < items.length; i++) {
-			const item = items[i]!;
-			combined.set(item, offset);
-			if (item instanceof CodecWithOffsets) {
-				offsets[i] = { offset, offsets: item };
-			}
-			offset += item.length;
-		}
-		return { bytes: combined, offsets };
-	}
-
-	public decode(data: Uint8Array): [TupleOutput<T>, number] {
-		const args = new Array<unknown>(this.items.length) as TupleOutput<T>;
-		let offset = 0;
-		for (let i = 0; i < this.items.length; i++) {
-			const item = this.items[i]!;
-			const [value, size] = item.decode(data.subarray(offset));
-			args[i] = value;
-			offset += size;
-		}
-		return [args, offset];
-	}
-
-	public decodeWithOffsets(data: Uint8Array): [{ value: TupleOutput<T>; offsets: TupleOffsets<T> }, number] {
-		const values = new Array<unknown>(this.items.length) as TupleOutput<T>;
-		const offsets = new Array<number>(this.items.length) as TupleOffsets<T>;
-		let offset = 0;
-		for (let i = 0; i < this.items.length; i++) {
-			const item = this.items[i]!;
-			const itemData = data.subarray(offset);
-			const [value, size] = item instanceof CodecWithOffsets ? item.decodeWithOffsets(itemData) : item.decode(itemData);
-			values[i] = value;
-			offsets[i] = offset;
-			offset += size;
-		}
-		return [{ value: values, offsets }, offset];
 	}
 }

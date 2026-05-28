@@ -206,6 +206,13 @@ export abstract class Codec<O extends I = any, I = O> {
 	}
 }
 
+export abstract class CodecWithOffsets<O extends I = any, I = O, Offsets = any> extends Codec<O, I> {
+	public readonly _OFFSETS_!: Offsets;
+
+	public abstract encodeWithOffsets(value: I, target?: Uint8Array<ArrayBuffer>): { bytes: Uint8Array<ArrayBuffer>; offsets: Offsets };
+	public abstract decodeWithOffsets(data: Uint8Array): [{ value: O; offsets: Offsets }, number];
+}
+
 /**
  * A codec that always encodes to a fixed number of bytes.
  *

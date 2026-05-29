@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { ArrayCodec } from "~/composites/array.ts";
 import { StringCodec } from "~/bytes/string.ts";
-import { U8, U16, U32 } from "~/primitives.ts";
+import { U16, U32, U8 } from "~/primitives.ts";
 
 Deno.test("Array - fixed stride elements", () => {
 	const nums = new ArrayCodec(U16);

@@ -35,7 +35,7 @@ See the [migrations](./migrations/) folder for upgrade instructions.
 ## Quick Start
 
 ```ts
-import { StringCodec, ModelCodec, U32 } from "@nomadshiba/codec";
+import { ModelCodec, StringCodec, U32 } from "@nomadshiba/codec";
 
 const User = new ModelCodec({
 	id: U32,
@@ -66,7 +66,7 @@ The optional `target` parameter on `encode` lets you write into a pre-allocated 
 Use the `Codec.Infer*` utilities to derive TypeScript types from a codec:
 
 ```ts
-import { Codec, StringCodec, ModelCodec, U32 } from "@nomadshiba/codec";
+import { Codec, ModelCodec, StringCodec, U32 } from "@nomadshiba/codec";
 
 const User = new ModelCodec({ id: U32, name: new StringCodec() });
 
@@ -102,11 +102,11 @@ import {
 	type ArrayGeneric,
 	type ArrayInput,
 	type ArrayOutput,
-	StringCodec,
 	ModelCodec,
 	type ModelGeneric,
 	type ModelInput,
 	type ModelOutput,
+	StringCodec,
 	U32,
 } from "@nomadshiba/codec";
 
@@ -129,16 +129,16 @@ function decodeAll<T extends ArrayGeneric>(
 
 The full set of pairs exported by the library:
 
-| Generic type      | Input type         | Output type         | Used by           |
-| ----------------- | ------------------ | ------------------- | ----------------- |
-| `NullableGeneric` | `NullableInput<T>` | `NullableOutput<T>` | `NullableCodec`   |
-| `TupleGeneric`    | `TupleInput<T>`    | `TupleOutput<T>`    | `TupleCodec`      |
-| `StructGeneric`   | `StructInput<T>`   | `StructOutput<T>`   | `StructCodec`     |
-| `ModelGeneric`    | `ModelInput<T>`    | `ModelOutput<T>`    | `ModelCodec`      |
-| `ArrayGeneric`    | `ArrayInput<T>`    | `ArrayOutput<T>`    | `ArrayCodec`      |
-| `EnumGeneric`     | `EnumInput<T>`     | `EnumOutput<T>`     | `EnumCodec`       |
-| `FixedEnumGeneric` | —                 | —                   | `PaddedEnumCodec` |
-| `MappingGeneric`  | `MappingInput<T>`  | `MappingOutput<T>`  | `MappingCodec`    |
+| Generic type       | Input type         | Output type         | Used by           |
+| ------------------ | ------------------ | ------------------- | ----------------- |
+| `NullableGeneric`  | `NullableInput<T>` | `NullableOutput<T>` | `NullableCodec`   |
+| `TupleGeneric`     | `TupleInput<T>`    | `TupleOutput<T>`    | `TupleCodec`      |
+| `StructGeneric`    | `StructInput<T>`   | `StructOutput<T>`   | `StructCodec`     |
+| `ModelGeneric`     | `ModelInput<T>`    | `ModelOutput<T>`    | `ModelCodec`      |
+| `ArrayGeneric`     | `ArrayInput<T>`    | `ArrayOutput<T>`    | `ArrayCodec`      |
+| `EnumGeneric`      | `EnumInput<T>`     | `EnumOutput<T>`     | `EnumCodec`       |
+| `FixedEnumGeneric` | —                  | —                   | `PaddedEnumCodec` |
+| `MappingGeneric`   | `MappingInput<T>`  | `MappingOutput<T>`  | `MappingCodec`    |
 
 For most application code you won't need these directly — `Codec.InferOutput<T>` covers the common case. They become useful when writing generic helpers,
 higher-order codecs, or libraries built on top of this one.
@@ -263,7 +263,7 @@ t.encode([7, "hi"]); // [0x07, 0x02, 0x68, 0x69]
 Named-field objects encoded in **definition order** (order matters for the binary layout). Append `"?"` to any field name to mark it as optional.
 
 ```ts
-import { StringCodec, ModelCodec, U32, U8 } from "@nomadshiba/codec";
+import { ModelCodec, StringCodec, U32, U8 } from "@nomadshiba/codec";
 
 const User = new ModelCodec({
 	id: U32,

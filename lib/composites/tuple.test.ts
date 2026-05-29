@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { TupleCodec } from "~/composites/tuple.ts";
 import { StringCodec } from "~/bytes/string.ts";
-import { U8, U16, U32 } from "~/primitives.ts";
+import { U16, U32, U8 } from "~/primitives.ts";
 
 Deno.test("Tuple - fixed stride elements", () => {
 	const t = new TupleCodec([U8, U16]);
@@ -44,9 +44,15 @@ Deno.test("Tuple - multiple variable items", () => {
 	const [decoded] = t.decode(encoded);
 	assertEquals(decoded, val);
 	assertEquals(Array.from(encoded), [
-		0x01, 0x61,
-		0x02, 0x62, 0x63,
-		0x03, 0x64, 0x65, 0x66,
+		0x01,
+		0x61,
+		0x02,
+		0x62,
+		0x63,
+		0x03,
+		0x64,
+		0x65,
+		0x66,
 	]);
 });
 

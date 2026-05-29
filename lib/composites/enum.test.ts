@@ -2,7 +2,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { EnumCodec } from "~/composites/enum.ts";
 import { ModelCodec } from "~/composites/model.ts";
 import { StringCodec } from "~/bytes/string.ts";
-import { U8, U32 } from "~/primitives.ts";
+import { U32, U8 } from "~/primitives.ts";
 
 Deno.test("Enum - simple variants", () => {
 	const MyUnion = new EnumCodec({ A: U8, B: new StringCodec() });

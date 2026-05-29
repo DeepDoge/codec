@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { PaddedEnumCodec } from "~/composites/padded_enum.ts";
-import { U8, U16, U32, Void } from "~/primitives.ts";
+import { U16, U32, U8, Void } from "~/primitives.ts";
 import { VarInt } from "~/varint.ts";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

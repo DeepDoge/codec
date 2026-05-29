@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { MappingCodec } from "~/composites/mapping.ts";
 import { ModelCodec } from "~/composites/model.ts";
 import { StringCodec } from "~/bytes/string.ts";
-import { U8, U32 } from "~/primitives.ts";
+import { U32, U8 } from "~/primitives.ts";
 
 Deno.test("Mapping - simple", () => {
 	const Dict = new MappingCodec([new StringCodec(), U8]);

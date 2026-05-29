@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { ModelCodec } from "~/composites/model.ts";
 import { StructCodec } from "~/composites/struct.ts";
 import { StringCodec } from "~/bytes/string.ts";
-import { I32, U8, U16, U32 } from "~/primitives.ts";
+import { I32, U16, U32, U8 } from "~/primitives.ts";
 
 // ModelCodec
 

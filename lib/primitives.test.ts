@@ -1,25 +1,5 @@
 import { assertEquals } from "@std/assert";
-import {
-	Bool,
-	F32,
-	F32LE,
-	F64,
-	F64LE,
-	I16,
-	I16LE,
-	I32,
-	I32LE,
-	I64,
-	I64LE,
-	I8,
-	U16,
-	U16LE,
-	U32,
-	U32LE,
-	U64,
-	U64LE,
-	U8,
-} from "~/primitives.ts";
+import { Bool, F32, F32LE, F64, F64LE, I16, I16LE, I32, I32LE, I64, I64LE, I8, U16, U16LE, U32, U32LE, U64, U64LE, U8 } from "~/primitives.ts";
 
 Deno.test("I8 - roundtrip", () => {
 	const testValues = [-128, -5, 0, 5, 127];

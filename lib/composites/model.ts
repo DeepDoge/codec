@@ -253,12 +253,12 @@ export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<
 				const presenceByte = data[offset]!;
 				offset += 1;
 
-			if (presenceByte !== 0x00) {
-				const [fieldValue, size] = codec.decode(data.subarray(offset));
-				optArgs[optLen++] = fieldValue;
-				mask |= this.optionalBits[i]!;
-				offset += size;
-			}
+				if (presenceByte !== 0x00) {
+					const [fieldValue, size] = codec.decode(data.subarray(offset));
+					optArgs[optLen++] = fieldValue;
+					mask |= this.optionalBits[i]!;
+					offset += size;
+				}
 			} else {
 				const [fieldValue, size] = codec.decode(data.subarray(offset));
 				reqArgs[reqIdx] = fieldValue;

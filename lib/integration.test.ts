@@ -6,7 +6,7 @@ import { ModelCodec } from "~/composites/model.ts";
 import { NullableCodec } from "~/composites/nullable.ts";
 import { TupleCodec } from "~/composites/tuple.ts";
 import { StringCodec } from "~/bytes/string.ts";
-import { Bool, F64, I32, U8, U32 } from "~/primitives.ts";
+import { Bool, F64, I32, U32, U8 } from "~/primitives.ts";
 
 Deno.test("Complex - nested structures", () => {
 	const Address = new ModelCodec({

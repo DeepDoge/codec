@@ -50,9 +50,7 @@ export type StructOutput<T extends StructGeneric> = { -readonly [K in keyof T]: 
  * // point.x === 1.0, point.y === 2.5
  */
 export class StructCodec<const T extends StructGeneric> extends Codec<StructOutput<T>, StructInput<T>> {
-	public readonly stride: Stride<"variable"> extends T[keyof T]["stride"] ? Stride<"variable">
-		: `${string}?` extends keyof T ? Stride<"variable">
-		: Stride<"fixed">;
+	public readonly stride: Stride<"variable"> extends T[keyof T]["stride"] ? Stride<"variable"> : Stride<"fixed">;
 
 	/** The original shape passed to the constructor. */
 	public readonly shape: T;

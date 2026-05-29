@@ -96,9 +96,9 @@ export type PartialShape<T extends ModelGeneric> = {
  * // person.name === "Alice", person.age === 30, person.nickname === undefined
  */
 export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<T>, ModelInput<T>> {
-	public readonly stride: Stride<"variable"> extends T[keyof T]["stride"] ? Stride<"variable">
-		: `${string}?` extends keyof T ? Stride<"variable">
-		: Stride<"fixed">;
+	public readonly stride: { [K in keyof T]: T[K]["stride"] extends Stride<"fixed"> ? true : false }[keyof T] extends true
+		? [Extract<keyof T, `${string}?`>] extends [never] ? Stride<"fixed"> : Stride<"variable">
+		: Stride<"variable">;
 
 	/** The original shape passed to the constructor. */
 	public readonly shape: T;

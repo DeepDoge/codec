@@ -1,6 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { StructCodec } from "~/composites/struct.ts";
 import { StringCodec } from "~/bytes/string.ts";
+import type { FixedCodec, VariableCodec } from "~/codec.ts";
 import { I32, U16, U32, U8 } from "~/primitives.ts";
 
 // StructCodec
@@ -14,11 +15,17 @@ Deno.test("StructCodec - simple roundtrip", () => {
 
 Deno.test("StructCodec - fixed stride", () => {
 	const Point = new StructCodec({ x: I32, y: I32, z: I32 });
+	Point satisfies FixedCodec;
+	// @ts-expect-error — all-fixed struct must not satisfy VariableCodec
+	Point satisfies VariableCodec;
 	assertEquals(Point.stride, { kind: "fixed", size: 12 });
 });
 
 Deno.test("StructCodec - variable stride when any field is variable", () => {
 	const S = new StructCodec({ id: U32, name: new StringCodec() });
+	S satisfies VariableCodec;
+	// @ts-expect-error — variable struct must not satisfy FixedCodec
+	S satisfies FixedCodec;
 	assertEquals(S.stride, { kind: "variable" });
 });
 

@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import { ModelCodec } from "~/composites/model.ts";
+import type { FixedCodec, VariableCodec } from "~/codec.ts";
 import { StringCodec } from "~/bytes/string.ts";
 import { I32, U16, U32, U8 } from "~/primitives.ts";
 
@@ -7,6 +8,9 @@ import { I32, U16, U32, U8 } from "~/primitives.ts";
 
 Deno.test("ModelCodec - simple roundtrip (variable stride)", () => {
 	const User = new ModelCodec({ id: U32, name: new StringCodec() });
+	User satisfies VariableCodec;
+	// @ts-expect-error — variable model must not satisfy FixedCodec
+	User satisfies FixedCodec;
 	const val = { id: 42, name: "Ada" };
 	const [decoded] = User.decode(User.encode(val));
 	assertEquals(decoded, val);
@@ -15,6 +19,9 @@ Deno.test("ModelCodec - simple roundtrip (variable stride)", () => {
 
 Deno.test("ModelCodec - all fixed fields yields fixed stride", () => {
 	const Point = new ModelCodec({ x: I32, y: I32, z: I32 });
+	Point satisfies FixedCodec;
+	// @ts-expect-error — all-fixed model must not satisfy VariableCodec
+	Point satisfies VariableCodec;
 	const val = { x: 1, y: -2, z: 3 };
 	const [decoded] = Point.decode(Point.encode(val));
 	assertEquals(decoded, val);
@@ -109,6 +116,9 @@ Deno.test("ModelCodec - only optional fields", () => {
 
 Deno.test("ModelCodec - optional fields have variable stride", () => {
 	const S = new ModelCodec({ x: U8, "y?": U8 });
+	S satisfies VariableCodec;
+	// @ts-expect-error — model with optional fields must not satisfy FixedCodec
+	S satisfies FixedCodec;
 	assertEquals(S.stride, { kind: "variable" });
 });
 
@@ -160,7 +170,12 @@ Deno.test("ModelCodec - partial preserves already-optional fields", () => {
 
 Deno.test("ModelCodec - partial of all-fixed yields all-optional variable stride", () => {
 	const M = new ModelCodec({ x: U8, y: U8 });
-	assertEquals(M.stride, { kind: "fixed", size: 2 });
+	M satisfies FixedCodec;
+	// @ts-expect-error — all-fixed model must not satisfy VariableCodec
+	M satisfies VariableCodec;
 	const P = M.partial();
+	P satisfies VariableCodec;
+	// @ts-expect-error — partial (all-optional) model must not satisfy FixedCodec
+	P satisfies FixedCodec;
 	assertEquals(P.stride, { kind: "variable" });
 });

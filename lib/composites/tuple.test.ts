@@ -1,10 +1,14 @@
 import { assertEquals } from "@std/assert";
 import { TupleCodec } from "~/composites/tuple.ts";
 import { StringCodec } from "~/bytes/string.ts";
+import type { FixedCodec, VariableCodec } from "~/codec.ts";
 import { U16, U32, U8 } from "~/primitives.ts";
 
 Deno.test("Tuple - fixed stride elements", () => {
 	const t = new TupleCodec([U8, U16]);
+	t satisfies FixedCodec;
+	// @ts-expect-error — all-fixed tuple must not satisfy VariableCodec
+	t satisfies VariableCodec;
 	const val: [number, number] = [5, 513];
 	const [decoded] = t.decode(t.encode(val));
 	assertEquals(decoded, val);
@@ -13,6 +17,9 @@ Deno.test("Tuple - fixed stride elements", () => {
 
 Deno.test("Tuple - variable stride elements", () => {
 	const t = new TupleCodec([U8, new StringCodec()]);
+	t satisfies VariableCodec;
+	// @ts-expect-error — variable tuple must not satisfy FixedCodec
+	t satisfies FixedCodec;
 	const val: [number, string] = [7, "hi"];
 	const [decoded] = t.decode(t.encode(val));
 	assertEquals(decoded, val);
@@ -21,6 +28,9 @@ Deno.test("Tuple - variable stride elements", () => {
 
 Deno.test("Tuple - mixed stride elements", () => {
 	const t = new TupleCodec([U32, new StringCodec(), U16]);
+	t satisfies VariableCodec;
+	// @ts-expect-error — mixed tuple must not satisfy FixedCodec
+	t satisfies FixedCodec;
 	const val: [number, string, number] = [42, "test", 1000];
 	const [decoded] = t.decode(t.encode(val));
 	assertEquals(decoded, val);
@@ -58,6 +68,9 @@ Deno.test("Tuple - multiple variable items", () => {
 
 Deno.test("Tuple - empty tuple", () => {
 	const t = new TupleCodec([]);
+	t satisfies FixedCodec;
+	// @ts-expect-error — empty tuple must not satisfy VariableCodec
+	t satisfies VariableCodec;
 	assertEquals(t.stride, { kind: "fixed", size: 0 });
 	const encoded = t.encode([]);
 	assertEquals(encoded.length, 0);

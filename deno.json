@@ -3,6 +3,9 @@
 	"version": "0.3.0-preview.8",
 	"license": "LGPL-2.1-only",
 	"exports": "./lib/mod.ts",
+	"tasks": {
+		"check": "deno check && deno lint && deno test"
+	},
 	"compilerOptions": {
 		"lib": [
 			"deno.window",
@@ -16,7 +19,8 @@
 	},
 	"lint": {
 		"rules": {
-			"exclude": ["no-explicit-any"]
+			"exclude": ["no-explicit-any"],
+			"include": ["no-slow-types"]
 		}
 	},
 	"fmt": {

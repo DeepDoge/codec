@@ -1,10 +1,14 @@
 import { assertEquals } from "@std/assert";
 import { NullableCodec } from "~/composites/nullable.ts";
 import { StringCodec } from "~/bytes/string.ts";
+import type { FixedCodec, VariableCodec } from "~/codec.ts";
 import { U8 } from "~/primitives.ts";
 
 Deno.test("Nullable - null (fixed inner)", () => {
 	const opt = new NullableCodec(U8);
+	opt satisfies FixedCodec;
+	// @ts-expect-error — fixed-inner nullable must not satisfy VariableCodec
+	opt satisfies VariableCodec;
 	const [decoded, size] = opt.decode(opt.encode(null));
 	assertEquals(decoded, null);
 	assertEquals(size, 2); // flag byte + 1 zero byte
@@ -21,6 +25,9 @@ Deno.test("Nullable - present value (fixed inner)", () => {
 
 Deno.test("Nullable - null (variable inner)", () => {
 	const opt = new NullableCodec(new StringCodec());
+	opt satisfies VariableCodec;
+	// @ts-expect-error — variable-inner nullable must not satisfy FixedCodec
+	opt satisfies FixedCodec;
 	assertEquals(opt.stride, { kind: "variable" });
 	const [n, size] = opt.decode(opt.encode(null));
 	assertEquals(n, null);

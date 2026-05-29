@@ -95,6 +95,7 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 			const itemValue = value[i]!;
 			parts[i] = item.encode(itemValue);
 		}
+
 		const byteLength = parts.reduce((sum, p) => sum + p.length, 0);
 		const bytes = target ?? new Uint8Array(byteLength);
 		let offset = 0;

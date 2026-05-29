@@ -89,7 +89,11 @@ export class StructCodec<const T extends StructGeneric> extends Codec<StructOutp
 		value: StructInput<T>,
 		target?: Uint8Array<ArrayBuffer>,
 	): Uint8Array<ArrayBuffer> {
-		return this.tuple.encode(Object.values(value), target);
+		const values = new Array<unknown>(this.keys.length);
+		this.keys.forEach((key, i) => {
+			values[i] = value[key];
+		});
+		return this.tuple.encode(values, target);
 	}
 
 	/**

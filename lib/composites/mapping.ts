@@ -1,0 +1,114 @@
+import { Codec, type Stride } from "../codec.ts";
+import { ArrayCodec } from "./array.ts";
+import { TupleCodec } from "./tuple.ts";
+
+// ── Mapping ───────────────────────────────────────────────────────────────────
+
+/**
+ * A `[keyCodec, valueCodec]` pair that describes the codecs used for the keys
+ * and values of a {@link MappingCodec}.
+ */
+export type MappingGeneric = readonly [Codec, Codec];
+
+/**
+ * Derives the encode-side (input) `Map` type from a {@link MappingGeneric}
+ * codec pair.
+ *
+ * @template T - A `[keyCodec, valueCodec]` tuple.
+ */
+export type MappingInput<T extends MappingGeneric> = Map<
+	Codec.InferInput<T[0]>,
+	Codec.InferInput<T[1]>
+>;
+
+/**
+ * Derives the decode-side (output) `Map` type from a {@link MappingGeneric}
+ * codec pair.
+ *
+ * @template T - A `[keyCodec, valueCodec]` tuple.
+ */
+export type MappingOutput<T extends MappingGeneric> = Map<
+	Codec.InferOutput<T[0]>,
+	Codec.InferOutput<T[1]>
+>;
+
+/**
+ * Options for {@link MappingCodec}.
+ */
+export type MappingOptions = {
+	/**
+	 * Codec used to encode/decode the entry count prefix.
+	 * Defaults to `VarInt` (via the underlying {@link ArrayCodec}).
+	 */
+	counter?: Codec<number>;
+};
+
+/**
+ * Codec for a `Map<K, V>` — a variable-length sequence of key-value pairs.
+ *
+ * **Wire format:** a length-prefixed array of `[key, value]` tuples. The
+ * count prefix codec defaults to `VarInt` but can be overridden via
+ * `options.counter`.
+ *
+ * The `stride` is always `"variable"`.
+ *
+ * @template T - A `[keyCodec, valueCodec]` tuple (a {@link MappingGeneric}).
+ *
+ * @example
+ * const codec = new MappingCodec([Utf8, U32]);
+ *
+ * const bytes = codec.encode(new Map([["foo", 1], ["bar", 2]]));
+ * const [map] = codec.decode(bytes);
+ * // map.get("foo") === 1
+ */
+export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingOutput<T>, MappingInput<T>> {
+	public readonly stride: Stride<"variable"> = { kind: "variable" };
+	readonly #entriesCodec: ArrayCodec<TupleCodec<T>>;
+
+	/**
+	 * The `[keyCodec, valueCodec]` tuple used for individual map entries.
+	 * Exposes the inner entry codec pair for inspection or reuse.
+	 */
+	public get entryCodec(): T {
+		return this.#entriesCodec.item.items;
+	}
+
+	constructor(entryCodec: T, options?: MappingOptions) {
+		super();
+		this.#entriesCodec = new ArrayCodec(new TupleCodec(entryCodec), options);
+	}
+
+	/**
+	 * Encodes a `Map` into a length-prefixed sequence of encoded key-value pairs.
+	 *
+	 * @param value - The `Map` to encode.
+	 * @param target - Optional pre-allocated buffer to write into.
+	 * @returns The encoded bytes.
+	 *
+	 * @example
+	 * const bytes = codec.encode(new Map([["a", 1]]));
+	 */
+	public encode(
+		value: MappingInput<T>,
+		target?: Uint8Array<ArrayBuffer>,
+	): Uint8Array<ArrayBuffer> {
+		return this.#entriesCodec.encode(
+			value.entries().toArray() as never,
+			target,
+		);
+	}
+
+	/**
+	 * Decodes a length-prefixed sequence of key-value pairs into a `Map`.
+	 *
+	 * @param data - Byte array to decode from.
+	 * @returns A tuple of `[Map, bytes consumed]`.
+	 *
+	 * @example
+	 * const [map, bytesRead] = codec.decode(bytes);
+	 */
+	public decode(data: Uint8Array): [MappingOutput<T>, number] {
+		const [entries, size] = this.#entriesCodec.decode(data);
+		return [new Map(entries), size];
+	}
+}

@@ -1,0 +1,135 @@
+import { Codec, type Stride } from "../codec.ts";
+
+// ── Nullable ──────────────────────────────────────────────────────────────────
+
+/**
+ * Any codec can serve as the inner codec for a {@link NullableCodec}.
+ * This is a type alias for {@link Codec} used for clarity in generic constraints.
+ */
+export type NullableGeneric = Codec;
+
+/**
+ * Derives the encode-side (input) type for a nullable value — either the inner
+ * codec's input type or `null`.
+ *
+ * @template T - The inner codec type.
+ */
+export type NullableInput<T extends NullableGeneric> =
+	| Codec.InferInput<T>
+	| null;
+
+/**
+ * Derives the decode-side (output) type for a nullable value — either the inner
+ * codec's output type or `null`.
+ *
+ * @template T - The inner codec type.
+ */
+export type NullableOutput<T extends NullableGeneric> =
+	| Codec.InferOutput<T>
+	| null;
+
+/**
+ * Codec that wraps another codec to make its value optional (`null` or a
+ * concrete value).
+ *
+ * **Wire format (variable-stride inner):**
+ * - `null`  → `[0x00]` (1 byte)
+ * - present → `[0x01][encodedValue...]`
+ *
+ * **Wire format (fixed-stride inner):**
+ * - `null`  → `stride.size` zero bytes (presence byte + zeroed payload)
+ * - present → `[0x01][encodedValue]` (always exactly `stride.size` bytes)
+ *
+ * The `stride` is `"fixed"` when the inner codec has a fixed stride (total
+ * size = `1 + inner.stride.size`); `"variable"` otherwise.
+ *
+ * @template T - The inner codec type (a {@link NullableGeneric}).
+ *
+ * @example
+ * const MaybeU32 = new NullableCodec(U32);
+ *
+ * const presentBytes = MaybeU32.encode(42);   // [0x01, ...u32 bytes]
+ * const nullBytes    = MaybeU32.encode(null);  // [0x00, 0x00, 0x00, 0x00, 0x00]
+ *
+ * const [val]  = MaybeU32.decode(presentBytes); // val === 42
+ * const [none] = MaybeU32.decode(nullBytes);    // none === null
+ *
+ * @example
+ * // Variable-stride inner (e.g. string)
+ * const MaybeStr = new NullableCodec(Utf8);
+ * const bytes = MaybeStr.encode("hello"); // [0x01, ...utf8 bytes]
+ */
+export class NullableCodec<T extends NullableGeneric> extends Codec<NullableOutput<T>, NullableInput<T>> {
+	/** The wrapped inner codec. */
+	public readonly inner: T;
+
+	public readonly stride: T["stride"] extends Stride<"fixed"> ? Stride<"fixed">
+		: Stride<"variable">;
+
+	constructor(inner: T) {
+		super();
+		this.inner = inner;
+		this.stride = (
+			inner.stride.kind === "fixed" ? { kind: "fixed", size: 1 + inner.stride.size } : { kind: "variable" }
+		) as typeof this.stride;
+	}
+
+	/**
+	 * Encodes a nullable value into bytes.
+	 *
+	 * - If `value` is `null`: writes a zeroed block (`0x00` presence byte, plus
+	 *   zero-padding to fill fixed stride if applicable).
+	 * - Otherwise: writes `0x01` followed by the inner codec's encoding.
+	 *
+	 * @param value - The value to encode, or `null`.
+	 * @param target - Optional pre-allocated buffer to write into.
+	 * @returns The encoded bytes.
+	 *
+	 * @example
+	 * const bytes = codec.encode(null);   // presence byte = 0x00
+	 * const bytes = codec.encode("hi");   // presence byte = 0x01, then payload
+	 */
+	public encode(
+		value: NullableInput<T>,
+		target?: Uint8Array<ArrayBuffer>,
+	): Uint8Array<ArrayBuffer> {
+		if (value === null) {
+			const size = this.stride.kind === "fixed" ? this.stride.size : 1;
+			const result = target ?? new Uint8Array(size);
+			result.fill(0, 0, size);
+			return result;
+		} else {
+			const encoded = this.inner.encode(value, target?.subarray(1));
+			const totalLen = 1 + encoded.length;
+			const result = target ?? new Uint8Array(totalLen);
+			result[0] = 1;
+			result.set(encoded, 1);
+			return result;
+		}
+	}
+
+	/**
+	 * Decodes bytes into a nullable output value.
+	 *
+	 * Reads the first byte as a presence flag:
+	 * - `0x00`: returns `null`. Consumes `stride.size` bytes for fixed inner
+	 *   codecs, or `1` byte for variable inner codecs.
+	 * - Any other value: decodes the inner value starting at byte 1.
+	 *
+	 * @param data - Byte array to decode from.
+	 * @returns A tuple of `[value | null, bytes consumed]`.
+	 *
+	 * @example
+	 * const [val, n] = codec.decode(bytes);
+	 * if (val === null) { ... }
+	 */
+	public decode(data: Uint8Array): [NullableOutput<T>, number] {
+		if (data[0] === 0) {
+			const size = this.stride.kind === "fixed" ? this.stride.size : 1;
+			return [null, size];
+		} else {
+			const [value, size] = this.inner.decode(data.subarray(1));
+			return [value, 1 + size];
+		}
+	}
+}

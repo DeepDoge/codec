@@ -35,9 +35,9 @@ See the [migrations](./migrations/) folder for upgrade instructions.
 ## Quick Start
 
 ```ts
-import { StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
+import { StringCodec, ModelCodec, U32 } from "@nomadshiba/codec";
 
-const User = new StructCodec({
+const User = new ModelCodec({
 	id: U32,
 	name: new StringCodec(),
 });
@@ -66,9 +66,9 @@ The optional `target` parameter on `encode` lets you write into a pre-allocated 
 Use the `Codec.Infer*` utilities to derive TypeScript types from a codec:
 
 ```ts
-import { Codec, StringCodec, StructCodec, U32 } from "@nomadshiba/codec";
+import { Codec, StringCodec, ModelCodec, U32 } from "@nomadshiba/codec";
 
-const User = new StructCodec({ id: U32, name: new StringCodec() });
+const User = new ModelCodec({ id: U32, name: new StringCodec() });
 
 type UserInput = Codec.InferInput<typeof User>; // { id: number; name: string }
 type UserOut = Codec.InferOutput<typeof User>; // { id: number; name: string }
@@ -103,18 +103,18 @@ import {
 	type ArrayInput,
 	type ArrayOutput,
 	StringCodec,
-	StructCodec,
-	type StructGeneric,
-	type StructInput,
-	type StructOutput,
+	ModelCodec,
+	type ModelGeneric,
+	type ModelInput,
+	type ModelOutput,
 	U32,
 } from "@nomadshiba/codec";
 
-// Accept a struct codec and return its decoded value type
-function decodeFirst<T extends StructGeneric>(
-	codec: StructCodec<T>,
+// Accept a model codec and return its decoded value type
+function decodeFirst<T extends ModelGeneric>(
+	codec: ModelCodec<T>,
 	buffers: Uint8Array[],
-): StructOutput<T> {
+): ModelOutput<T> {
 	return codec.decode(buffers[0]!)[0];
 }
 
@@ -129,17 +129,16 @@ function decodeAll<T extends ArrayGeneric>(
 
 The full set of pairs exported by the library:
 
-| Generic type         | Input type         | Output type         | Used by            |
-| -------------------- | ------------------ | ------------------- | ------------------ |
-| `NullableGeneric`    | `NullableInput<T>` | `NullableOutput<T>` | `NullableCodec`    |
-| `TupleGeneric`       | `TupleInput<T>`    | `TupleOutput<T>`    | `TupleCodec`       |
-| `FixedTupleGeneric`  | `TupleInput<T>`    | `TupleOutput<T>`    | `FixedTupleCodec`  |
-| `StructGeneric`      | `StructInput<T>`   | `StructOutput<T>`   | `StructCodec`      |
-| `FixedStructGeneric` | `StructInput<T>`   | `StructOutput<T>`   | `FixedStructCodec` |
-| `ArrayGeneric`       | `ArrayInput<T>`    | `ArrayOutput<T>`    | `ArrayCodec`       |
-| `EnumGeneric`        | `EnumInput<T>`     | `EnumOutput<T>`     | `EnumCodec`        |
-| `FixedEnumGeneric`   | `EnumInput<T>`     | `EnumOutput<T>`     | `FixedEnumCodec`   |
-| `MappingGeneric`     | `MappingInput<T>`  | `MappingOutput<T>`  | `MappingCodec`     |
+| Generic type      | Input type         | Output type         | Used by           |
+| ----------------- | ------------------ | ------------------- | ----------------- |
+| `NullableGeneric` | `NullableInput<T>` | `NullableOutput<T>` | `NullableCodec`   |
+| `TupleGeneric`    | `TupleInput<T>`    | `TupleOutput<T>`    | `TupleCodec`      |
+| `StructGeneric`   | `StructInput<T>`   | `StructOutput<T>`   | `StructCodec`     |
+| `ModelGeneric`    | `ModelInput<T>`    | `ModelOutput<T>`    | `ModelCodec`      |
+| `ArrayGeneric`    | `ArrayInput<T>`    | `ArrayOutput<T>`    | `ArrayCodec`      |
+| `EnumGeneric`     | `EnumInput<T>`     | `EnumOutput<T>`     | `EnumCodec`       |
+| `FixedEnumGeneric` | —                 | —                   | `PaddedEnumCodec` |
+| `MappingGeneric`  | `MappingInput<T>`  | `MappingOutput<T>`  | `MappingCodec`    |
 
 For most application code you won't need these directly — `Codec.InferOutput<T>` covers the common case. They become useful when writing generic helpers,
 higher-order codecs, or libraries built on top of this one.
@@ -257,22 +256,6 @@ t.encode([7, "hi"]); // [0x07, 0x02, 0x68, 0x69]
 
 `stride` is `{ kind: "fixed", size: n }` (sum of all element strides) when all elements are fixed-size; `{ kind: "variable" }` if any element is variable.
 
-#### FixedTupleCodec
-
-A fixed-size variant of `TupleCodec`. All element codecs must be fixed-size. Advertises `Stride<"fixed">`, enabling tighter downstream optimisations.
-
-```ts
-import { FixedTupleCodec, U32 } from "@nomadshiba/codec";
-
-const Vec2 = new FixedTupleCodec([U32, U32]);
-// stride = { kind: "fixed", size: 8 }
-
-const bytes = Vec2.encode([1, 2]);
-const [vec] = Vec2.decode(bytes); // [1, 2]
-```
-
-Wire format is identical to `TupleCodec` with all-fixed elements, so the two are wire-compatible for the same shape.
-
 ---
 
 ### Struct
@@ -280,9 +263,9 @@ Wire format is identical to `TupleCodec` with all-fixed elements, so the two are
 Named-field objects encoded in **definition order** (order matters for the binary layout). Append `"?"` to any field name to mark it as optional.
 
 ```ts
-import { StringCodec, StructCodec, U32, U8 } from "@nomadshiba/codec";
+import { StringCodec, ModelCodec, U32, U8 } from "@nomadshiba/codec";
 
-const User = new StructCodec({
+const User = new ModelCodec({
 	id: U32,
 	name: new StringCodec(),
 	"age?": U8, // optional field
@@ -316,33 +299,17 @@ Access the codec shape via `User.shape`.
 
 #### partial()
 
-Returns a new `StructCodec` where every field is optional. Required keys (`"field"`) become `"field?"`. Keys already optional are kept as-is. Field order and
+Returns a new `ModelCodec` where every field is optional. Required keys (`"field"`) become `"field?"`. Keys already optional are kept as-is. Field order and
 codecs are preserved.
 
 ```ts
-const User = new StructCodec({ id: U32, name: new StringCodec() });
+const User = new ModelCodec({ id: U32, name: new StringCodec() });
 const PartialUser = User.partial();
 
 PartialUser.encode({}); // all absent
 PartialUser.encode({ name: "Ada" }); // only name present
 PartialUser.encode({ id: 1, name: "Ada" }); // all present
 ```
-
-#### FixedStructCodec
-
-A fixed-size variant of `StructCodec`. All field codecs must be fixed-size and no optional fields are allowed. Advertises `Stride<"fixed">`.
-
-```ts
-import { FixedStructCodec, U32 } from "@nomadshiba/codec";
-
-const Point = new FixedStructCodec({ x: U32, y: U32 });
-// stride = { kind: "fixed", size: 8 }
-
-const bytes = Point.encode({ x: 1, y: 2 });
-const [point] = Point.decode(bytes); // { x: 1, y: 2 }
-```
-
-Wire format is identical to `StructCodec` with all-required fixed fields, so the two are wire-compatible for the same shape.
 
 ---
 
@@ -396,15 +363,15 @@ Wire format:
 > **Note:** Variant indices are assigned in **definition order**. Adding or removing variants changes existing indices and breaks compatibility with previously
 > encoded data. Renaming variants is safe and does not affect indices.
 
-#### FixedEnumCodec
+#### PaddedEnumCodec
 
 A fixed-size variant of `EnumCodec`. All variant codecs must be fixed-size. The encoded size is constant: `indexer.stride.size + max(variant.stride.size)`.
 Shorter variant payloads are zero-padded to the maximum variant size.
 
 ```ts
-import { FixedEnumCodec, U16, U8 } from "@nomadshiba/codec";
+import { PaddedEnumCodec, U16, U8 } from "@nomadshiba/codec";
 
-const Event = new FixedEnumCodec({ Click: U8, Scroll: U16 });
+const Event = new PaddedEnumCodec({ Click: U8, Scroll: U16 });
 // stride = { kind: "fixed", size: 3 }  (1 byte index + 2 byte max payload)
 
 Event.encode({ kind: "Click", value: 5 }); // [0x00, 0x05, 0x00] (padded)
@@ -468,7 +435,7 @@ const UserIdCodec = Str.transform((s): UserId => {
 });
 
 // Attach methods and expose raw bytes
-const Point = StructCodec({ x: F32, y: F32 });
+const Point = ModelCodec({ x: F32, y: F32 });
 const RichPoint = Point.transform((p, bytes) => ({
 	...p,
 	raw: bytes,

@@ -129,16 +129,16 @@ function decodeAll<T extends ArrayGeneric>(
 
 The full set of pairs exported by the library:
 
-| Generic type       | Input type         | Output type         | Used by           |
-| ------------------ | ------------------ | ------------------- | ----------------- |
-| `NullableGeneric`  | `NullableInput<T>` | `NullableOutput<T>` | `NullableCodec`   |
-| `TupleGeneric`     | `TupleInput<T>`    | `TupleOutput<T>`    | `TupleCodec`      |
-| `StructGeneric`    | `StructInput<T>`   | `StructOutput<T>`   | `StructCodec`     |
-| `ModelGeneric`     | `ModelInput<T>`    | `ModelOutput<T>`    | `ModelCodec`      |
-| `ArrayGeneric`     | `ArrayInput<T>`    | `ArrayOutput<T>`    | `ArrayCodec`      |
-| `EnumGeneric`      | `EnumInput<T>`     | `EnumOutput<T>`     | `EnumCodec`       |
-| `FixedEnumGeneric` | —                  | —                   | `PaddedEnumCodec` |
-| `MappingGeneric`   | `MappingInput<T>`  | `MappingOutput<T>`  | `MappingCodec`    |
+| Generic type        | Input type         | Output type         | Used by           |
+| ------------------- | ------------------ | ------------------- | ----------------- |
+| `NullableGeneric`   | `NullableInput<T>` | `NullableOutput<T>` | `NullableCodec`   |
+| `TupleGeneric`      | `TupleInput<T>`    | `TupleOutput<T>`    | `TupleCodec`      |
+| `StructGeneric`     | `StructInput<T>`   | `StructOutput<T>`   | `StructCodec`     |
+| `ModelGeneric`      | `ModelInput<T>`    | `ModelOutput<T>`    | `ModelCodec`      |
+| `ArrayGeneric`      | `ArrayInput<T>`    | `ArrayOutput<T>`    | `ArrayCodec`      |
+| `EnumGeneric`       | `EnumInput<T>`     | `EnumOutput<T>`     | `EnumCodec`       |
+| `PaddedEnumGeneric` | —                  | —                   | `PaddedEnumCodec` |
+| `MappingGeneric`    | `MappingInput<T>`  | `MappingOutput<T>`  | `MappingCodec`    |
 
 For most application code you won't need these directly — `Codec.InferOutput<T>` covers the common case. They become useful when writing generic helpers,
 higher-order codecs, or libraries built on top of this one.

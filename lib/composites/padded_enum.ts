@@ -2,7 +2,7 @@ import { Codec, type FixedCodec, type Stride } from "../codec.ts";
 import { U8Codec } from "../primitives.ts";
 import type { EnumInput, EnumOutput } from "./enum.ts";
 
-// ── FixedEnum ─────────────────────────────────────────────────────────────────
+// ── PaddedEnum ─────────────────────────────────────────────────────────────────
 
 /**
  * A record mapping variant names to **fixed-size** payload codecs.
@@ -10,14 +10,14 @@ import type { EnumInput, EnumOutput } from "./enum.ts";
  * All variants must have a `"fixed"` stride; this is enforced at construction
  * time. Used with {@link PaddedEnumCodec}.
  */
-export type FixedEnumGeneric = {
+export type PaddedEnumGeneric = {
 	readonly [key: string]: FixedCodec;
 };
 
 /**
  * Options for {@link PaddedEnumCodec}.
  */
-export type FixedEnumOptions = {
+export type PaddedEnumOptions = {
 	/**
 	 * Fixed-size codec used to encode/decode the variant index prefix.
 	 * Defaults to {@link U8Codec} (0–255 variants).
@@ -39,7 +39,7 @@ export type FixedEnumOptions = {
  * heterogeneous data (e.g. fixed-size network packets, array elements that
  * must be randomly addressable).
  *
- * @template T - The variants map (a {@link FixedEnumGeneric}).
+ * @template T - The variants map (a {@link PaddedEnumGeneric}).
  *
  * @throws {Error} At construction if any variant codec has a variable stride.
  *   Message: `"PaddedEnumCodec: variant \"<key>\" must have a fixed-size codec"`.
@@ -57,7 +57,7 @@ export type FixedEnumOptions = {
  * const [event] = EventCodec.decode(bytes);
  * // event.kind === "KeyPress", event.value.code === 65
  */
-export class PaddedEnumCodec<const T extends FixedEnumGeneric> extends Codec<EnumOutput<T>, EnumInput<T>> {
+export class PaddedEnumCodec<const T extends PaddedEnumGeneric> extends Codec<EnumOutput<T>, EnumInput<T>> {
 	public readonly stride: Stride<"fixed">;
 
 	/** The variants map passed to the constructor. */
@@ -68,7 +68,7 @@ export class PaddedEnumCodec<const T extends FixedEnumGeneric> extends Codec<Enu
 	public readonly maxVariantSize: number;
 	private readonly keys: (keyof T)[];
 
-	constructor(variants: T, options?: FixedEnumOptions) {
+	constructor(variants: T, options?: PaddedEnumOptions) {
 		super();
 		this.variants = variants;
 		this.keys = Object.keys(this.variants) as (keyof T)[];

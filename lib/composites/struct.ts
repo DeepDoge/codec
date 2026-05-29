@@ -17,7 +17,7 @@ export type StructGeneric = { readonly [key: string]: Codec };
  *
  * @template T - The struct shape.
  */
-export type StructInput<T extends StructGeneric> = { -readonly [K in keyof T]?: Codec.InferInput<T[K]> };
+export type StructInput<T extends StructGeneric> = { -readonly [K in keyof T]: Codec.InferInput<T[K]> };
 
 /**
  * Derives the decode-side (output) object type from a {@link StructGeneric}

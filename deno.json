@@ -1,6 +1,6 @@
 {
 	"name": "@nomadshiba/codec",
-	"version": "0.3.0-preview.8",
+	"version": "0.3.0-preview.9",
 	"license": "LGPL-2.1-only",
 	"exports": "./lib/mod.ts",
 	"tasks": {

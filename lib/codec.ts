@@ -1,6 +1,3 @@
-import { StructCodec } from "@nomadshiba/codec";
-import { U8 } from "~/primitives.ts";
-
 type StrideGeneric =
 	| { readonly kind: "fixed"; readonly size: number }
 	| { readonly kind: "variable" };
@@ -180,43 +177,6 @@ export abstract class Codec<O extends I = any, I = O> {
 	): TransformCodec<this, T, O, I> {
 		return new TransformCodec(this, transformer);
 	}
-}
-
-/**
- * Extension of {@link Codec} for codecs that can report per-field byte offsets
- * alongside the encoded/decoded value.
- *
- * Useful for struct-like codecs where callers need to know exactly where each
- * field sits inside the serialised buffer.
- *
- * @template O - Decoded output type.
- * @template I - Encoded input type.
- * @template Offsets - Shape of the offset map produced by this codec.
- */
-export abstract class CodecWithOffsets<O extends I = any, I = O, Offsets = any> extends Codec<O, I> {
-	/**
-	 * Phantom property — never assigned at runtime.
-	 * Carries the `Offsets` shape for static type inference.
-	 */
-	public readonly _OFFSETS_!: Offsets;
-
-	/**
-	 * Encodes `value` and returns both the byte buffer and a map of field offsets.
-	 *
-	 * @param value - The value to encode.
-	 * @param target - Optional pre-allocated buffer to write into.
-	 * @returns An object with `bytes` (the encoded buffer) and `offsets` (a map
-	 *   describing where each field begins within `bytes`).
-	 */
-	public abstract encodeWithOffsets(value: I, target?: Uint8Array<ArrayBuffer>): { bytes: Uint8Array<ArrayBuffer>; offsets: Offsets };
-
-	/**
-	 * Decodes a value from `data` and returns both the value and a field-offset map.
-	 *
-	 * @param data - Source bytes, read from offset 0.
-	 * @returns A tuple `[{ value, offsets }, bytesConsumed]`.
-	 */
-	public abstract decodeWithOffsets(data: Uint8Array): [{ value: O; offsets: Offsets }, number];
 }
 
 /**

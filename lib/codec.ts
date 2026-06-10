@@ -126,23 +126,6 @@ export abstract class Codec<O extends I = any, I = O> {
 	 * Convenience wrapper around {@link decode} that discards the byte-count and
 	 * returns only the decoded value.
 	 *
-	 * @deprecated Use {@link decodeValue} instead.
-	 *
-	 * @param data - Source bytes, read from offset 0.
-	 * @returns The decoded value.
-	 *
-	 * @example
-	 * const value = U32.decodeValue(new Uint8Array([0, 0, 0, 7]));
-	 * // value => 7
-	 */
-	public decodeAndReturnValue(data: Uint8Array): O {
-		return this.decodeValue(data);
-	}
-
-	/**
-	 * Convenience wrapper around {@link decode} that discards the byte-count and
-	 * returns only the decoded value.
-	 *
 	 * @param data - Source bytes, read from offset 0.
 	 * @returns The decoded value.
 	 *

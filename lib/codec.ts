@@ -1,6 +1,6 @@
 type StrideGeneric =
 	| { readonly kind: "fixed"; readonly size: number }
-	| { readonly kind: "variable" };
+	| { readonly kind: "variable"; readonly size?: undefined };
 
 /**
  * Describes the byte-size behaviour of a codec.

@@ -358,7 +358,7 @@ export const U32: U32Codec = new U32Codec();
  * const bytes = I64.encode(-1n);        // big-endian: 8 bytes of 0xFF
  * const [val] = I64.decode(bytes);      // [-1n]
  */
-export class I64Codec extends Codec<bigint> {
+export class I64Codec extends Codec<bigint, bigint | number> {
 	/** Fixed stride: always 8 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
 	readonly #littleEndian: boolean;
@@ -379,12 +379,12 @@ export class I64Codec extends Codec<bigint> {
 	 * @returns The buffer containing the encoded 8 bytes.
 	 */
 	public encode(
-		value: bigint,
+		value: bigint | number,
 		target?: Uint8Array<ArrayBuffer>,
 	): Uint8Array<ArrayBuffer> {
 		const arr = target ?? new Uint8Array(8);
 		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setBigInt64(0, value, this.#littleEndian);
+		view.setBigInt64(0, BigInt(value), this.#littleEndian);
 		return arr;
 	}
 
@@ -417,7 +417,7 @@ export const I64: I64Codec = new I64Codec();
  * const bytes = U64.encode(0xDEADBEEFCAFEBABEn);
  * const [val] = U64.decode(bytes); // [0xDEADBEEFCAFEBABEn]
  */
-export class U64Codec extends Codec<bigint> {
+export class U64Codec extends Codec<bigint, bigint | number> {
 	/** Fixed stride: always 8 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
 	readonly #littleEndian: boolean;
@@ -438,12 +438,12 @@ export class U64Codec extends Codec<bigint> {
 	 * @returns The buffer containing the encoded 8 bytes.
 	 */
 	public encode(
-		value: bigint,
+		value: bigint | number,
 		target?: Uint8Array<ArrayBuffer>,
 	): Uint8Array<ArrayBuffer> {
 		const arr = target ?? new Uint8Array(8);
 		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setBigUint64(0, value, this.#littleEndian);
+		view.setBigUint64(0, BigInt(value), this.#littleEndian);
 		return arr;
 	}
 
@@ -476,7 +476,7 @@ export const U64: U64Codec = new U64Codec();
  * const bytes = F32.encode(1.5);       // big-endian IEEE 754
  * const [val] = F32.decode(bytes);     // [1.5]
  */
-export class F32Codec extends Codec<number> {
+export class F32Codec extends Codec<number, number | bigint> {
 	/** Fixed stride: always 4 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 4 };
 	readonly #littleEndian: boolean;
@@ -497,12 +497,12 @@ export class F32Codec extends Codec<number> {
 	 * @returns The buffer containing the encoded 4 bytes.
 	 */
 	public encode(
-		value: number,
+		value: number | bigint,
 		target?: Uint8Array<ArrayBuffer>,
 	): Uint8Array<ArrayBuffer> {
 		const arr = target ?? new Uint8Array(4);
 		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setFloat32(0, value, this.#littleEndian);
+		view.setFloat32(0, Number(value), this.#littleEndian);
 		return arr;
 	}
 
@@ -535,7 +535,7 @@ export const F32: F32Codec = new F32Codec();
  * const bytes = F64.encode(Math.PI);   // big-endian IEEE 754
  * const [val] = F64.decode(bytes);     // [Math.PI]
  */
-export class F64Codec extends Codec<number> {
+export class F64Codec extends Codec<number, number | bigint> {
 	/** Fixed stride: always 8 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
 	readonly #littleEndian: boolean;
@@ -556,12 +556,12 @@ export class F64Codec extends Codec<number> {
 	 * @returns The buffer containing the encoded 8 bytes.
 	 */
 	public encode(
-		value: number,
+		value: number | bigint,
 		target?: Uint8Array<ArrayBuffer>,
 	): Uint8Array<ArrayBuffer> {
 		const arr = target ?? new Uint8Array(8);
 		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setFloat64(0, value, this.#littleEndian);
+		view.setFloat64(0, Number(value), this.#littleEndian);
 		return arr;
 	}
 

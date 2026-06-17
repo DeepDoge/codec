@@ -49,7 +49,7 @@ export type ArrayOptions =
 		counter?: undefined;
 	}
 	| {
-		counter?: Codec<number>;
+		counter: Codec<number>;
 		size?: undefined;
 	};
 
@@ -91,8 +91,7 @@ export type ArrayOptions =
  * const codec = new ArrayCodec(Str, { counter: U16 });
  * ```
  */
-export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | undefined = undefined>
-	extends Codec<ArrayOutput<T>, ArrayInput<T>> {
+export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | undefined = undefined> extends Codec<ArrayOutput<T>, ArrayInput<T>> {
 	/**
 	 * Describes the memory layout of encoded values.
 	 *
@@ -100,8 +99,7 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 	 *   codec has a fixed stride (total byte size is `N * item.stride.size`).
 	 * - `Stride<"variable">` otherwise.
 	 */
-	public readonly stride: O extends { size: number }
-		? (T extends { stride: Stride<"fixed"> } ? Stride<"fixed"> : Stride<"variable">)
+	public readonly stride: O extends { size: number } ? (T extends { stride: Stride<"fixed"> } ? Stride<"fixed"> : Stride<"variable">)
 		: Stride<"variable">;
 
 	/** Codec used to encode/decode the element count prefix. Unused in fixed-size mode. */

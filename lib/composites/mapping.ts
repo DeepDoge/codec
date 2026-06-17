@@ -40,7 +40,7 @@ export type MappingOptions = {
 	 * Codec used to encode/decode the entry count prefix.
 	 * Defaults to `VarInt` (via the underlying {@link ArrayCodec}).
 	 */
-	counter?: Codec<number>;
+	counter: Codec<number>;
 };
 
 /**
@@ -63,7 +63,7 @@ export type MappingOptions = {
  */
 export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingOutput<T>, MappingInput<T>> {
 	public readonly stride: Stride<"variable"> = { kind: "variable" };
-	readonly #entriesCodec: ArrayCodec<TupleCodec<T>, { counter?: Codec<number>; size?: undefined }>;
+	readonly #entriesCodec: ArrayCodec<TupleCodec<T>, { counter: MappingOptions["counter"] }>;
 
 	/**
 	 * The `[keyCodec, valueCodec]` tuple used for individual map entries.

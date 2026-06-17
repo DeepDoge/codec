@@ -63,7 +63,7 @@ export type MappingOptions = {
  */
 export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingOutput<T>, MappingInput<T>> {
 	public readonly stride: Stride<"variable"> = { kind: "variable" };
-	readonly #entriesCodec: ArrayCodec<TupleCodec<T>>;
+	readonly #entriesCodec: ArrayCodec<TupleCodec<T>, { counter?: Codec<number>; size?: undefined }>;
 
 	/**
 	 * The `[keyCodec, valueCodec]` tuple used for individual map entries.

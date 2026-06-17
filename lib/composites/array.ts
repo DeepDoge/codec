@@ -24,64 +24,128 @@ export type ArrayInput<T extends ArrayGeneric> = Codec.InferInput<T>[];
 export type ArrayOutput<T extends ArrayGeneric> = Codec.InferOutput<T>[];
 
 /**
- * Options for {@link ArrayCodec}.
+ * Options controlling how {@link ArrayCodec} frames an array.
+ *
+ * Exactly one of the two shapes must be used:
+ * - **Fixed** — supply `size` to encode/decode a constant number of elements
+ *   with no count prefix.
+ * - **Variable** — supply `counter` (a `Codec<number>`) to write a count prefix
+ *   before the elements. Defaults to {@link VarInt} when neither option is given.
+ *
+ * @example Fixed 4-element array
+ * ```ts
+ * const Quad = new ArrayCodec(U8, { size: 4 });
+ * ```
+ *
+ * @example Variable-length with a custom counter codec
+ * ```ts
+ * import { U16 } from "../primitives.ts";
+ * const codec = new ArrayCodec(U32, { counter: U16 });
+ * ```
  */
-export type ArrayOptions = {
-	/**
-	 * Codec used to encode/decode the element count prefix.
-	 * Defaults to `VarInt` (variable-length integer).
-	 */
-	counter?: Codec<number>;
-};
+export type ArrayOptions =
+	| {
+		size: number;
+		counter?: undefined;
+	}
+	| {
+		counter?: Codec<number>;
+		size?: undefined;
+	};
 
 /**
- * Codec for a homogeneous variable-length array of elements.
+ * Codec for a homogeneous array of elements.
  *
- * **Wire format:** `[elementCount][element_0][element_1]...[element_n-1]`
+ * Supports two framing modes determined by the type parameter `O`:
  *
- * The count prefix is encoded by `options.counter` (default: `VarInt`). Each
- * element is encoded by the `item` codec in sequence.
+ * - **Fixed** (`O extends { size: number }`) — encodes/decodes exactly
+ *   `options.size` elements. No count prefix is written; `stride` is
+ *   `"fixed"` when the element codec also has a fixed stride (so the total
+ *   byte size is `options.size * item.stride.size`), otherwise `"variable"`.
+ * - **Variable** (default / `O` is `undefined` or `{ counter }`) — prefixes
+ *   the elements with the element count encoded by `counter` (defaults to
+ *   {@link VarInt}). `stride` is `"variable"`.
  *
- * The `stride` is always `"variable"`.
+ * @typeParam T - The element codec type (an {@link ArrayGeneric}).
+ * @typeParam O - The {@link ArrayOptions} shape that selects fixed vs. variable
+ *   framing, inferred from the constructor argument.
  *
- * @template T - The element codec type (an {@link ArrayGeneric}).
+ * @example Fixed-size array (no count prefix)
+ * ```ts
+ * const Quad = new ArrayCodec(U8, { size: 4 });
+ * const encoded = Quad.encode([1, 2, 3, 4]);
+ * const [decoded, consumed] = Quad.decode(encoded);
+ * // decoded === [1, 2, 3, 4], consumed === 4
+ * ```
  *
- * @example
- * const U32ArrayCodec = new ArrayCodec(U32);
- *
- * const bytes = U32ArrayCodec.encode([1, 2, 3]);
- * const [arr] = U32ArrayCodec.decode(bytes);
+ * @example Variable-length array (VarInt count prefix)
+ * ```ts
+ * const U32Array = new ArrayCodec(U32);
+ * const bytes = U32Array.encode([1, 2, 3]);
+ * const [arr] = U32Array.decode(bytes);
  * // arr === [1, 2, 3]
+ * ```
  *
- * @example
- * // Custom counter codec (e.g. fixed U16 length prefix)
- * const codec = new ArrayCodec(Utf8, { counter: U16 });
+ * @example Custom counter codec (e.g. fixed U16 count prefix)
+ * ```ts
+ * const codec = new ArrayCodec(Str, { counter: U16 });
+ * ```
  */
-export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayOutput<T>, ArrayInput<T>> {
-	public readonly stride: Stride<"variable"> = { kind: "variable" };
-	/** Codec used to encode/decode the element count prefix. */
+export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | undefined = undefined>
+	extends Codec<ArrayOutput<T>, ArrayInput<T>> {
+	/**
+	 * Describes the memory layout of encoded values.
+	 *
+	 * - `Stride<"fixed">` when constructed with `{ size: N }` and the element
+	 *   codec has a fixed stride (total byte size is `N * item.stride.size`).
+	 * - `Stride<"variable">` otherwise.
+	 */
+	public readonly stride: O extends { size: number }
+		? (T extends { stride: Stride<"fixed"> } ? Stride<"fixed"> : Stride<"variable">)
+		: Stride<"variable">;
+
+	/** Codec used to encode/decode the element count prefix. Unused in fixed-size mode. */
 	public readonly counter: Codec<number>;
 	/** Codec used to encode/decode individual array elements. */
 	public readonly item: T;
 
-	constructor(item: T, options?: ArrayOptions) {
+	readonly #elementCount: number | undefined;
+
+	constructor(item: T, options?: O) {
 		super();
 		this.item = item;
 		this.counter = options?.counter ?? VarInt;
+		this.#elementCount = options?.size;
+
+		type S = ArrayCodec<T, O>["stride"];
+		if (options?.size !== undefined) {
+			if (item.stride.kind === "fixed") {
+				this.stride = { kind: "fixed", size: options.size * item.stride.size } as S;
+			} else {
+				this.stride = { kind: "variable" } as S;
+			}
+		} else {
+			this.stride = { kind: "variable" } as S;
+		}
 	}
 
 	/**
-	 * Encodes an array of values into a length-prefixed byte sequence.
+	 * Encodes an array of values into its wire representation.
 	 *
-	 * Encodes each element with `this.item`, then prepends the element count
-	 * encoded with `this.counter`.
+	 * - **Fixed mode** — encodes each element in sequence with no count prefix;
+	 *   throws if `value.length !== options.size`.
+	 * - **Variable mode** — prepends the element count encoded with
+	 *   `this.counter`, then encodes each element.
 	 *
 	 * @param value - Array of values to encode.
 	 * @param target - Optional pre-allocated buffer to write into.
 	 * @returns The encoded bytes.
+	 * @throws {RangeError} In fixed mode, if `value.length !== options.size`.
 	 *
 	 * @example
-	 * const bytes = codec.encode([10, 20, 30]);
+	 * const codec = new ArrayCodec(U8, { size: 3 });
+	 * codec.encode([1, 2, 3]); // Uint8Array [1, 2, 3]
+	 * codec.encode([1, 2]);    // throws RangeError
 	 */
 	public encode(
 		value: ArrayInput<T>,
@@ -90,6 +154,22 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayOutput<T>, Ar
 		const parts: Uint8Array<ArrayBuffer>[] = [];
 		for (const item of value) {
 			parts.push(this.item.encode(item));
+		}
+
+		if (this.#elementCount !== undefined) {
+			if (value.length !== this.#elementCount) {
+				throw new RangeError(
+					`Expected array of length ${this.#elementCount}, got ${value.length}`,
+				);
+			}
+			const combinedLength = parts.reduce((sum, p) => sum + p.length, 0);
+			const result = target ?? new Uint8Array(combinedLength);
+			let offset = 0;
+			for (const part of parts) {
+				result.set(part, offset);
+				offset += part.length;
+			}
+			return result;
 		}
 
 		const combinedLength = parts.reduce((sum, p) => sum + p.length, 0);
@@ -107,18 +187,33 @@ export class ArrayCodec<T extends ArrayGeneric> extends Codec<ArrayOutput<T>, Ar
 	}
 
 	/**
-	 * Decodes a length-prefixed byte sequence into an array of values.
+	 * Decodes a byte sequence into an array of values.
 	 *
-	 * Reads the element count via `this.counter`, then decodes that many
-	 * elements sequentially with `this.item`.
+	 * - **Fixed mode** — decodes exactly `options.size` elements with no count
+	 *   prefix.
+	 * - **Variable mode** — reads the element count via `this.counter`, then
+	 *   decodes that many elements sequentially.
 	 *
 	 * @param data - Byte array to decode from.
 	 * @returns A tuple of `[decoded array, bytes consumed]`.
 	 *
 	 * @example
-	 * const [arr, bytesRead] = codec.decode(bytes);
+	 * const codec = new ArrayCodec(U8, { size: 3 });
+	 * const [arr, n] = codec.decode(new Uint8Array([1, 2, 3, 99]));
+	 * // arr === [1, 2, 3], n === 3
 	 */
 	public decode(data: Uint8Array): [ArrayOutput<T>, number] {
+		if (this.#elementCount !== undefined) {
+			const result: ArrayOutput<T> = [];
+			let offset = 0;
+			for (let i = 0; i < this.#elementCount; i++) {
+				const [value, size] = this.item.decode(data.subarray(offset));
+				result.push(value);
+				offset += size;
+			}
+			return [result, offset];
+		}
+
 		const [count, bytesRead] = this.counter.decode(data);
 		const result: ArrayOutput<T> = [];
 		let offset = bytesRead;

@@ -94,7 +94,7 @@ export class StructCodec<const T extends StructGeneric> extends Codec<StructOutp
 		return this.tuple.encode(this.keys.map((key) => value[key]));
 	}
 
-	public encodeInto(value: StructInput<T>, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: StructInput<T>, target: Uint8Array, offset: number = 0): number {
 		return this.tuple.encodeInto(this.keys.map((key) => value[key]), target, offset);
 	}
 

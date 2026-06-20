@@ -133,7 +133,7 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined> ex
 		return result;
 	}
 
-	public encodeInto(value: Uint8Array, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: Uint8Array, target: Uint8Array, offset: number = 0): number {
 		if (this.stride.kind === "fixed") {
 			if (value.length !== this.stride.size) {
 				throw new RangeError(

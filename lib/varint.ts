@@ -64,7 +64,7 @@ export class VarIntCodec extends Codec<number> {
 		return result;
 	}
 
-	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
 		if (value < 0 || !Number.isSafeInteger(value)) {
 			throw new RangeError("Value must be a non-negative safe integer");
 		}

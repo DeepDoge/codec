@@ -69,6 +69,15 @@ export declare namespace Codec {
  */
 export abstract class Codec<O extends I = any, I = O> {
 	/**
+	 * Set to `true` to suppress the console warnings emitted when a variable-stride
+	 * codec falls back to the default `size()` or `encodeInto()` implementations.
+	 *
+	 * @example
+	 * Codec.suppressWarnings = true;
+	 */
+	public static suppressWarnings = false;
+
+	/**
 	 * Phantom property — never assigned at runtime.
 	 * Carries the **input** type for use with {@link Codec.InferInput}.
 	 */
@@ -92,9 +101,14 @@ export abstract class Codec<O extends I = any, I = O> {
 	 * allocating. Fixed-size codecs inherit this; variable-size codecs must
 	 * override. Invariant: size(v) === encodeInto(v, buf, 0).
 	 */
-	public size(_value: I): number {
+	public size(value: I): number {
 		if (this.stride.kind === "fixed") return this.stride.size;
-		throw new Error(`${this.constructor.name}: variable-size codecs must override size()`);
+		if (!Codec.suppressWarnings) {
+			console.warn(
+				`${this.constructor.name}.size() falling back to encode().length — add a size() override to avoid allocating.`,
+			);
+		}
+		return this.encode(value).length;
 	}
 
 	/**
@@ -112,7 +126,17 @@ export abstract class Codec<O extends I = any, I = O> {
 	 * // buf => Uint8Array [0xDE, 0xAD, 0xBE, 0xEF]
 	 */
 	public abstract encode(value: I): Uint8Array<ArrayBuffer>;
-	public abstract encodeInto(value: I, target: Uint8Array, offset?: number): number;
+
+	public encodeInto(value: I, target: Uint8Array, offset?: number): number {
+		if (!Codec.suppressWarnings) {
+			console.warn(
+				`${this.constructor.name}.encodeInto() falling back to encode() + set() — add an encodeInto() override to avoid allocating.`,
+			);
+		}
+		const bytes = this.encode(value);
+		target.set(bytes, offset);
+		return bytes.length;
+	}
 
 	/**
 	 * Decodes a value from the beginning of `data`.
@@ -259,11 +283,11 @@ export class TransformCodec<
 	 * @param value - Value to encode.
 	 * @returns Encoded bytes.
 	 */
-	encode(value: I): Uint8Array<ArrayBuffer> {
+	public override encode(value: I): Uint8Array<ArrayBuffer> {
 		return this.inner.encode(value);
 	}
 
-	encodeInto(value: I, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: I, target: Uint8Array, offset: number = 0): number {
 		return this.inner.encodeInto(value, target, offset);
 	}
 
@@ -278,7 +302,7 @@ export class TransformCodec<
 	 * const [s] = UpperStr.decode(encoded);
 	 * // s => "HELLO"
 	 */
-	decode(data: Uint8Array): [T, number] {
+	public override decode(data: Uint8Array): [T, number] {
 		const [value, size] = this.inner.decode(data);
 		const bytes = data.subarray(0, size);
 		const transformed = this.transformer(value, bytes);

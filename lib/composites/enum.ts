@@ -132,7 +132,7 @@ export class EnumCodec<const T extends EnumGeneric> extends Codec<EnumOutput<T>,
 		return result;
 	}
 
-	public encodeInto(value: EnumInput<T>, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: EnumInput<T>, target: Uint8Array, offset: number = 0): number {
 		const index = this.keys.indexOf(value.kind);
 		if (index === -1) {
 			throw new Error(`Invalid union variant: ${String(value.kind)}`);

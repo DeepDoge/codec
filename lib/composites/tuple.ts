@@ -115,7 +115,7 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 		return concat(parts);
 	}
 
-	public encodeInto(value: TupleInput<T>, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: TupleInput<T>, target: Uint8Array, offset: number = 0): number {
 		let size = 0;
 		for (let i = 0; i < this.items.length; i++) {
 			const item = this.items[i]!;

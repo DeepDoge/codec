@@ -63,10 +63,10 @@ export type MappingOptions = {
  */
 export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingOutput<T>, MappingInput<T>> {
 	public readonly stride: Stride<"variable"> = { kind: "variable" };
-	readonly #entriesCodec: ArrayCodec<TupleCodec<T>, { counter: MappingOptions["counter"] }>;
+	private readonly entriesCodec: ArrayCodec<TupleCodec<T>, { counter: MappingOptions["counter"] }>;
 
 	public override size(value: MappingInput<T>): number {
-		return this.#entriesCodec.size(value.entries().toArray() as never);
+		return this.entriesCodec.size(value.entries().toArray() as never);
 	}
 
 	/**
@@ -74,12 +74,12 @@ export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingO
 	 * Exposes the inner entry codec pair for inspection or reuse.
 	 */
 	public get entryCodec(): T {
-		return this.#entriesCodec.item.items;
+		return this.entriesCodec.item.items;
 	}
 
 	constructor(entryCodec: T, options?: MappingOptions) {
 		super();
-		this.#entriesCodec = new ArrayCodec(new TupleCodec(entryCodec), options);
+		this.entriesCodec = new ArrayCodec(new TupleCodec(entryCodec), options);
 	}
 
 	/**
@@ -93,11 +93,11 @@ export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingO
 	 * const bytes = codec.encode(new Map([["a", 1]]));
 	 */
 	public encode(value: MappingInput<T>): Uint8Array<ArrayBuffer> {
-		return this.#entriesCodec.encode(value.entries().toArray() as never);
+		return this.entriesCodec.encode(value.entries().toArray() as never);
 	}
 
-	public encodeInto(value: MappingInput<T>, target: Uint8Array, offset: number = 0): number {
-		return this.#entriesCodec.encodeInto(value.entries().toArray() as never, target, offset);
+	public override encodeInto(value: MappingInput<T>, target: Uint8Array, offset: number = 0): number {
+		return this.entriesCodec.encodeInto(value.entries().toArray() as never, target, offset);
 	}
 
 	/**
@@ -110,7 +110,7 @@ export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingO
 	 * const [map, bytesRead] = codec.decode(bytes);
 	 */
 	public decode(data: Uint8Array): [MappingOutput<T>, number] {
-		const [entries, size] = this.#entriesCodec.decode(data);
+		const [entries, size] = this.entriesCodec.decode(data);
 		return [new Map(entries), size];
 	}
 }

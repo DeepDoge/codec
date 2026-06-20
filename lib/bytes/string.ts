@@ -87,8 +87,8 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
 	 */
 	public readonly sizer: Codec<number>;
 
-	readonly #encoder = new TextEncoder();
-	readonly #decoder = new TextDecoder();
+	private readonly encoder = new TextEncoder();
+	private readonly decoder = new TextDecoder();
 
 	constructor(options?: O) {
 		super();
@@ -120,7 +120,7 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
 	 * ```
 	 */
 	public encode(value: string): Uint8Array<ArrayBuffer> {
-		const utf8 = this.#encoder.encode(value);
+		const utf8 = this.encoder.encode(value);
 		if (this.stride.kind === "fixed") {
 			if (utf8.length !== this.stride.size) {
 				throw new RangeError(
@@ -136,8 +136,8 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
 		return result;
 	}
 
-	public encodeInto(value: string, target: Uint8Array, offset: number = 0): number {
-		const utf8 = this.#encoder.encode(value);
+	public override encodeInto(value: string, target: Uint8Array, offset: number = 0): number {
+		const utf8 = this.encoder.encode(value);
 		if (this.stride.kind === "fixed") {
 			if (utf8.length !== this.stride.size) {
 				throw new RangeError(
@@ -180,12 +180,12 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
 					`Expected at least ${this.stride.size} bytes, got ${data.length}`,
 				);
 			}
-			return [this.#decoder.decode(data.subarray(0, this.stride.size)), this.stride.size];
+			return [this.decoder.decode(data.subarray(0, this.stride.size)), this.stride.size];
 		}
 
 		const [length, bytesRead] = this.sizer.decode(data);
 		const utf8 = data.subarray(bytesRead, bytesRead + length);
-		return [this.#decoder.decode(utf8), bytesRead + length];
+		return [this.decoder.decode(utf8), bytesRead + length];
 	}
 }
 

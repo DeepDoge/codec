@@ -106,7 +106,7 @@ export class NullableCodec<T extends NullableGeneric> extends Codec<NullableOutp
 		return result;
 	}
 
-	public encodeInto(value: NullableInput<T>, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: NullableInput<T>, target: Uint8Array, offset: number = 0): number {
 		if (value === null) {
 			const size = this.stride.kind === "fixed" ? this.stride.size : 1;
 			target.fill(0, offset, offset + size);

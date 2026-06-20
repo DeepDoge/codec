@@ -223,7 +223,7 @@ export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<
 		return result;
 	}
 
-	public encodeInto(value: ModelInput<T>, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: ModelInput<T>, target: Uint8Array, offset: number = 0): number {
 		let size = 0;
 		for (let i = 0; i < this.keys.length; i++) {
 			const rawKey = this.keys[i]!;

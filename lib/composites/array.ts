@@ -103,11 +103,11 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 		: Stride<"variable">;
 
 	public override size(value: ArrayInput<T>): number {
-		if (this.#elementCount !== undefined && value.length !== this.#elementCount) {
-			throw new RangeError(`Expected array of length ${this.#elementCount}, got ${value.length}`);
+		if (this.elementCount !== undefined && value.length !== this.elementCount) {
+			throw new RangeError(`Expected array of length ${this.elementCount}, got ${value.length}`);
 		}
 		let total = 0;
-		if (this.#elementCount === undefined) {
+		if (this.elementCount === undefined) {
 			total += this.counter.size(value.length);
 		}
 		if (this.item.stride.kind === "fixed") {
@@ -123,13 +123,13 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 	/** Codec used to encode/decode individual array elements. */
 	public readonly item: T;
 
-	readonly #elementCount: number | undefined;
+	private readonly elementCount: number | undefined;
 
 	constructor(item: T, options?: O) {
 		super();
 		this.item = item;
 		this.counter = options?.counter ?? VarInt;
-		this.#elementCount = options?.size;
+		this.elementCount = options?.size;
 
 		type S = ArrayCodec<T, O>["stride"];
 		if (options?.size !== undefined) {
@@ -162,15 +162,15 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 	 * codec.encode([1, 2]);    // throws RangeError
 	 */
 	public encode(value: ArrayInput<T>): Uint8Array<ArrayBuffer> {
-		if (this.#elementCount !== undefined) {
-			if (value.length !== this.#elementCount) {
+		if (this.elementCount !== undefined) {
+			if (value.length !== this.elementCount) {
 				throw new RangeError(
-					`Expected array of length ${this.#elementCount}, got ${value.length}`,
+					`Expected array of length ${this.elementCount}, got ${value.length}`,
 				);
 			}
 			// If item has fixed stride, the total size is known — write directly.
 			if (this.item.stride.kind === "fixed") {
-				const result = new Uint8Array(this.#elementCount * this.item.stride.size);
+				const result = new Uint8Array(this.elementCount * this.item.stride.size);
 				let offset = 0;
 				for (const item of value) {
 					offset += this.item.encodeInto(item, result, offset);
@@ -201,14 +201,14 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 		return result;
 	}
 
-	public encodeInto(value: ArrayInput<T>, target: Uint8Array, offset: number = 0): number {
-		if (this.#elementCount !== undefined && value.length !== this.#elementCount) {
+	public override encodeInto(value: ArrayInput<T>, target: Uint8Array, offset: number = 0): number {
+		if (this.elementCount !== undefined && value.length !== this.elementCount) {
 			throw new RangeError(
-				`Expected array of length ${this.#elementCount}, got ${value.length}`,
+				`Expected array of length ${this.elementCount}, got ${value.length}`,
 			);
 		}
 		let size = 0;
-		if (this.#elementCount === undefined) {
+		if (this.elementCount === undefined) {
 			size += this.counter.encodeInto(value.length, target, offset);
 		}
 		for (const item of value) {
@@ -234,10 +234,10 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 	 * // arr === [1, 2, 3], n === 3
 	 */
 	public decode(data: Uint8Array): [ArrayOutput<T>, number] {
-		if (this.#elementCount !== undefined) {
+		if (this.elementCount !== undefined) {
 			const result: ArrayOutput<T> = [];
 			let offset = 0;
-			for (let i = 0; i < this.#elementCount; i++) {
+			for (let i = 0; i < this.elementCount; i++) {
 				const [value, size] = this.item.decode(data.subarray(offset));
 				result.push(value);
 				offset += size;

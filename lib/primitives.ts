@@ -38,7 +38,7 @@ export class I8Codec extends Codec<number> {
 		return arr;
 	}
 
-	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
 		new DataView(target.buffer, target.byteOffset + offset, 1).setInt8(0, value);
 		return 1;
 	}
@@ -88,7 +88,7 @@ export class U8Codec extends Codec<number> {
 		return arr;
 	}
 
-	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
 		new DataView(target.buffer, target.byteOffset + offset, 1).setUint8(0, value);
 		return 1;
 	}
@@ -126,14 +126,14 @@ export const U8: U8Codec = new U8Codec();
 export class I16Codec extends Codec<number> {
 	/** Fixed stride: always 2 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 2 };
-	readonly #littleEndian: boolean;
+	private readonly littleEndian: boolean;
 
 	/**
 	 * @param options - Byte-order options. Defaults to big-endian when omitted.
 	 */
 	constructor(options?: NumericOptions) {
 		super();
-		this.#littleEndian = options?.endian === "le";
+		this.littleEndian = options?.endian === "le";
 	}
 
 	/**
@@ -145,12 +145,12 @@ export class I16Codec extends Codec<number> {
 	 */
 	public encode(value: number): Uint8Array<ArrayBuffer> {
 		const arr = new Uint8Array(2);
-		new DataView(arr.buffer).setInt16(0, value, this.#littleEndian);
+		new DataView(arr.buffer).setInt16(0, value, this.littleEndian);
 		return arr;
 	}
 
-	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
-		new DataView(target.buffer, target.byteOffset + offset, 2).setInt16(0, value, this.#littleEndian);
+	public override encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 2).setInt16(0, value, this.littleEndian);
 		return 2;
 	}
 
@@ -166,7 +166,7 @@ export class I16Codec extends Codec<number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return [view.getInt16(0, this.#littleEndian), 2];
+		return [view.getInt16(0, this.littleEndian), 2];
 	}
 }
 
@@ -187,14 +187,14 @@ export const I16: I16Codec = new I16Codec();
 export class U16Codec extends Codec<number> {
 	/** Fixed stride: always 2 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 2 };
-	readonly #littleEndian: boolean;
+	private readonly littleEndian: boolean;
 
 	/**
 	 * @param options - Byte-order options. Defaults to big-endian when omitted.
 	 */
 	constructor(options?: NumericOptions) {
 		super();
-		this.#littleEndian = options?.endian === "le";
+		this.littleEndian = options?.endian === "le";
 	}
 
 	/**
@@ -206,12 +206,12 @@ export class U16Codec extends Codec<number> {
 	 */
 	public encode(value: number): Uint8Array<ArrayBuffer> {
 		const arr = new Uint8Array(2);
-		new DataView(arr.buffer).setUint16(0, value, this.#littleEndian);
+		new DataView(arr.buffer).setUint16(0, value, this.littleEndian);
 		return arr;
 	}
 
-	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
-		new DataView(target.buffer, target.byteOffset + offset, 2).setUint16(0, value, this.#littleEndian);
+	public override encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 2).setUint16(0, value, this.littleEndian);
 		return 2;
 	}
 
@@ -227,7 +227,7 @@ export class U16Codec extends Codec<number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return [view.getUint16(0, this.#littleEndian), 2];
+		return [view.getUint16(0, this.littleEndian), 2];
 	}
 }
 
@@ -247,14 +247,14 @@ export const U16: U16Codec = new U16Codec();
 export class I32Codec extends Codec<number> {
 	/** Fixed stride: always 4 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 4 };
-	readonly #littleEndian: boolean;
+	private readonly littleEndian: boolean;
 
 	/**
 	 * @param options - Byte-order options. Defaults to big-endian when omitted.
 	 */
 	constructor(options?: NumericOptions) {
 		super();
-		this.#littleEndian = options?.endian === "le";
+		this.littleEndian = options?.endian === "le";
 	}
 
 	/**
@@ -266,12 +266,12 @@ export class I32Codec extends Codec<number> {
 	 */
 	public encode(value: number): Uint8Array<ArrayBuffer> {
 		const arr = new Uint8Array(4);
-		new DataView(arr.buffer).setInt32(0, value, this.#littleEndian);
+		new DataView(arr.buffer).setInt32(0, value, this.littleEndian);
 		return arr;
 	}
 
-	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
-		new DataView(target.buffer, target.byteOffset + offset, 4).setInt32(0, value, this.#littleEndian);
+	public override encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 4).setInt32(0, value, this.littleEndian);
 		return 4;
 	}
 
@@ -287,7 +287,7 @@ export class I32Codec extends Codec<number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return [view.getInt32(0, this.#littleEndian), 4];
+		return [view.getInt32(0, this.littleEndian), 4];
 	}
 }
 
@@ -307,14 +307,14 @@ export const I32: I32Codec = new I32Codec();
 export class U32Codec extends Codec<number> {
 	/** Fixed stride: always 4 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 4 };
-	readonly #littleEndian: boolean;
+	private readonly littleEndian: boolean;
 
 	/**
 	 * @param options - Byte-order options. Defaults to big-endian when omitted.
 	 */
 	constructor(options?: NumericOptions) {
 		super();
-		this.#littleEndian = options?.endian === "le";
+		this.littleEndian = options?.endian === "le";
 	}
 
 	/**
@@ -326,12 +326,12 @@ export class U32Codec extends Codec<number> {
 	 */
 	public encode(value: number): Uint8Array<ArrayBuffer> {
 		const arr = new Uint8Array(4);
-		new DataView(arr.buffer).setUint32(0, value, this.#littleEndian);
+		new DataView(arr.buffer).setUint32(0, value, this.littleEndian);
 		return arr;
 	}
 
-	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
-		new DataView(target.buffer, target.byteOffset + offset, 4).setUint32(0, value, this.#littleEndian);
+	public override encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 4).setUint32(0, value, this.littleEndian);
 		return 4;
 	}
 
@@ -347,7 +347,7 @@ export class U32Codec extends Codec<number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return [view.getUint32(0, this.#littleEndian), 4];
+		return [view.getUint32(0, this.littleEndian), 4];
 	}
 }
 
@@ -367,14 +367,14 @@ export const U32: U32Codec = new U32Codec();
 export class I64Codec extends Codec<bigint, bigint | number> {
 	/** Fixed stride: always 8 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
-	readonly #littleEndian: boolean;
+	private readonly littleEndian: boolean;
 
 	/**
 	 * @param options - Byte-order options. Defaults to big-endian when omitted.
 	 */
 	constructor(options?: NumericOptions) {
 		super();
-		this.#littleEndian = options?.endian === "le";
+		this.littleEndian = options?.endian === "le";
 	}
 
 	/**
@@ -386,12 +386,12 @@ export class I64Codec extends Codec<bigint, bigint | number> {
 	 */
 	public encode(value: bigint | number): Uint8Array<ArrayBuffer> {
 		const arr = new Uint8Array(8);
-		new DataView(arr.buffer).setBigInt64(0, BigInt(value), this.#littleEndian);
+		new DataView(arr.buffer).setBigInt64(0, BigInt(value), this.littleEndian);
 		return arr;
 	}
 
-	public encodeInto(value: bigint | number, target: Uint8Array, offset: number = 0): number {
-		new DataView(target.buffer, target.byteOffset + offset, 8).setBigInt64(0, BigInt(value), this.#littleEndian);
+	public override encodeInto(value: bigint | number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 8).setBigInt64(0, BigInt(value), this.littleEndian);
 		return 8;
 	}
 
@@ -407,7 +407,7 @@ export class I64Codec extends Codec<bigint, bigint | number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return [view.getBigInt64(0, this.#littleEndian), 8];
+		return [view.getBigInt64(0, this.littleEndian), 8];
 	}
 }
 
@@ -427,14 +427,14 @@ export const I64: I64Codec = new I64Codec();
 export class U64Codec extends Codec<bigint, bigint | number> {
 	/** Fixed stride: always 8 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
-	readonly #littleEndian: boolean;
+	private readonly littleEndian: boolean;
 
 	/**
 	 * @param options - Byte-order options. Defaults to big-endian when omitted.
 	 */
 	constructor(options?: NumericOptions) {
 		super();
-		this.#littleEndian = options?.endian === "le";
+		this.littleEndian = options?.endian === "le";
 	}
 
 	/**
@@ -446,12 +446,12 @@ export class U64Codec extends Codec<bigint, bigint | number> {
 	 */
 	public encode(value: bigint | number): Uint8Array<ArrayBuffer> {
 		const arr = new Uint8Array(8);
-		new DataView(arr.buffer).setBigUint64(0, BigInt(value), this.#littleEndian);
+		new DataView(arr.buffer).setBigUint64(0, BigInt(value), this.littleEndian);
 		return arr;
 	}
 
-	public encodeInto(value: bigint | number, target: Uint8Array, offset: number = 0): number {
-		new DataView(target.buffer, target.byteOffset + offset, 8).setBigUint64(0, BigInt(value), this.#littleEndian);
+	public override encodeInto(value: bigint | number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 8).setBigUint64(0, BigInt(value), this.littleEndian);
 		return 8;
 	}
 
@@ -467,7 +467,7 @@ export class U64Codec extends Codec<bigint, bigint | number> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return [view.getBigUint64(0, this.#littleEndian), 8];
+		return [view.getBigUint64(0, this.littleEndian), 8];
 	}
 }
 
@@ -487,14 +487,14 @@ export const U64: U64Codec = new U64Codec();
 export class F32Codec extends Codec<number, number | bigint> {
 	/** Fixed stride: always 4 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 4 };
-	readonly #littleEndian: boolean;
+	private readonly littleEndian: boolean;
 
 	/**
 	 * @param options - Byte-order options. Defaults to big-endian when omitted.
 	 */
 	constructor(options?: NumericOptions) {
 		super();
-		this.#littleEndian = options?.endian === "le";
+		this.littleEndian = options?.endian === "le";
 	}
 
 	/**
@@ -506,12 +506,12 @@ export class F32Codec extends Codec<number, number | bigint> {
 	 */
 	public encode(value: number | bigint): Uint8Array<ArrayBuffer> {
 		const arr = new Uint8Array(4);
-		new DataView(arr.buffer).setFloat32(0, Number(value), this.#littleEndian);
+		new DataView(arr.buffer).setFloat32(0, Number(value), this.littleEndian);
 		return arr;
 	}
 
-	public encodeInto(value: number | bigint, target: Uint8Array, offset: number = 0): number {
-		new DataView(target.buffer, target.byteOffset + offset, 4).setFloat32(0, Number(value), this.#littleEndian);
+	public override encodeInto(value: number | bigint, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 4).setFloat32(0, Number(value), this.littleEndian);
 		return 4;
 	}
 
@@ -527,7 +527,7 @@ export class F32Codec extends Codec<number, number | bigint> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return [view.getFloat32(0, this.#littleEndian), 4];
+		return [view.getFloat32(0, this.littleEndian), 4];
 	}
 }
 
@@ -547,14 +547,14 @@ export const F32: F32Codec = new F32Codec();
 export class F64Codec extends Codec<number, number | bigint> {
 	/** Fixed stride: always 8 bytes. */
 	public readonly stride: Stride<"fixed"> = { kind: "fixed", size: 8 };
-	readonly #littleEndian: boolean;
+	private readonly littleEndian: boolean;
 
 	/**
 	 * @param options - Byte-order options. Defaults to big-endian when omitted.
 	 */
 	constructor(options?: NumericOptions) {
 		super();
-		this.#littleEndian = options?.endian === "le";
+		this.littleEndian = options?.endian === "le";
 	}
 
 	/**
@@ -566,12 +566,12 @@ export class F64Codec extends Codec<number, number | bigint> {
 	 */
 	public encode(value: number | bigint): Uint8Array<ArrayBuffer> {
 		const arr = new Uint8Array(8);
-		new DataView(arr.buffer).setFloat64(0, Number(value), this.#littleEndian);
+		new DataView(arr.buffer).setFloat64(0, Number(value), this.littleEndian);
 		return arr;
 	}
 
-	public encodeInto(value: number | bigint, target: Uint8Array, offset: number = 0): number {
-		new DataView(target.buffer, target.byteOffset + offset, 8).setFloat64(0, Number(value), this.#littleEndian);
+	public override encodeInto(value: number | bigint, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 8).setFloat64(0, Number(value), this.littleEndian);
 		return 8;
 	}
 
@@ -587,7 +587,7 @@ export class F64Codec extends Codec<number, number | bigint> {
 			data.byteOffset,
 			data.byteLength,
 		);
-		return [view.getFloat64(0, this.#littleEndian), 8];
+		return [view.getFloat64(0, this.littleEndian), 8];
 	}
 }
 
@@ -622,7 +622,7 @@ export class BoolCodec extends Codec<boolean> {
 		return arr;
 	}
 
-	public encodeInto(value: boolean, target: Uint8Array, offset: number = 0): number {
+	public override encodeInto(value: boolean, target: Uint8Array, offset: number = 0): number {
 		target[offset] = value ? 1 : 0;
 		return 1;
 	}

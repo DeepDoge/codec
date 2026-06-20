@@ -89,7 +89,7 @@ export class NullableCodec<T extends NullableGeneric> extends Codec<NullableOutp
 	 * const bytes = codec.encode(null);   // presence byte = 0x00
 	 * const bytes = codec.encode("hi");   // presence byte = 0x01, then payload
 	 */
-	public encode(value: NullableInput<T>): Uint8Array {
+	public encode(value: NullableInput<T>): Uint8Array<ArrayBuffer> {
 		if (value === null) {
 			const size = this.stride.kind === "fixed" ? this.stride.size : 1;
 			return new Uint8Array(size); // zero-filled by default

@@ -145,7 +145,7 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 	 * codec.encode([1, 2, 3]); // Uint8Array [1, 2, 3]
 	 * codec.encode([1, 2]);    // throws RangeError
 	 */
-	public encode(value: ArrayInput<T>): Uint8Array {
+	public encode(value: ArrayInput<T>): Uint8Array<ArrayBuffer> {
 		if (this.#elementCount !== undefined) {
 			if (value.length !== this.#elementCount) {
 				throw new RangeError(

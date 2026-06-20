@@ -171,7 +171,7 @@ export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<
 	 * @example
 	 * const bytes = codec.encode({ id: 1, name: "Alice" });
 	 */
-	public encode(value: ModelInput<T>): Uint8Array {
+	public encode(value: ModelInput<T>): Uint8Array<ArrayBuffer> {
 		if (this.stride.kind === "fixed") {
 			const result = new Uint8Array(this.stride.size);
 			this.encodeInto(value, result);

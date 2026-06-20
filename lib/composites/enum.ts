@@ -111,7 +111,7 @@ export class EnumCodec<const T extends EnumGeneric> extends Codec<EnumOutput<T>,
 	 * @example
 	 * const bytes = codec.encode({ kind: "Quit", value: null });
 	 */
-	public encode(value: EnumInput<T>): Uint8Array {
+	public encode(value: EnumInput<T>): Uint8Array<ArrayBuffer> {
 		const index = this.keys.indexOf(value.kind);
 		if (index === -1) {
 			throw new Error(`Invalid union variant: ${String(value.kind)}`);

@@ -116,7 +116,7 @@ export class PaddedEnumCodec<const T extends PaddedEnumGeneric> extends Codec<En
 	 * const bytes = EventCodec.encode({ kind: "MouseMove", value: { x: 100, y: 200 } });
 	 * // bytes.length === EventCodec.stride.size
 	 */
-	public encode(value: EnumInput<T>): Uint8Array {
+	public encode(value: EnumInput<T>): Uint8Array<ArrayBuffer> {
 		const result = new Uint8Array(this.stride.size);
 		this.encodeInto(value, result);
 		return result;

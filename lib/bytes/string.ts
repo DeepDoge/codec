@@ -108,7 +108,7 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
 	 * codec.encode("hi");    // throws RangeError
 	 * ```
 	 */
-	public encode(value: string): Uint8Array {
+	public encode(value: string): Uint8Array<ArrayBuffer> {
 		const utf8 = this.#encoder.encode(value);
 		if (this.stride.kind === "fixed") {
 			if (utf8.length !== this.stride.size) {

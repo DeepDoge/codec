@@ -105,7 +105,7 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined> ex
 	 * codec.encode(new Uint8Array([1, 2]));        // throws RangeError
 	 * ```
 	 */
-	public encode(value: Uint8Array): Uint8Array {
+	public encode(value: Uint8Array): Uint8Array<ArrayBuffer> {
 		if (this.stride.kind === "fixed") {
 			if (value.length !== this.stride.size) {
 				throw new RangeError(

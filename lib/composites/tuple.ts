@@ -86,7 +86,7 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 	 * @example
 	 * const bytes = RgbCodec.encode([0, 255, 0]);
 	 */
-	public encode(value: TupleInput<T>): Uint8Array {
+	public encode(value: TupleInput<T>): Uint8Array<ArrayBuffer> {
 		if (this.stride.kind === "fixed") {
 			const bytes = new Uint8Array(this.stride.size);
 			let offset = 0;

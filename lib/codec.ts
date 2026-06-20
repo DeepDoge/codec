@@ -101,7 +101,7 @@ export abstract class Codec<O extends I = any, I = O> {
 	 * const buf = U32.encode(0xDEADBEEF);
 	 * // buf => Uint8Array [0xDE, 0xAD, 0xBE, 0xEF]
 	 */
-	public abstract encode(value: I): Uint8Array;
+	public abstract encode(value: I): Uint8Array<ArrayBuffer>;
 	public abstract encodeInto(value: I, target: Uint8Array, offset?: number): number;
 
 	/**
@@ -245,7 +245,7 @@ export class TransformCodec<
 	 * @param value - Value to encode.
 	 * @returns Encoded bytes.
 	 */
-	encode(value: I): Uint8Array {
+	encode(value: I): Uint8Array<ArrayBuffer> {
 		return this.inner.encode(value);
 	}
 

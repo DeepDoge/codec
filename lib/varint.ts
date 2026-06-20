@@ -37,7 +37,7 @@ export class VarIntCodec extends Codec<number> {
 	 * VarInt.encode(1)   // Uint8Array [0x01]  — 1 byte
 	 * VarInt.encode(128) // Uint8Array [0x80, 0x01] — 2 bytes
 	 */
-	public encode(value: number): Uint8Array {
+	public encode(value: number): Uint8Array<ArrayBuffer> {
 		if (value < 0 || !Number.isSafeInteger(value)) {
 			throw new RangeError("Value must be a non-negative safe integer");
 		}

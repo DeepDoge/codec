@@ -88,14 +88,12 @@ export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingO
 	 * @example
 	 * const bytes = codec.encode(new Map([["a", 1]]));
 	 */
-	public encode(
-		value: MappingInput<T>,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		return this.#entriesCodec.encode(
-			value.entries().toArray() as never,
-			target,
-		);
+	public encode(value: MappingInput<T>): Uint8Array {
+		return this.#entriesCodec.encode(value.entries().toArray() as never);
+	}
+
+	public encodeInto(value: MappingInput<T>, target: Uint8Array, offset: number = 0): number {
+		return this.#entriesCodec.encodeInto(value.entries().toArray() as never, target, offset);
 	}
 
 	/**

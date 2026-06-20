@@ -2,7 +2,7 @@
 
 Composable binary codecs for **TypeScript and JavaScript**.
 
-Encode and decode structured data to and from `Uint8Array<ArrayBuffer>` with a simple, type-safe, composable API.
+Encode and decode structured data to and from `Uint8Array` with a simple, type-safe, composable API.
 
 ---
 
@@ -459,7 +459,7 @@ import { Codec, FixedCodec, Stride, U64 } from "@nomadshiba/codec";
 class PascalStringCodec extends Codec<string> {
 	readonly stride: Stride<"variable"> = { kind: "variable" };
 
-	encode(value: string, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+	encode(value: string, target?: Uint8Array): Uint8Array {
 		// ...
 	}
 
@@ -472,7 +472,7 @@ class PascalStringCodec extends Codec<string> {
 class DateCodec extends FixedCodec<Date, bigint> {
 	readonly stride = 8;
 
-	encode(ms: bigint, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+	encode(ms: bigint, target?: Uint8Array): Uint8Array {
 		return U64.encode(ms, target);
 	}
 

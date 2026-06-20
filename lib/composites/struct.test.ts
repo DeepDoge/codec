@@ -87,3 +87,32 @@ Deno.test("StructCodec - partial roundtrip with some fields present", () => {
 	const [decoded] = P.decode(P.encode(val));
 	assertEquals(decoded, val);
 });
+
+Deno.test("StructCodec - encodeInto", () => {
+	const S = new StructCodec({ id: U32, name: new StringCodec() });
+	const val = { id: 42, name: "Ada" };
+	const target = new Uint8Array(32);
+	const written = S.encodeInto(val, target, 2);
+	const [decoded, bytesRead] = S.decode(target.subarray(2, 2 + written));
+	assertEquals(decoded, val);
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("StructCodec - encodeInto fixed stride", () => {
+	const S = new StructCodec({ x: I32, y: I32, z: I32 });
+	const target = new Uint8Array(20);
+	const written = S.encodeInto({ x: 1, y: 2, z: 3 }, target, 4);
+	assertEquals(written, 12);
+	const [decoded] = S.decode(target.subarray(4, 16));
+	assertEquals(decoded, { x: 1, y: 2, z: 3 });
+});
+
+Deno.test("StructCodec - encodeInto matches encode", () => {
+	const S = new StructCodec({ id: U32, name: new StringCodec() });
+	const val = { id: 42, name: "Ada" };
+	const encoded = S.encode(val);
+	const target = new Uint8Array(encoded.length + 2);
+	const written = S.encodeInto(val, target, 2);
+	assertEquals(written, encoded.length);
+	assertEquals(Array.from(target.subarray(2, 2 + written)), Array.from(encoded));
+});

@@ -145,23 +145,25 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 	 * codec.encode([1, 2, 3]); // Uint8Array [1, 2, 3]
 	 * codec.encode([1, 2]);    // throws RangeError
 	 */
-	public encode(
-		value: ArrayInput<T>,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const parts: Uint8Array<ArrayBuffer>[] = [];
-		for (const item of value) {
-			parts.push(this.item.encode(item));
-		}
-
+	public encode(value: ArrayInput<T>): Uint8Array {
 		if (this.#elementCount !== undefined) {
 			if (value.length !== this.#elementCount) {
 				throw new RangeError(
 					`Expected array of length ${this.#elementCount}, got ${value.length}`,
 				);
 			}
-			const combinedLength = parts.reduce((sum, p) => sum + p.length, 0);
-			const result = target ?? new Uint8Array(combinedLength);
+			// If item has fixed stride, the total size is known — write directly.
+			if (this.item.stride.kind === "fixed") {
+				const result = new Uint8Array(this.#elementCount * this.item.stride.size);
+				let offset = 0;
+				for (const item of value) {
+					offset += this.item.encodeInto(item, result, offset);
+				}
+				return result;
+			}
+			// Fixed count, variable item: encode parts then concat.
+			const parts = value.map((item) => this.item.encode(item));
+			const result = new Uint8Array(parts.reduce((s, p) => s + p.length, 0));
 			let offset = 0;
 			for (const part of parts) {
 				result.set(part, offset);
@@ -169,19 +171,34 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 			}
 			return result;
 		}
-
+		// Variable count: encode parts, prepend count prefix.
+		const parts = value.map((item) => this.item.encode(item));
 		const combinedLength = parts.reduce((sum, p) => sum + p.length, 0);
-		const countPrefix = this.counter.encode(value.length);
-		const totalLen = countPrefix.length + combinedLength;
-		const result = target ?? new Uint8Array(totalLen);
-		result.set(countPrefix, 0);
-
-		let offset = countPrefix.length;
-		for (let i = 0; i < parts.length; i++) {
-			result.set(parts[i]!, offset);
-			offset += parts[i]!.length;
+		const prefix = this.counter.encode(value.length);
+		const result = new Uint8Array(prefix.length + combinedLength);
+		result.set(prefix);
+		let offset = prefix.length;
+		for (const part of parts) {
+			result.set(part, offset);
+			offset += part.length;
 		}
 		return result;
+	}
+
+	public encodeInto(value: ArrayInput<T>, target: Uint8Array, offset: number = 0): number {
+		if (this.#elementCount !== undefined && value.length !== this.#elementCount) {
+			throw new RangeError(
+				`Expected array of length ${this.#elementCount}, got ${value.length}`,
+			);
+		}
+		let size = 0;
+		if (this.#elementCount === undefined) {
+			size += this.counter.encodeInto(value.length, target, offset);
+		}
+		for (const item of value) {
+			size += this.item.encodeInto(item, target, offset + size);
+		}
+		return size;
 	}
 
 	/**

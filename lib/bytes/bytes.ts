@@ -105,28 +105,37 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined> ex
 	 * codec.encode(new Uint8Array([1, 2]));        // throws RangeError
 	 * ```
 	 */
-	public encode(
-		value: Uint8Array,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
+	public encode(value: Uint8Array): Uint8Array {
 		if (this.stride.kind === "fixed") {
 			if (value.length !== this.stride.size) {
 				throw new RangeError(
 					`Expected byte array of length ${this.stride.size}, got ${value.length}`,
 				);
 			}
-			const result = target ?? new Uint8Array(this.stride.size);
+			const result = new Uint8Array(this.stride.size);
 			result.set(value);
 			return result;
-		} else {
-			const lengthPrefix = this.sizer.encode(value.length);
-			const totalLen = lengthPrefix.length + value.length;
-
-			const result = target ?? new Uint8Array(totalLen);
-			result.set(lengthPrefix, 0);
-			result.set(value, lengthPrefix.length);
-			return result;
 		}
+		const prefix = this.sizer.encode(value.length);
+		const result = new Uint8Array(prefix.length + value.length);
+		result.set(prefix);
+		result.set(value, prefix.length);
+		return result;
+	}
+
+	public encodeInto(value: Uint8Array, target: Uint8Array, offset: number = 0): number {
+		if (this.stride.kind === "fixed") {
+			if (value.length !== this.stride.size) {
+				throw new RangeError(
+					`Expected byte array of length ${this.stride.size}, got ${value.length}`,
+				);
+			}
+			target.set(value, offset);
+			return this.stride.size;
+		}
+		const prefixSize = this.sizer.encodeInto(value.length, target, offset);
+		target.set(value, offset + prefixSize);
+		return prefixSize + value.length;
 	}
 
 	/**

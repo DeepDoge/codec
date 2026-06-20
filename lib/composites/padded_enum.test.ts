@@ -159,3 +159,30 @@ Deno.test("PaddedEnum - decode returns stride.size as bytesRead", () => {
 Deno.test("PaddedEnum - maxVariantSize exposed correctly", () => {
 	assertEquals(AB.maxVariantSize, 4); // max(U8=1, U32=4)
 });
+
+Deno.test("PaddedEnum - encodeInto", () => {
+	const target = new Uint8Array(16);
+	const written = AB.encodeInto({ kind: "A", value: 0x55 }, target, 1);
+	assertEquals(written, AB.stride.size);
+	const [decoded, bytesRead] = AB.decode(target.subarray(1, 1 + written));
+	assertEquals(decoded, { kind: "A", value: 0x55 });
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("PaddedEnum - encodeInto zero-pads", () => {
+	const target = new Uint8Array(16);
+	target.fill(0xFF);
+	AB.encodeInto({ kind: "A", value: 0x55 }, target, 1);
+	assertEquals(target[1], 0x00); // index A
+	assertEquals(target[2], 0x55); // payload
+	assertEquals(Array.from(target.subarray(3, 6)), [0x00, 0x00, 0x00]); // padding
+});
+
+Deno.test("PaddedEnum - encodeInto matches encode", () => {
+	const val = { kind: "B", value: 0xcafebabe } as const;
+	const encoded = AB.encode(val);
+	const target = new Uint8Array(encoded.length + 4);
+	const written = AB.encodeInto(val, target, 4);
+	assertEquals(written, encoded.length);
+	assertEquals(Array.from(target.subarray(4, 4 + written)), Array.from(encoded));
+});

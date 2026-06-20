@@ -179,3 +179,37 @@ Deno.test("ModelCodec - partial of all-fixed yields all-optional variable stride
 	P satisfies FixedCodec;
 	assertEquals(P.stride, { kind: "variable" });
 });
+
+Deno.test("ModelCodec - encodeInto", () => {
+	const S = new ModelCodec({ id: U32, name: new StringCodec() });
+	const val = { id: 42, name: "Ada" };
+	const target = new Uint8Array(32);
+	const written = S.encodeInto(val, target, 2);
+	const [decoded, bytesRead] = S.decode(target.subarray(2, 2 + written));
+	assertEquals(decoded, val);
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("ModelCodec - encodeInto with optional fields", () => {
+	const S = new ModelCodec({ name: new StringCodec(), "age?": U8 });
+	const target = new Uint8Array(32);
+	const val1 = { name: "Ada" };
+	const written1 = S.encodeInto(val1, target, 1);
+	const [decoded1] = S.decode(target.subarray(1, 1 + written1));
+	assertEquals(decoded1, val1);
+
+	const val2 = { name: "Bob", age: 30 };
+	const written2 = S.encodeInto(val2, target, 1);
+	const [decoded2] = S.decode(target.subarray(1, 1 + written2));
+	assertEquals(decoded2, val2);
+});
+
+Deno.test("ModelCodec - encodeInto matches encode", () => {
+	const S = new ModelCodec({ id: U32, "tag?": new StringCodec(), score: U8 });
+	const val = { id: 1, tag: "hi", score: 99 };
+	const encoded = S.encode(val);
+	const target = new Uint8Array(encoded.length + 3);
+	const written = S.encodeInto(val, target, 3);
+	assertEquals(written, encoded.length);
+	assertEquals(Array.from(target.subarray(3, 3 + written)), Array.from(encoded));
+});

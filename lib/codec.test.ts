@@ -14,10 +14,11 @@ Deno.test("Void - encode produces 0 bytes", () => {
 	assertEquals(Void.encode(void 0).byteLength, 0);
 });
 
-Deno.test("Void - encode returns target unchanged when provided", () => {
+Deno.test("Void - encodeInto returns 0 and leaves target unchanged", () => {
 	const target = new Uint8Array(4);
-	const result = Void.encode(undefined, target);
-	assertEquals(result, target);
+	const written = Void.encodeInto(undefined, target);
+	assertEquals(written, 0);
+	assertEquals(target, new Uint8Array(4));
 });
 
 Deno.test("Void - decode consumes 0 bytes", () => {

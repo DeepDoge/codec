@@ -95,3 +95,23 @@ Deno.test("Enum - indexer property", () => {
 	const MyUnion = new EnumCodec({ A: U8 }, { indexer: U32 });
 	assertEquals(MyUnion.indexer, U32);
 });
+
+Deno.test("Enum - encodeInto", () => {
+	const MyUnion = new EnumCodec({ A: U8, B: new StringCodec() });
+	const val = { kind: "B", value: "ok" } as const;
+	const target = new Uint8Array(16);
+	const written = MyUnion.encodeInto(val, target, 1);
+	const [decoded, bytesRead] = MyUnion.decode(target.subarray(1, 1 + written));
+	assertEquals(decoded, val);
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("Enum - encodeInto matches encode", () => {
+	const MyUnion = new EnumCodec({ A: U8, B: new StringCodec() }, { indexer: U32 });
+	const val = { kind: "A", value: 7 } as const;
+	const encoded = MyUnion.encode(val);
+	const target = new Uint8Array(encoded.length + 2);
+	const written = MyUnion.encodeInto(val, target, 2);
+	assertEquals(written, encoded.length);
+	assertEquals(Array.from(target.subarray(2, 2 + written)), Array.from(encoded));
+});

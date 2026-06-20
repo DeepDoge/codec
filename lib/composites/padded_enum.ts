@@ -116,23 +116,23 @@ export class PaddedEnumCodec<const T extends PaddedEnumGeneric> extends Codec<En
 	 * const bytes = EventCodec.encode({ kind: "MouseMove", value: { x: 100, y: 200 } });
 	 * // bytes.length === EventCodec.stride.size
 	 */
-	public encode(
-		value: EnumInput<T>,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
+	public encode(value: EnumInput<T>): Uint8Array {
+		const result = new Uint8Array(this.stride.size);
+		this.encodeInto(value, result);
+		return result;
+	}
+
+	public encodeInto(value: EnumInput<T>, target: Uint8Array, offset: number = 0): number {
 		const index = this.keys.indexOf(value.kind);
 		if (index === -1) {
 			throw new Error(`Invalid union variant: ${String(value.kind)}`);
 		}
-		const codec = this.variants[value.kind]!;
-		const indexBytes = this.indexer.encode(index);
-		const result = target ?? new Uint8Array(this.stride.size);
-		result.set(indexBytes, 0);
-		codec.encode(
-			value.value as never,
-			result.subarray(indexBytes.length) as Uint8Array<ArrayBuffer>,
-		);
-		return result;
+		const indexSize = this.indexer.encodeInto(index, target, offset);
+		const payloadOffset = offset + indexSize;
+		// Zero the full payload region so smaller variants are padded.
+		target.fill(0, payloadOffset, payloadOffset + this.maxVariantSize);
+		this.variants[value.kind]!.encodeInto(value.value as never, target, payloadOffset);
+		return this.stride.size;
 	}
 
 	/**

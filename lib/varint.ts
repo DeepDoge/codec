@@ -37,10 +37,7 @@ export class VarIntCodec extends Codec<number> {
 	 * VarInt.encode(1)   // Uint8Array [0x01]  — 1 byte
 	 * VarInt.encode(128) // Uint8Array [0x80, 0x01] — 2 bytes
 	 */
-	public encode(
-		value: number,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
+	public encode(value: number): Uint8Array {
 		if (value < 0 || !Number.isSafeInteger(value)) {
 			throw new RangeError("Value must be a non-negative safe integer");
 		}
@@ -50,10 +47,22 @@ export class VarIntCodec extends Codec<number> {
 			value = Math.floor(value / 128);
 		}
 		parts.push(value & 0x7F);
-
-		const result = target ?? new Uint8Array(parts.length);
+		const result = new Uint8Array(parts.length);
 		result.set(parts);
 		return result;
+	}
+
+	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		if (value < 0 || !Number.isSafeInteger(value)) {
+			throw new RangeError("Value must be a non-negative safe integer");
+		}
+		let i = offset;
+		while (value > 0x7F) {
+			target[i++] = (value & 0x7F) | 0x80;
+			value = Math.floor(value / 128);
+		}
+		target[i++] = value & 0x7F;
+		return i - offset;
 	}
 
 	/**

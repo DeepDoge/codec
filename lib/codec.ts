@@ -101,10 +101,8 @@ export abstract class Codec<O extends I = any, I = O> {
 	 * const buf = U32.encode(0xDEADBEEF);
 	 * // buf => Uint8Array [0xDE, 0xAD, 0xBE, 0xEF]
 	 */
-	public abstract encode(
-		value: I,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer>;
+	public abstract encode(value: I): Uint8Array;
+	public abstract encodeInto(value: I, target: Uint8Array, offset?: number): number;
 
 	/**
 	 * Decodes a value from the beginning of `data`.
@@ -245,14 +243,14 @@ export class TransformCodec<
 	 * Encodes `value` using the inner codec. No transformation applied on encode.
 	 *
 	 * @param value - Value to encode.
-	 * @param target - Optional pre-allocated target buffer.
 	 * @returns Encoded bytes.
 	 */
-	encode(
-		value: I,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		return this.inner.encode(value, target);
+	encode(value: I): Uint8Array {
+		return this.inner.encode(value);
+	}
+
+	encodeInto(value: I, target: Uint8Array, offset: number = 0): number {
+		return this.inner.encodeInto(value, target, offset);
 	}
 
 	/**

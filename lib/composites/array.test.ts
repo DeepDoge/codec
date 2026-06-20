@@ -98,3 +98,44 @@ Deno.test("Array - fixed size no count prefix in wire format", () => {
 	assertEquals(fixed.encode(val).length, 3);
 	assertEquals(variable.encode(val).length, 4);
 });
+
+Deno.test("Array - encodeInto variable count", () => {
+	const nums = new ArrayCodec(U16);
+	const target = new Uint8Array(20);
+	const val = [1, 513, 1000];
+	const written = nums.encodeInto(val, target, 2);
+	const [decoded, bytesRead] = nums.decode(target.subarray(2, 2 + written));
+	assertEquals(decoded, val);
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("Array - encodeInto fixed size", () => {
+	const codec = new ArrayCodec(U16, { size: 3 });
+	const target = new Uint8Array(16);
+	const val = [1, 513, 1000];
+	const written = codec.encodeInto(val, target, 3);
+	assertEquals(written, 6);
+	const [decoded, bytesRead] = codec.decode(target.subarray(3, 3 + written));
+	assertEquals(decoded, val);
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("Array - encodeInto variable items", () => {
+	const words = new ArrayCodec(new StringCodec());
+	const target = new Uint8Array(24);
+	const val = ["a", "bc", "def"];
+	const written = words.encodeInto(val, target, 1);
+	const [decoded, bytesRead] = words.decode(target.subarray(1, 1 + written));
+	assertEquals(decoded, val);
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("Array - encodeInto matches encode", () => {
+	const codec = new ArrayCodec(U32, { counter: U16 });
+	const val = [1, 2, 3];
+	const encoded = codec.encode(val);
+	const target = new Uint8Array(encoded.length + 2);
+	const written = codec.encodeInto(val, target, 2);
+	assertEquals(written, encoded.length);
+	assertEquals(Array.from(target.subarray(2, 2 + written)), Array.from(encoded));
+});

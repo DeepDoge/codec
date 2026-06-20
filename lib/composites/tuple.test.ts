@@ -78,3 +78,33 @@ Deno.test("Tuple - empty tuple", () => {
 	assertEquals(decoded, []);
 	assertEquals(consumed, 0);
 });
+
+Deno.test("Tuple - encodeInto fixed stride", () => {
+	const t = new TupleCodec([U8, U16, U32]);
+	const target = new Uint8Array(16);
+	const written = t.encodeInto([1, 2, 3], target, 4);
+	assertEquals(written, 7);
+	assertEquals(Array.from(target.subarray(4, 11)), [0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03]);
+	const [decoded] = t.decode(target.subarray(4, 4 + written));
+	assertEquals(decoded, [1, 2, 3]);
+});
+
+Deno.test("Tuple - encodeInto variable stride", () => {
+	const t = new TupleCodec([U8, new StringCodec()]);
+	const target = new Uint8Array(16);
+	const written = t.encodeInto([7, "hi"], target, 2);
+	assertEquals(written, 4);
+	assertEquals(Array.from(target.subarray(2, 6)), [0x07, 0x02, 0x68, 0x69]);
+	const [decoded] = t.decode(target.subarray(2, 2 + written));
+	assertEquals(decoded, [7, "hi"]);
+});
+
+Deno.test("Tuple - encodeInto matches encode", () => {
+	const t = new TupleCodec([U32, new StringCodec(), U16]);
+	const val: [number, string, number] = [42, "test", 1000];
+	const encoded = t.encode(val);
+	const target = new Uint8Array(encoded.length + 3);
+	const written = t.encodeInto(val, target, 1);
+	assertEquals(written, encoded.length);
+	assertEquals(Array.from(target.subarray(1, 1 + written)), Array.from(encoded));
+});

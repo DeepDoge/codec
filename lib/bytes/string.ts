@@ -108,26 +108,37 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
 	 * codec.encode("hi");    // throws RangeError
 	 * ```
 	 */
-	public encode(value: string, target?: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+	public encode(value: string): Uint8Array {
 		const utf8 = this.#encoder.encode(value);
-
 		if (this.stride.kind === "fixed") {
 			if (utf8.length !== this.stride.size) {
 				throw new RangeError(
 					`Expected UTF-8 byte length of ${this.stride.size}, got ${utf8.length}`,
 				);
 			}
-			const result = target ?? new Uint8Array(this.stride.size);
-			result.set(utf8);
-			return result;
+			return utf8;
 		}
-
-		const lengthPrefix = this.sizer.encode(utf8.length);
-		const totalLen = lengthPrefix.length + utf8.length;
-		const result = target ?? new Uint8Array(totalLen);
-		result.set(lengthPrefix, 0);
-		result.set(utf8, lengthPrefix.length);
+		const prefix = this.sizer.encode(utf8.length);
+		const result = new Uint8Array(prefix.length + utf8.length);
+		result.set(prefix);
+		result.set(utf8, prefix.length);
 		return result;
+	}
+
+	public encodeInto(value: string, target: Uint8Array, offset: number = 0): number {
+		const utf8 = this.#encoder.encode(value);
+		if (this.stride.kind === "fixed") {
+			if (utf8.length !== this.stride.size) {
+				throw new RangeError(
+					`Expected UTF-8 byte length of ${this.stride.size}, got ${utf8.length}`,
+				);
+			}
+			target.set(utf8, offset);
+			return this.stride.size;
+		}
+		const prefixSize = this.sizer.encodeInto(utf8.length, target, offset);
+		target.set(utf8, offset + prefixSize);
+		return prefixSize + utf8.length;
 	}
 
 	/**

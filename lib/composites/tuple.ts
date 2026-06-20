@@ -1,3 +1,4 @@
+import { concat } from "@std/bytes";
 import { Codec, type Stride } from "../codec.ts";
 
 // ── Tuple ─────────────────────────────────────────────────────────────────────
@@ -60,8 +61,8 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 	constructor(items: T) {
 		super();
 		this.items = items;
-		let size = 0;
 		let variable = false;
+		let size = 0;
 		for (const codec of items) {
 			if (codec.stride.kind === "variable") {
 				variable = true;
@@ -85,26 +86,34 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 	 * @example
 	 * const bytes = RgbCodec.encode([0, 255, 0]);
 	 */
-	public encode(
-		value: TupleInput<T>,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const parts = new Array<Uint8Array<ArrayBuffer>>(this.items.length);
+	public encode(value: TupleInput<T>): Uint8Array {
+		if (this.stride.kind === "fixed") {
+			const bytes = new Uint8Array(this.stride.size);
+			let offset = 0;
+			for (let i = 0; i < this.items.length; i++) {
+				const item = this.items[i]!;
+				const itemValue = value[i]!;
+				offset += item.encodeInto(itemValue, bytes, offset);
+			}
+			return bytes;
+		}
+		const parts = new Array<Uint8Array>(this.items.length);
 		for (let i = 0; i < this.items.length; i++) {
 			const item = this.items[i]!;
 			const itemValue = value[i]!;
 			parts[i] = item.encode(itemValue);
 		}
+		return concat(parts);
+	}
 
-		const byteLength = parts.reduce((sum, p) => sum + p.length, 0);
-		const bytes = target ?? new Uint8Array(byteLength);
-		let offset = 0;
-		for (let i = 0; i < parts.length; i++) {
-			const part = parts[i]!;
-			bytes.set(part, offset);
-			offset += part.length;
+	public encodeInto(value: TupleInput<T>, target: Uint8Array, offset: number = 0): number {
+		let size = 0;
+		for (let i = 0; i < this.items.length; i++) {
+			const item = this.items[i]!;
+			const itemValue = value[i]!;
+			size += item.encodeInto(itemValue, target, offset + size);
 		}
-		return bytes;
+		return size;
 	}
 
 	/**

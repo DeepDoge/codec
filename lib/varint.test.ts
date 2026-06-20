@@ -57,3 +57,22 @@ Deno.test("VarInt - above MAX_SAFE_INTEGER throws", () => {
 		RangeError,
 	);
 });
+
+Deno.test("VarInt - encodeInto writes at offset", () => {
+	const target = new Uint8Array(16);
+	const written = VarInt.encodeInto(300, target, 3);
+	assertEquals(written, 2);
+	assertEquals(Array.from(target.subarray(3, 5)), [0xAC, 0x02]);
+	assertEquals(Array.from(target.subarray(0, 3)), [0, 0, 0]);
+	assertEquals(Array.from(target.subarray(5, 16)), Array(11).fill(0));
+});
+
+Deno.test("VarInt - encodeInto matches encode", () => {
+	for (const val of [0, 1, 127, 128, 255, 256, 16384, 2097151, Number.MAX_SAFE_INTEGER]) {
+		const encoded = VarInt.encode(val);
+		const target = new Uint8Array(encoded.length + 4);
+		const written = VarInt.encodeInto(val, target, 2);
+		assertEquals(written, encoded.length);
+		assertEquals(Array.from(target.subarray(2, 2 + written)), Array.from(encoded));
+	}
+});

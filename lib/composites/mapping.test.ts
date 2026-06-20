@@ -41,3 +41,23 @@ Deno.test("Mapping - custom count codec (U32)", () => {
 	assertEquals(encodedU32[2], 0);
 	assertEquals(encodedU32[3], 2); // Count is 2
 });
+
+Deno.test("Mapping - encodeInto", () => {
+	const Dict = new MappingCodec([new StringCodec(), U8]);
+	const val = new Map([["x", 1], ["y", 2]]);
+	const target = new Uint8Array(32);
+	const written = Dict.encodeInto(val, target, 2);
+	const [decoded, bytesRead] = Dict.decode(target.subarray(2, 2 + written));
+	assertEquals(Array.from(decoded.entries()), Array.from(val.entries()));
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("Mapping - encodeInto matches encode", () => {
+	const Dict = new MappingCodec([new StringCodec(), U8], { counter: U32 });
+	const val = new Map([["a", 1], ["b", 2]]);
+	const encoded = Dict.encode(val);
+	const target = new Uint8Array(encoded.length + 1);
+	const written = Dict.encodeInto(val, target, 1);
+	assertEquals(written, encoded.length);
+	assertEquals(Array.from(target.subarray(1, 1 + written)), Array.from(encoded));
+});

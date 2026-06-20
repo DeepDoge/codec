@@ -39,3 +39,35 @@ Deno.test("Nullable - present value (variable inner)", () => {
 	const [s] = opt.decode(opt.encode("hello"));
 	assertEquals(s, "hello");
 });
+
+Deno.test("Nullable - encodeInto", () => {
+	const opt = new NullableCodec(U8);
+	const target = new Uint8Array(8);
+	const written = opt.encodeInto(7, target, 1);
+	assertEquals(written, 2);
+	assertEquals(Array.from(target.subarray(1, 3)), [0x01, 0x07]);
+	const [decoded, bytesRead] = opt.decode(target.subarray(1, 1 + written));
+	assertEquals(decoded, 7);
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("Nullable - encodeInto null (fixed inner)", () => {
+	const opt = new NullableCodec(U8);
+	const target = new Uint8Array(8);
+	target.fill(0xFF);
+	const written = opt.encodeInto(null, target, 1);
+	assertEquals(written, 2);
+	assertEquals(Array.from(target.subarray(1, 3)), [0x00, 0x00]);
+	const [decoded, bytesRead] = opt.decode(target.subarray(1, 1 + written));
+	assertEquals(decoded, null);
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("Nullable - encodeInto matches encode", () => {
+	const opt = new NullableCodec(new StringCodec());
+	const encoded = opt.encode("hello");
+	const target = new Uint8Array(encoded.length + 3);
+	const written = opt.encodeInto("hello", target, 3);
+	assertEquals(written, encoded.length);
+	assertEquals(Array.from(target.subarray(3, 3 + written)), Array.from(encoded));
+});

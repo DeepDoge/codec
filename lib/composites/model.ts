@@ -171,20 +171,18 @@ export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<
 	 * @example
 	 * const bytes = codec.encode({ id: 1, name: "Alice" });
 	 */
-	public encode(
-		value: ModelInput<T>,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const parts: Uint8Array<ArrayBuffer>[] = [];
-
+	public encode(value: ModelInput<T>): Uint8Array {
+		if (this.stride.kind === "fixed") {
+			const result = new Uint8Array(this.stride.size);
+			this.encodeInto(value, result);
+			return result;
+		}
+		const parts: Uint8Array[] = [];
 		for (let i = 0; i < this.keys.length; i++) {
 			const rawKey = this.keys[i]!;
 			const codec = this.shape[rawKey]!;
-
 			if (rawKey.endsWith("?")) {
-				const fieldKey = rawKey.slice(0, -1) as keyof typeof value;
-				const fieldValue = value[fieldKey];
-
+				const fieldValue = value[rawKey.slice(0, -1) as keyof typeof value];
 				if (fieldValue === undefined) {
 					parts.push(new Uint8Array([0x00]));
 				} else {
@@ -198,15 +196,36 @@ export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<
 				parts.push(codec.encode(value[rawKey as never]));
 			}
 		}
-
 		const totalLen = parts.reduce((sum, p) => sum + p.length, 0);
-		const result = target ?? new Uint8Array(totalLen);
-		let offset = 0;
-		for (let i = 0; i < parts.length; i++) {
-			result.set(parts[i]!, offset);
-			offset += parts[i]!.length;
+		const result = new Uint8Array(totalLen);
+		let off = 0;
+		for (const part of parts) {
+			result.set(part, off);
+			off += part.length;
 		}
 		return result;
+	}
+
+	public encodeInto(value: ModelInput<T>, target: Uint8Array, offset: number = 0): number {
+		let size = 0;
+		for (let i = 0; i < this.keys.length; i++) {
+			const rawKey = this.keys[i]!;
+			const codec = this.shape[rawKey]!;
+			if (rawKey.endsWith("?")) {
+				const fieldValue = value[rawKey.slice(0, -1) as keyof typeof value];
+				if (fieldValue === undefined) {
+					target[offset + size] = 0x00;
+					size += 1;
+				} else {
+					target[offset + size] = 0x01;
+					size += 1;
+					size += codec.encodeInto(fieldValue, target, offset + size);
+				}
+			} else {
+				size += codec.encodeInto(value[rawKey as never], target, offset + size);
+			}
+		}
+		return size;
 	}
 
 	/**

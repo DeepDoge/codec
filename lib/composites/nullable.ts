@@ -89,23 +89,26 @@ export class NullableCodec<T extends NullableGeneric> extends Codec<NullableOutp
 	 * const bytes = codec.encode(null);   // presence byte = 0x00
 	 * const bytes = codec.encode("hi");   // presence byte = 0x01, then payload
 	 */
-	public encode(
-		value: NullableInput<T>,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
+	public encode(value: NullableInput<T>): Uint8Array {
 		if (value === null) {
 			const size = this.stride.kind === "fixed" ? this.stride.size : 1;
-			const result = target ?? new Uint8Array(size);
-			result.fill(0, 0, size);
-			return result;
-		} else {
-			const encoded = this.inner.encode(value, target?.subarray(1));
-			const totalLen = 1 + encoded.length;
-			const result = target ?? new Uint8Array(totalLen);
-			result[0] = 1;
-			result.set(encoded, 1);
-			return result;
+			return new Uint8Array(size); // zero-filled by default
 		}
+		const encoded = this.inner.encode(value);
+		const result = new Uint8Array(1 + encoded.length);
+		result[0] = 1;
+		result.set(encoded, 1);
+		return result;
+	}
+
+	public encodeInto(value: NullableInput<T>, target: Uint8Array, offset: number = 0): number {
+		if (value === null) {
+			const size = this.stride.kind === "fixed" ? this.stride.size : 1;
+			target.fill(0, offset, offset + size);
+			return size;
+		}
+		target[offset] = 1;
+		return 1 + this.inner.encodeInto(value, target, offset + 1);
 	}
 
 	/**

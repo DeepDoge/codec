@@ -85,15 +85,12 @@ export class StructCodec<const T extends StructGeneric> extends Codec<StructOutp
 	 * @example
 	 * const bytes = PointCodec.encode({ x: 0, y: 1 });
 	 */
-	public encode(
-		value: StructInput<T>,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const values = new Array<unknown>(this.keys.length);
-		this.keys.forEach((key, i) => {
-			values[i] = value[key];
-		});
-		return this.tuple.encode(values, target);
+	public encode(value: StructInput<T>): Uint8Array {
+		return this.tuple.encode(this.keys.map((key) => value[key]));
+	}
+
+	public encodeInto(value: StructInput<T>, target: Uint8Array, offset: number = 0): number {
+		return this.tuple.encodeInto(this.keys.map((key) => value[key]), target, offset);
 	}
 
 	/**

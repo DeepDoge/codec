@@ -32,14 +32,15 @@ export class I8Codec extends Codec<number> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 1 byte.
 	 * @returns The buffer containing the encoded byte.
 	 */
-	public encode(
-		value: number,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(1);
-		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setInt8(0, value);
+	public encode(value: number): Uint8Array {
+		const arr = new Uint8Array(1);
+		new DataView(arr.buffer).setInt8(0, value);
 		return arr;
+	}
+
+	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 1).setInt8(0, value);
+		return 1;
 	}
 
 	/**
@@ -81,14 +82,15 @@ export class U8Codec extends Codec<number> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 1 byte.
 	 * @returns The buffer containing the encoded byte.
 	 */
-	public encode(
-		value: number,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(1);
-		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setUint8(0, value);
+	public encode(value: number): Uint8Array {
+		const arr = new Uint8Array(1);
+		new DataView(arr.buffer).setUint8(0, value);
 		return arr;
+	}
+
+	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 1).setUint8(0, value);
+		return 1;
 	}
 
 	/**
@@ -141,14 +143,15 @@ export class I16Codec extends Codec<number> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 2 bytes.
 	 * @returns The buffer containing the encoded 2 bytes.
 	 */
-	public encode(
-		value: number,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(2);
-		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setInt16(0, value, this.#littleEndian);
+	public encode(value: number): Uint8Array {
+		const arr = new Uint8Array(2);
+		new DataView(arr.buffer).setInt16(0, value, this.#littleEndian);
 		return arr;
+	}
+
+	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 2).setInt16(0, value, this.#littleEndian);
+		return 2;
 	}
 
 	/**
@@ -201,14 +204,15 @@ export class U16Codec extends Codec<number> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 2 bytes.
 	 * @returns The buffer containing the encoded 2 bytes.
 	 */
-	public encode(
-		value: number,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(2);
-		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setUint16(0, value, this.#littleEndian);
+	public encode(value: number): Uint8Array {
+		const arr = new Uint8Array(2);
+		new DataView(arr.buffer).setUint16(0, value, this.#littleEndian);
 		return arr;
+	}
+
+	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 2).setUint16(0, value, this.#littleEndian);
+		return 2;
 	}
 
 	/**
@@ -260,14 +264,15 @@ export class I32Codec extends Codec<number> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 4 bytes.
 	 * @returns The buffer containing the encoded 4 bytes.
 	 */
-	public encode(
-		value: number,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(4);
-		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setInt32(0, value, this.#littleEndian);
+	public encode(value: number): Uint8Array {
+		const arr = new Uint8Array(4);
+		new DataView(arr.buffer).setInt32(0, value, this.#littleEndian);
 		return arr;
+	}
+
+	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 4).setInt32(0, value, this.#littleEndian);
+		return 4;
 	}
 
 	/**
@@ -319,14 +324,15 @@ export class U32Codec extends Codec<number> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 4 bytes.
 	 * @returns The buffer containing the encoded 4 bytes.
 	 */
-	public encode(
-		value: number,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(4);
-		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setUint32(0, value, this.#littleEndian);
+	public encode(value: number): Uint8Array {
+		const arr = new Uint8Array(4);
+		new DataView(arr.buffer).setUint32(0, value, this.#littleEndian);
 		return arr;
+	}
+
+	public encodeInto(value: number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 4).setUint32(0, value, this.#littleEndian);
+		return 4;
 	}
 
 	/**
@@ -378,14 +384,15 @@ export class I64Codec extends Codec<bigint, bigint | number> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 8 bytes.
 	 * @returns The buffer containing the encoded 8 bytes.
 	 */
-	public encode(
-		value: bigint | number,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(8);
-		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setBigInt64(0, BigInt(value), this.#littleEndian);
+	public encode(value: bigint | number): Uint8Array {
+		const arr = new Uint8Array(8);
+		new DataView(arr.buffer).setBigInt64(0, BigInt(value), this.#littleEndian);
 		return arr;
+	}
+
+	public encodeInto(value: bigint | number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 8).setBigInt64(0, BigInt(value), this.#littleEndian);
+		return 8;
 	}
 
 	/**
@@ -437,14 +444,15 @@ export class U64Codec extends Codec<bigint, bigint | number> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 8 bytes.
 	 * @returns The buffer containing the encoded 8 bytes.
 	 */
-	public encode(
-		value: bigint | number,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(8);
-		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setBigUint64(0, BigInt(value), this.#littleEndian);
+	public encode(value: bigint | number): Uint8Array {
+		const arr = new Uint8Array(8);
+		new DataView(arr.buffer).setBigUint64(0, BigInt(value), this.#littleEndian);
 		return arr;
+	}
+
+	public encodeInto(value: bigint | number, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 8).setBigUint64(0, BigInt(value), this.#littleEndian);
+		return 8;
 	}
 
 	/**
@@ -496,14 +504,15 @@ export class F32Codec extends Codec<number, number | bigint> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 4 bytes.
 	 * @returns The buffer containing the encoded 4 bytes.
 	 */
-	public encode(
-		value: number | bigint,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(4);
-		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setFloat32(0, Number(value), this.#littleEndian);
+	public encode(value: number | bigint): Uint8Array {
+		const arr = new Uint8Array(4);
+		new DataView(arr.buffer).setFloat32(0, Number(value), this.#littleEndian);
 		return arr;
+	}
+
+	public encodeInto(value: number | bigint, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 4).setFloat32(0, Number(value), this.#littleEndian);
+		return 4;
 	}
 
 	/**
@@ -555,14 +564,15 @@ export class F64Codec extends Codec<number, number | bigint> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 8 bytes.
 	 * @returns The buffer containing the encoded 8 bytes.
 	 */
-	public encode(
-		value: number | bigint,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(8);
-		const view = new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-		view.setFloat64(0, Number(value), this.#littleEndian);
+	public encode(value: number | bigint): Uint8Array {
+		const arr = new Uint8Array(8);
+		new DataView(arr.buffer).setFloat64(0, Number(value), this.#littleEndian);
 		return arr;
+	}
+
+	public encodeInto(value: number | bigint, target: Uint8Array, offset: number = 0): number {
+		new DataView(target.buffer, target.byteOffset + offset, 8).setFloat64(0, Number(value), this.#littleEndian);
+		return 8;
 	}
 
 	/**
@@ -606,13 +616,15 @@ export class BoolCodec extends Codec<boolean> {
 	 * @param target - Optional pre-allocated buffer to write into. Must have at least 1 byte.
 	 * @returns The buffer containing the encoded byte.
 	 */
-	public encode(
-		value: boolean,
-		target?: Uint8Array<ArrayBuffer>,
-	): Uint8Array<ArrayBuffer> {
-		const arr = target ?? new Uint8Array(1);
+	public encode(value: boolean): Uint8Array {
+		const arr = new Uint8Array(1);
 		arr[0] = value ? 1 : 0;
 		return arr;
+	}
+
+	public encodeInto(value: boolean, target: Uint8Array, offset: number = 0): number {
+		target[offset] = value ? 1 : 0;
+		return 1;
 	}
 
 	/**
@@ -678,11 +690,12 @@ export class VoidCodec extends Codec<void, null | undefined | void> {
 	 * @param target - Optional buffer. Returned as-is when provided.
 	 * @returns An empty (zero-length) `Uint8Array`, or `target` if supplied.
 	 */
-	public override encode(
-		_value: void | null | undefined,
-		target: Uint8Array<ArrayBuffer> = new Uint8Array(0),
-	): Uint8Array<ArrayBuffer> {
-		return target;
+	public override encode(_value: void | null | undefined): Uint8Array {
+		return new Uint8Array(0);
+	}
+
+	public override encodeInto(_value: void | null | undefined, _target: Uint8Array, _offset: number = 0): number {
+		return 0;
 	}
 
 	/**

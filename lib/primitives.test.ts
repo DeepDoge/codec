@@ -228,3 +228,49 @@ Deno.test("Bool - roundtrip", () => {
 	assertEquals(Array.from(Bool.encode(false)), [0x00]);
 	assertEquals(Bool.stride, { kind: "fixed", size: 1 });
 });
+
+Deno.test("primitives - encodeInto writes at offset", () => {
+	const buffer = new Uint8Array(20);
+	let off = 0;
+	off += I8.encodeInto(-5, buffer, off);
+	off += U8.encodeInto(200, buffer, off);
+	off += I16.encodeInto(0x1234, buffer, off);
+	off += U16LE.encodeInto(0xABCD, buffer, off);
+	off += Bool.encodeInto(true, buffer, off);
+
+	assertEquals(off, 7);
+	assertEquals(Array.from(buffer.subarray(0, off)), [0xFB, 0xC8, 0x12, 0x34, 0xCD, 0xAB, 0x01]);
+
+	// Verify roundtrip
+	const [i8Val, i8Size] = I8.decode(buffer);
+	let pos = i8Size;
+	const [u8Val, u8Size] = U8.decode(buffer.subarray(pos));
+	pos += u8Size;
+	const [i16Val, i16Size] = I16.decode(buffer.subarray(pos));
+	pos += i16Size;
+	const [u16leVal, u16leSize] = U16LE.decode(buffer.subarray(pos));
+	pos += u16leSize;
+	const [boolVal, boolSize] = Bool.decode(buffer.subarray(pos));
+
+	assertEquals(i8Val, -5);
+	assertEquals(u8Val, 200);
+	assertEquals(i16Val, 0x1234);
+	assertEquals(u16leVal, 0xABCD);
+	assertEquals(boolVal, true);
+	assertEquals(i8Size + u8Size + i16Size + u16leSize + boolSize, 7);
+});
+
+Deno.test("primitives - encodeInto returns fixed sizes", () => {
+	const target = new Uint8Array(64);
+	assertEquals(I8.encodeInto(0, target), 1);
+	assertEquals(U8.encodeInto(0, target), 1);
+	assertEquals(I16.encodeInto(0, target), 2);
+	assertEquals(U16.encodeInto(0, target), 2);
+	assertEquals(I32.encodeInto(0, target), 4);
+	assertEquals(U32.encodeInto(0, target), 4);
+	assertEquals(I64.encodeInto(0n, target), 8);
+	assertEquals(U64.encodeInto(0n, target), 8);
+	assertEquals(F32.encodeInto(0, target), 4);
+	assertEquals(F64.encodeInto(0, target), 8);
+	assertEquals(Bool.encodeInto(false, target), 1);
+});

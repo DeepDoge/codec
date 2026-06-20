@@ -55,3 +55,21 @@ Deno.test("bytes - fixed size decode error", () => {
 Deno.test("bytes - sizer property (fixed size defaults to VarInt)", () => {
 	assertEquals(new BytesCodec({ size: 8 }).sizer, VarInt);
 });
+
+Deno.test("bytes - encodeInto variable", () => {
+	const codec = new BytesCodec();
+	const val = new Uint8Array([0xde, 0xad, 0xbe, 0xef]);
+	const target = new Uint8Array(20);
+	const written = codec.encodeInto(val, target, 2);
+	const [decoded, bytesRead] = codec.decode(target.subarray(2, 2 + written));
+	assertEquals(Array.from(decoded), Array.from(val));
+	assertEquals(bytesRead, written);
+});
+
+Deno.test("bytes - encodeInto fixed size", () => {
+	const codec = new BytesCodec({ size: 4 });
+	const target = new Uint8Array(10);
+	const written = codec.encodeInto(new Uint8Array([1, 2, 3, 4]), target, 3);
+	assertEquals(written, 4);
+	assertEquals(Array.from(target.subarray(3, 7)), [1, 2, 3, 4]);
+});

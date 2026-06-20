@@ -100,6 +100,23 @@ export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<
 		? [Extract<keyof T, `${string}?`>] extends [never] ? Stride<"fixed"> : Stride<"variable">
 		: Stride<"variable">;
 
+	public override size(value: ModelInput<T>): number {
+		if (this.stride.kind === "fixed") return this.stride.size;
+		let total = 0;
+		for (let i = 0; i < this.keys.length; i++) {
+			const rawKey = this.keys[i]!;
+			const codec = this.shape[rawKey]!;
+			if (rawKey.endsWith("?")) {
+				total += 1; // presence byte
+				const fieldValue = value[rawKey.slice(0, -1) as keyof typeof value];
+				if (fieldValue !== undefined) total += codec.size(fieldValue);
+			} else {
+				total += codec.size(value[rawKey as never]);
+			}
+		}
+		return total;
+	}
+
 	/** The original shape passed to the constructor. */
 	public readonly shape: T;
 

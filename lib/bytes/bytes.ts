@@ -71,6 +71,16 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined> ex
 	public readonly stride: O extends { size: number } ? Stride<"fixed">
 		: Stride<"variable">;
 
+	public override size(value: Uint8Array): number {
+		if (this.stride.kind === "fixed") {
+			if (value.length !== this.stride.size) {
+				throw new RangeError(`Expected byte array of length ${this.stride.size}, got ${value.length}`);
+			}
+			return this.stride.size;
+		}
+		return this.sizer.size(value.length) + value.length;
+	}
+
 	/**
 	 * The codec used to encode/decode the length prefix in variable mode.
 	 * Defaults to {@link VarInt}. Unused in fixed-size mode.

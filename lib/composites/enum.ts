@@ -83,6 +83,14 @@ export type EnumOptions = {
 export class EnumCodec<const T extends EnumGeneric> extends Codec<EnumOutput<T>, EnumInput<T>> {
 	public readonly stride: Stride<"variable"> = { kind: "variable" };
 
+	public override size(value: EnumInput<T>): number {
+		const index = this.keys.indexOf(value.kind);
+		if (index === -1) {
+			throw new Error(`Invalid union variant: ${String(value.kind)}`);
+		}
+		return this.indexer.size(index) + this.variants[value.kind]!.size(value.value as never);
+	}
+
 	/** The variants map passed to the constructor. */
 	public readonly variants: T;
 	/** The codec used to encode/decode the variant index. */

@@ -58,6 +58,15 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 	public readonly stride: Stride<"variable"> extends T[number]["stride"] ? Stride<"variable">
 		: Stride<"fixed">;
 
+	public override size(value: TupleInput<T>): number {
+		if (this.stride.kind === "fixed") return this.stride.size;
+		let total = 0;
+		for (let i = 0; i < this.items.length; i++) {
+			total += this.items[i]!.size(value[i]!);
+		}
+		return total;
+	}
+
 	constructor(items: T) {
 		super();
 		this.items = items;

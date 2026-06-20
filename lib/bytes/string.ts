@@ -70,6 +70,17 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
 	 */
 	public readonly stride: O extends { size: number } ? Stride<"fixed"> : Stride<"variable">;
 
+	public override size(value: string): number {
+		const n = utf8ByteLength(value);
+		if (this.stride.kind === "fixed") {
+			if (n !== this.stride.size) {
+				throw new RangeError(`Expected UTF-8 byte length of ${this.stride.size}, got ${n}`);
+			}
+			return this.stride.size;
+		}
+		return this.sizer.size(n) + n;
+	}
+
 	/**
 	 * The codec used to encode/decode the UTF-8 byte-length prefix in variable
 	 * mode. Defaults to {@link VarInt}. Unused in fixed-size mode.
@@ -194,3 +205,29 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
  * ```
  */
 export const Str: StringCodec<undefined> = new StringCodec();
+
+function utf8ByteLength(str: string): number {
+	let bytes = 0;
+	const len = str.length;
+	for (let i = 0; i < len; i++) {
+		const c = str.charCodeAt(i);
+		if (c < 0x80) {
+			bytes += 1;
+		} else if (c < 0x800) {
+			bytes += 2;
+		} else if (c < 0xD800 || c > 0xDFFF) {
+			bytes += 3; // BMP, non-surrogate
+		} else if (c <= 0xDBFF && i + 1 < len) {
+			const next = str.charCodeAt(i + 1);
+			if (next >= 0xDC00 && next <= 0xDFFF) {
+				bytes += 4; // valid surrogate pair → astral codepoint
+				i++;
+			} else {
+				bytes += 3; // lone high surrogate → U+FFFD
+			}
+		} else {
+			bytes += 3; // lone low surrogate / trailing high → U+FFFD
+		}
+	}
+	return bytes;
+}

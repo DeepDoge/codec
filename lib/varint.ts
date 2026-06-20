@@ -25,6 +25,18 @@ export class VarIntCodec extends Codec<number> {
 	/** Variable stride: byte length depends on the encoded value. */
 	public readonly stride: Stride<"variable"> = { kind: "variable" };
 
+	public override size(value: number): number {
+		if (value < 0 || !Number.isSafeInteger(value)) {
+			throw new RangeError("Value must be a non-negative safe integer");
+		}
+		let bytes = 1;
+		while (value > 0x7F) {
+			value = Math.floor(value / 128);
+			bytes++;
+		}
+		return bytes;
+	}
+
 	/**
 	 * Encodes a non-negative safe integer as a variable-length LEB128 byte sequence.
 	 *

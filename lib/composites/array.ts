@@ -102,6 +102,22 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 	public readonly stride: O extends { size: number } ? (T extends { stride: Stride<"fixed"> } ? Stride<"fixed"> : Stride<"variable">)
 		: Stride<"variable">;
 
+	public override size(value: ArrayInput<T>): number {
+		if (this.#elementCount !== undefined && value.length !== this.#elementCount) {
+			throw new RangeError(`Expected array of length ${this.#elementCount}, got ${value.length}`);
+		}
+		let total = 0;
+		if (this.#elementCount === undefined) {
+			total += this.counter.size(value.length);
+		}
+		if (this.item.stride.kind === "fixed") {
+			total += value.length * this.item.stride.size;
+		} else {
+			for (const item of value) total += this.item.size(item);
+		}
+		return total;
+	}
+
 	/** Codec used to encode/decode the element count prefix. Unused in fixed-size mode. */
 	public readonly counter: Codec<number>;
 	/** Codec used to encode/decode individual array elements. */

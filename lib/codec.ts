@@ -88,6 +88,16 @@ export abstract class Codec<O extends I = any, I = O> {
 	public abstract readonly stride: Stride;
 
 	/**
+	 * Number of bytes `encodeInto` will write for `value`, computed without
+	 * allocating. Fixed-size codecs inherit this; variable-size codecs must
+	 * override. Invariant: size(v) === encodeInto(v, buf, 0).
+	 */
+	public size(_value: I): number {
+		if (this.stride.kind === "fixed") return this.stride.size;
+		throw new Error(`${this.constructor.name}: variable-size codecs must override size()`);
+	}
+
+	/**
 	 * Encodes `value` into binary.
 	 *
 	 * @param value - The value to encode.
@@ -222,6 +232,10 @@ export class TransformCodec<
 > extends Codec<T, I> {
 	/** Stride inherited from the inner codec. */
 	public readonly stride: C["stride"];
+
+	public override size(value: I): number {
+		return this.inner.size(value);
+	}
 
 	/** The wrapped inner codec. */
 	public readonly inner: C;

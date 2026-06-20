@@ -66,6 +66,11 @@ export class NullableCodec<T extends NullableGeneric> extends Codec<NullableOutp
 	public readonly stride: T["stride"] extends Stride<"fixed"> ? Stride<"fixed">
 		: Stride<"variable">;
 
+	public override size(value: NullableInput<T>): number {
+		if (value === null) return this.stride.kind === "fixed" ? this.stride.size : 1;
+		return 1 + this.inner.size(value);
+	}
+
 	constructor(inner: T) {
 		super();
 		this.inner = inner;

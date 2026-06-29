@@ -52,11 +52,6 @@ export type StructOutput<T extends StructGeneric> = { -readonly [K in keyof T]: 
 export class StructCodec<const T extends StructGeneric> extends Codec<StructOutput<T>, StructInput<T>> {
 	public readonly stride: Stride<"variable"> extends T[keyof T]["stride"] ? Stride<"variable"> : Stride<"fixed">;
 
-	public override size(value: StructInput<T>): number {
-		if (this.stride.kind === "fixed") return this.stride.size;
-		return this.tuple.size(this.keys.map((key) => value[key]));
-	}
-
 	/** The original shape passed to the constructor. */
 	public readonly shape: T;
 
@@ -110,9 +105,9 @@ export class StructCodec<const T extends StructGeneric> extends Codec<StructOutp
 	 * @example
 	 * const [point, bytesRead] = PointCodec.decode(bytes);
 	 */
-	public decode(data: Uint8Array): [StructOutput<T>, number] {
-		const [decoded, offset] = this.tuple.decode(data);
-		return [this.factory(...decoded), offset];
+	public decodeFrom(data: Uint8Array, offset: number): [StructOutput<T>, number] {
+		const [decoded, size] = this.tuple.decodeFrom(data, offset);
+		return [this.factory(...decoded), size];
 	}
 
 	/**

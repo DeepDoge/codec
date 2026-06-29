@@ -65,10 +65,6 @@ export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingO
 	public readonly stride: Stride<"variable"> = { kind: "variable" };
 	private readonly entriesCodec: ArrayCodec<TupleCodec<T>, { counter: MappingOptions["counter"] }>;
 
-	public override size(value: MappingInput<T>): number {
-		return this.entriesCodec.size(value.entries().toArray() as never);
-	}
-
 	/**
 	 * The `[keyCodec, valueCodec]` tuple used for individual map entries.
 	 * Exposes the inner entry codec pair for inspection or reuse.
@@ -109,8 +105,8 @@ export class MappingCodec<const T extends MappingGeneric> extends Codec<MappingO
 	 * @example
 	 * const [map, bytesRead] = codec.decode(bytes);
 	 */
-	public decode(data: Uint8Array): [MappingOutput<T>, number] {
-		const [entries, size] = this.entriesCodec.decode(data);
+	public decodeFrom(data: Uint8Array, offset: number): [MappingOutput<T>, number] {
+		const [entries, size] = this.entriesCodec.decodeFrom(data, offset);
 		return [new Map(entries), size];
 	}
 }

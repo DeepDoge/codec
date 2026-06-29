@@ -100,23 +100,6 @@ export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<
 		? [Extract<keyof T, `${string}?`>] extends [never] ? Stride<"fixed"> : Stride<"variable">
 		: Stride<"variable">;
 
-	public override size(value: ModelInput<T>): number {
-		if (this.stride.kind === "fixed") return this.stride.size;
-		let total = 0;
-		for (let i = 0; i < this.keys.length; i++) {
-			const rawKey = this.keys[i]!;
-			const codec = this.shape[rawKey]!;
-			if (rawKey.endsWith("?")) {
-				total += 1; // presence byte
-				const fieldValue = value[rawKey.slice(0, -1) as keyof typeof value];
-				if (fieldValue !== undefined) total += codec.size(fieldValue);
-			} else {
-				total += codec.size(value[rawKey as never]);
-			}
-		}
-		return total;
-	}
-
 	/** The original shape passed to the constructor. */
 	public readonly shape: T;
 
@@ -261,18 +244,18 @@ export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<
 	 * @example
 	 * const [person, bytesRead] = codec.decode(bytes);
 	 */
-	public decode(data: Uint8Array): [ModelOutput<T>, number] {
-		let offset = 0;
+	public decodeFrom(data: Uint8Array, offset: number): [ModelOutput<T>, number] {
+		let currentOffset = offset;
 
 		if (this.factory !== null) {
 			const args = this.args;
 			for (let i = 0; i < this.keys.length; i++) {
 				const codec = this.shape[this.keys[i]!];
-				const [fieldValue, size] = codec.decode(data.subarray(offset));
+				const [fieldValue, size] = codec.decodeFrom(data, currentOffset);
 				args[i] = fieldValue;
-				offset += size;
+				currentOffset += size;
 			}
-			return [this.factory(...args), offset];
+			return [this.factory(...args), currentOffset - offset];
 		}
 
 		const reqArgs = this.reqArgs;
@@ -286,20 +269,20 @@ export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<
 			const codec = this.shape[rawKey]!;
 
 			if (rawKey.endsWith("?")) {
-				const presenceByte = data[offset]!;
-				offset += 1;
+				const presenceByte = data[currentOffset]!;
+				currentOffset += 1;
 
 				if (presenceByte !== 0x00) {
-					const [fieldValue, size] = codec.decode(data.subarray(offset));
+					const [fieldValue, size] = codec.decodeFrom(data, currentOffset);
 					optArgs[optLen++] = fieldValue;
 					mask |= this.optionalBits[i]!;
-					offset += size;
+					currentOffset += size;
 				}
 			} else {
-				const [fieldValue, size] = codec.decode(data.subarray(offset));
+				const [fieldValue, size] = codec.decodeFrom(data, currentOffset);
 				reqArgs[reqIdx] = fieldValue;
 				reqIdx++;
-				offset += size;
+				currentOffset += size;
 			}
 		}
 
@@ -321,7 +304,7 @@ export class ModelCodec<const T extends ModelGeneric> extends Codec<ModelOutput<
 			this.optionalFactories!.set(mask, factory);
 		}
 
-		return [factory(...reqArgs, ...optArgs.slice(0, optLen)), offset];
+		return [factory(...reqArgs, ...optArgs.slice(0, optLen)), currentOffset - offset];
 	}
 
 	/**

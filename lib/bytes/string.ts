@@ -70,17 +70,6 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
 	 */
 	public readonly stride: O extends { size: number } ? Stride<"fixed"> : Stride<"variable">;
 
-	public override size(value: string): number {
-		const n = utf8ByteLength(value);
-		if (this.stride.kind === "fixed") {
-			if (n !== this.stride.size) {
-				throw new RangeError(`Expected UTF-8 byte length of ${this.stride.size}, got ${n}`);
-			}
-			return this.stride.size;
-		}
-		return this.sizer.size(n) + n;
-	}
-
 	/**
 	 * The codec used to encode/decode the UTF-8 byte-length prefix in variable
 	 * mode. Defaults to {@link VarInt}. Unused in fixed-size mode.
@@ -173,18 +162,18 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
 	 * // str === "hi", n === 2
 	 * ```
 	 */
-	public decode(data: Uint8Array): [string, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [string, number] {
 		if (this.stride.kind === "fixed") {
-			if (data.length < this.stride.size) {
+			if (data.length - offset < this.stride.size) {
 				throw new RangeError(
-					`Expected at least ${this.stride.size} bytes, got ${data.length}`,
+					`Expected at least ${this.stride.size} bytes, got ${data.length - offset}`,
 				);
 			}
-			return [this.decoder.decode(data.subarray(0, this.stride.size)), this.stride.size];
+			return [this.decoder.decode(data.subarray(offset, offset + this.stride.size)), this.stride.size];
 		}
 
-		const [length, bytesRead] = this.sizer.decode(data);
-		const utf8 = data.subarray(bytesRead, bytesRead + length);
+		const [length, bytesRead] = this.sizer.decodeFrom(data, offset);
+		const utf8 = data.subarray(offset + bytesRead, offset + bytesRead + length);
 		return [this.decoder.decode(utf8), bytesRead + length];
 	}
 }
@@ -205,29 +194,5 @@ export class StringCodec<const O extends StringOptions | undefined = undefined> 
  * ```
  */
 export const Str: StringCodec<undefined> = new StringCodec();
-
-function utf8ByteLength(str: string): number {
-	let bytes = 0;
-	const len = str.length;
-	for (let i = 0; i < len; i++) {
-		const c = str.charCodeAt(i);
-		if (c < 0x80) {
-			bytes += 1;
-		} else if (c < 0x800) {
-			bytes += 2;
-		} else if (c < 0xD800 || c > 0xDFFF) {
-			bytes += 3; // BMP, non-surrogate
-		} else if (c <= 0xDBFF && i + 1 < len) {
-			const next = str.charCodeAt(i + 1);
-			if (next >= 0xDC00 && next <= 0xDFFF) {
-				bytes += 4; // valid surrogate pair → astral codepoint
-				i++;
-			} else {
-				bytes += 3; // lone high surrogate → U+FFFD
-			}
-		} else {
-			bytes += 3; // lone low surrogate / trailing high → U+FFFD
-		}
-	}
-	return bytes;
-}
+/** Inferred output type for {@link Str}. */
+export type Str = Codec.InferOutput<typeof Str>;

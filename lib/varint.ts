@@ -25,18 +25,6 @@ export class VarIntCodec extends Codec<number> {
 	/** Variable stride: byte length depends on the encoded value. */
 	public readonly stride: Stride<"variable"> = { kind: "variable" };
 
-	public override size(value: number): number {
-		if (value < 0 || !Number.isSafeInteger(value)) {
-			throw new RangeError("Value must be a non-negative safe integer");
-		}
-		let bytes = 1;
-		while (value > 0x7F) {
-			value = Math.floor(value / 128);
-			bytes++;
-		}
-		return bytes;
-	}
-
 	/**
 	 * Encodes a non-negative safe integer as a variable-length LEB128 byte sequence.
 	 *
@@ -94,11 +82,12 @@ export class VarIntCodec extends Codec<number> {
 	 * VarInt.decode(new Uint8Array([0x01]))        // [1, 1]
 	 * VarInt.decode(new Uint8Array([0x80, 0x01]))  // [128, 2]
 	 */
-	public decode(data: Uint8Array): [number, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [number, number] {
 		let value = 0;
 		let shift = 0;
 		let bytesRead = 0;
-		for (const byte of data) {
+		while (offset + bytesRead < data.length) {
+			const byte = data[offset + bytesRead]!;
 			value += (byte & 0x7F) * Math.pow(2, shift);
 			bytesRead++;
 			if ((byte & 0x80) === 0) {
@@ -120,3 +109,110 @@ export class VarIntCodec extends Codec<number> {
 
 /** Singleton {@link VarIntCodec} instance for unsigned variable-length integer encoding. */
 export const VarInt: VarIntCodec = new VarIntCodec();
+/** Inferred output type for {@link VarInt}. */
+export type VarInt = Codec.InferOutput<typeof VarInt>;
+
+/**
+ * Codec for unsigned variable-length integers using the LEB128 encoding scheme,
+ * backed by `bigint` for arbitrary precision.
+ *
+ * Each byte contributes 7 bits of data; the most-significant bit (MSB) is a
+ * continuation flag (`1` = more bytes follow, `0` = final byte). Smaller values
+ * occupy fewer bytes:
+ *
+ * | Value range        | Bytes used |
+ * |--------------------|------------|
+ * | 0 – 127            | 1          |
+ * | 128 – 16383        | 2          |
+ * | 16384 – 2097151    | 3          |
+ * | …                  | …          |
+ *
+ * Unlike {@link VarIntCodec}, there is no `MAX_SAFE_INTEGER` ceiling: values of
+ * any magnitude are supported. Input must be a non-negative integer; a `number`
+ * is accepted for convenience and coerced via `BigInt()` (rejecting non-integers).
+ *
+ * @example
+ * const bytes = BigVarInt.encode(300n); // Uint8Array [0xAC, 0x02]
+ * const [val, size] = BigVarInt.decode(bytes); // [300n, 2]
+ */
+export class BigVarIntCodec extends Codec<bigint, bigint | number> {
+	/** Variable stride: byte length depends on the encoded value. */
+	public readonly stride: Stride<"variable"> = { kind: "variable" };
+
+	/**
+	 * Encodes a non-negative integer as a variable-length LEB128 byte sequence.
+	 *
+	 * @param value - Non-negative integer. A `number` is coerced to `bigint`.
+	 * @returns `Uint8Array` containing the LEB128-encoded bytes.
+	 * @throws {RangeError} If `value` is negative.
+	 * @throws {RangeError} If `value` is a non-integer `number`.
+	 *
+	 * @example
+	 * BigVarInt.encode(1n)   // Uint8Array [0x01]  — 1 byte
+	 * BigVarInt.encode(128n) // Uint8Array [0x80, 0x01] — 2 bytes
+	 */
+	public encode(value: bigint | number): Uint8Array<ArrayBuffer> {
+		let v = BigInt(value);
+		if (v < 0n) {
+			throw new RangeError("Value must be a non-negative integer");
+		}
+		const parts: number[] = [];
+		while (v > 0x7Fn) {
+			parts.push(Number((v & 0x7Fn) | 0x80n));
+			v >>= 7n;
+		}
+		parts.push(Number(v & 0x7Fn));
+		const result = new Uint8Array(parts.length);
+		result.set(parts);
+		return result;
+	}
+
+	public override encodeInto(value: bigint | number, target: Uint8Array, offset: number = 0): number {
+		let v = BigInt(value);
+		if (v < 0n) {
+			throw new RangeError("Value must be a non-negative integer");
+		}
+		let i = offset;
+		while (v > 0x7Fn) {
+			target[i++] = Number((v & 0x7Fn) | 0x80n);
+			v >>= 7n;
+		}
+		target[i++] = Number(v & 0x7Fn);
+		return i - offset;
+	}
+
+	/**
+	 * Decodes a variable-length LEB128 integer from the start of `data`.
+	 *
+	 * Reads bytes until a byte with a clear MSB is encountered (end of varint).
+	 * There is no length cap — the value grows as wide as the encoding requires.
+	 *
+	 * @param data - Buffer to read from. Must contain at least one complete varint.
+	 * @returns Tuple of `[value, bytesConsumed]`.
+	 * @throws {Error} If `data` ends before a terminating byte is found (`"Incomplete BigVarInt"`).
+	 *
+	 * @example
+	 * BigVarInt.decode(new Uint8Array([0x01]))        // [1n, 1]
+	 * BigVarInt.decode(new Uint8Array([0x80, 0x01]))  // [128n, 2]
+	 */
+	public decodeFrom(data: Uint8Array, offset: number): [bigint, number] {
+		let value = 0n;
+		let shift = 0n;
+		let bytesRead = 0;
+		while (offset + bytesRead < data.length) {
+			const byte = data[offset + bytesRead]!;
+			value |= BigInt(byte & 0x7F) << shift;
+			bytesRead++;
+			if ((byte & 0x80) === 0) {
+				return [value, bytesRead];
+			}
+			shift += 7n;
+		}
+		throw new Error("Incomplete BigVarInt");
+	}
+}
+
+/** Singleton {@link BigVarIntCodec} instance for unsigned variable-length bigint encoding. */
+export const BigVarInt: BigVarIntCodec = new BigVarIntCodec();
+/** Inferred output type for {@link BigVarInt}. */
+export type BigVarInt = Codec.InferOutput<typeof BigVarInt>;

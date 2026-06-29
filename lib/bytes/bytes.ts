@@ -71,16 +71,6 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined> ex
 	public readonly stride: O extends { size: number } ? Stride<"fixed">
 		: Stride<"variable">;
 
-	public override size(value: Uint8Array): number {
-		if (this.stride.kind === "fixed") {
-			if (value.length !== this.stride.size) {
-				throw new RangeError(`Expected byte array of length ${this.stride.size}, got ${value.length}`);
-			}
-			return this.stride.size;
-		}
-		return this.sizer.size(value.length) + value.length;
-	}
-
 	/**
 	 * The codec used to encode/decode the length prefix in variable mode.
 	 * Defaults to {@link VarInt}. Unused in fixed-size mode.
@@ -170,19 +160,17 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined> ex
 	 * // value → Uint8Array [0xaa, 0xbb], n === 2
 	 * ```
 	 */
-	public decode(
-		data: Uint8Array,
-	): [Uint8Array, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [Uint8Array, number] {
 		if (this.stride.kind === "fixed") {
-			if (data.length < this.stride.size) {
+			if (data.length - offset < this.stride.size) {
 				throw new RangeError(
-					`Expected at least ${this.stride.size} bytes, got ${data.length}`,
+					`Expected at least ${this.stride.size} bytes, got ${data.length - offset}`,
 				);
 			}
-			return [data.subarray(0, this.stride.size), this.stride.size];
+			return [data.subarray(offset, offset + this.stride.size), this.stride.size];
 		} else {
-			const [length, bytesRead] = this.sizer.decode(data);
-			const decoded = data.subarray(bytesRead, bytesRead + length);
+			const [length, bytesRead] = this.sizer.decodeFrom(data, offset);
+			const decoded = data.subarray(offset + bytesRead, offset + bytesRead + length);
 			return [decoded, bytesRead + length];
 		}
 	}
@@ -206,3 +194,5 @@ export class BytesCodec<const O extends BytesOptions | undefined = undefined> ex
  * ```
  */
 export const Bytes: BytesCodec<undefined> = new BytesCodec();
+/** Inferred output type for {@link Bytes}. */
+export type Bytes = Codec.InferOutput<typeof Bytes>;

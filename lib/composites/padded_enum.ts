@@ -151,15 +151,15 @@ export class PaddedEnumCodec<const T extends PaddedEnumGeneric> extends Codec<En
 	 * const [event, bytesRead] = EventCodec.decode(bytes);
 	 * // bytesRead === EventCodec.stride.size
 	 */
-	public decode(data: Uint8Array): [EnumOutput<T>, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [EnumOutput<T>, number] {
 		const indexSize = this.indexer.stride.size;
-		const [index] = this.indexer.decode(data);
+		const [index] = this.indexer.decodeFrom(data, offset);
 		if (index >= this.keys.length) {
 			throw new Error(`Invalid union index: ${index}`);
 		}
 		const key = this.keys[index]!;
 		const codec = this.variants[key]!;
-		const [value] = codec.decode(data.subarray(indexSize));
+		const [value] = codec.decodeFrom(data, offset + indexSize);
 		return [{ kind: key, value } as never, this.stride.size];
 	}
 }

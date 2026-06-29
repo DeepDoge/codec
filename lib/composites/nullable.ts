@@ -66,11 +66,6 @@ export class NullableCodec<T extends NullableGeneric> extends Codec<NullableOutp
 	public readonly stride: T["stride"] extends Stride<"fixed"> ? Stride<"fixed">
 		: Stride<"variable">;
 
-	public override size(value: NullableInput<T>): number {
-		if (value === null) return this.stride.kind === "fixed" ? this.stride.size : 1;
-		return 1 + this.inner.size(value);
-	}
-
 	constructor(inner: T) {
 		super();
 		this.inner = inner;
@@ -131,12 +126,12 @@ export class NullableCodec<T extends NullableGeneric> extends Codec<NullableOutp
 	 * const [val, n] = codec.decode(bytes);
 	 * if (val === null) { ... }
 	 */
-	public decode(data: Uint8Array): [NullableOutput<T>, number] {
-		if (data[0] === 0) {
+	public decodeFrom(data: Uint8Array, offset: number): [NullableOutput<T>, number] {
+		if (data[offset] === 0) {
 			const size = this.stride.kind === "fixed" ? this.stride.size : 1;
 			return [null, size];
 		} else {
-			const [value, size] = this.inner.decode(data.subarray(1));
+			const [value, size] = this.inner.decodeFrom(data, offset + 1);
 			return [value, 1 + size];
 		}
 	}

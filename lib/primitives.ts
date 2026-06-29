@@ -49,11 +49,11 @@ export class I8Codec extends Codec<number> {
 	 * @param data - Buffer to read from. Must have at least 1 byte.
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `1`.
 	 */
-	public decode(data: Uint8Array): [number, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [number, number] {
 		const view = new DataView(
 			data.buffer,
-			data.byteOffset,
-			data.byteLength,
+			data.byteOffset + offset,
+			data.byteLength - offset,
 		);
 		return [view.getInt8(0), 1];
 	}
@@ -61,6 +61,8 @@ export class I8Codec extends Codec<number> {
 
 /** Default singleton {@link I8Codec} instance for signed 8-bit integers. */
 export const I8: I8Codec = new I8Codec();
+/** Inferred output type for {@link I8}. */
+export type I8 = Codec.InferOutput<typeof I8>;
 
 /**
  * Codec for unsigned 8-bit integers (`uint8_t`).
@@ -99,11 +101,11 @@ export class U8Codec extends Codec<number> {
 	 * @param data - Buffer to read from. Must have at least 1 byte.
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `1`.
 	 */
-	public decode(data: Uint8Array): [number, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [number, number] {
 		const view = new DataView(
 			data.buffer,
-			data.byteOffset,
-			data.byteLength,
+			data.byteOffset + offset,
+			data.byteLength - offset,
 		);
 		return [view.getUint8(0), 1];
 	}
@@ -111,6 +113,8 @@ export class U8Codec extends Codec<number> {
 
 /** Default singleton {@link U8Codec} instance for unsigned 8-bit integers. */
 export const U8: U8Codec = new U8Codec();
+/** Inferred output type for {@link U8}. */
+export type U8 = Codec.InferOutput<typeof U8>;
 
 /**
  * Codec for signed 16-bit integers (`int16_t`).
@@ -160,11 +164,11 @@ export class I16Codec extends Codec<number> {
 	 * @param data - Buffer to read from. Must have at least 2 bytes.
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `2`.
 	 */
-	public decode(data: Uint8Array): [number, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [number, number] {
 		const view = new DataView(
 			data.buffer,
-			data.byteOffset,
-			data.byteLength,
+			data.byteOffset + offset,
+			data.byteLength - offset,
 		);
 		return [view.getInt16(0, this.littleEndian), 2];
 	}
@@ -172,6 +176,8 @@ export class I16Codec extends Codec<number> {
 
 /** Default big-endian singleton {@link I16Codec} instance for signed 16-bit integers. */
 export const I16: I16Codec = new I16Codec();
+/** Inferred output type for {@link I16}. */
+export type I16 = Codec.InferOutput<typeof I16>;
 
 /**
  * Codec for unsigned 16-bit integers (`uint16_t`).
@@ -221,11 +227,11 @@ export class U16Codec extends Codec<number> {
 	 * @param data - Buffer to read from. Must have at least 2 bytes.
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `2`.
 	 */
-	public decode(data: Uint8Array): [number, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [number, number] {
 		const view = new DataView(
 			data.buffer,
-			data.byteOffset,
-			data.byteLength,
+			data.byteOffset + offset,
+			data.byteLength - offset,
 		);
 		return [view.getUint16(0, this.littleEndian), 2];
 	}
@@ -233,6 +239,8 @@ export class U16Codec extends Codec<number> {
 
 /** Default big-endian singleton {@link U16Codec} instance for unsigned 16-bit integers. */
 export const U16: U16Codec = new U16Codec();
+/** Inferred output type for {@link U16}. */
+export type U16 = Codec.InferOutput<typeof U16>;
 
 /**
  * Codec for signed 32-bit integers (`int32_t`).
@@ -281,11 +289,11 @@ export class I32Codec extends Codec<number> {
 	 * @param data - Buffer to read from. Must have at least 4 bytes.
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `4`.
 	 */
-	public decode(data: Uint8Array): [number, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [number, number] {
 		const view = new DataView(
 			data.buffer,
-			data.byteOffset,
-			data.byteLength,
+			data.byteOffset + offset,
+			data.byteLength - offset,
 		);
 		return [view.getInt32(0, this.littleEndian), 4];
 	}
@@ -293,6 +301,8 @@ export class I32Codec extends Codec<number> {
 
 /** Default big-endian singleton {@link I32Codec} instance for signed 32-bit integers. */
 export const I32: I32Codec = new I32Codec();
+/** Inferred output type for {@link I32}. */
+export type I32 = Codec.InferOutput<typeof I32>;
 
 /**
  * Codec for unsigned 32-bit integers (`uint32_t`).
@@ -341,11 +351,11 @@ export class U32Codec extends Codec<number> {
 	 * @param data - Buffer to read from. Must have at least 4 bytes.
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `4`.
 	 */
-	public decode(data: Uint8Array): [number, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [number, number] {
 		const view = new DataView(
 			data.buffer,
-			data.byteOffset,
-			data.byteLength,
+			data.byteOffset + offset,
+			data.byteLength - offset,
 		);
 		return [view.getUint32(0, this.littleEndian), 4];
 	}
@@ -353,6 +363,8 @@ export class U32Codec extends Codec<number> {
 
 /** Default big-endian singleton {@link U32Codec} instance for unsigned 32-bit integers. */
 export const U32: U32Codec = new U32Codec();
+/** Inferred output type for {@link U32}. */
+export type U32 = Codec.InferOutput<typeof U32>;
 
 /**
  * Codec for signed 64-bit integers (`int64_t`) using JavaScript `bigint`.
@@ -401,11 +413,11 @@ export class I64Codec extends Codec<bigint, bigint | number> {
 	 * @param data - Buffer to read from. Must have at least 8 bytes.
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `8`.
 	 */
-	public decode(data: Uint8Array): [bigint, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [bigint, number] {
 		const view = new DataView(
 			data.buffer,
-			data.byteOffset,
-			data.byteLength,
+			data.byteOffset + offset,
+			data.byteLength - offset,
 		);
 		return [view.getBigInt64(0, this.littleEndian), 8];
 	}
@@ -413,6 +425,8 @@ export class I64Codec extends Codec<bigint, bigint | number> {
 
 /** Default big-endian singleton {@link I64Codec} instance for signed 64-bit integers. */
 export const I64: I64Codec = new I64Codec();
+/** Inferred output type for {@link I64}. */
+export type I64 = Codec.InferOutput<typeof I64>;
 
 /**
  * Codec for unsigned 64-bit integers (`uint64_t`) using JavaScript `bigint`.
@@ -461,11 +475,11 @@ export class U64Codec extends Codec<bigint, bigint | number> {
 	 * @param data - Buffer to read from. Must have at least 8 bytes.
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `8`.
 	 */
-	public decode(data: Uint8Array): [bigint, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [bigint, number] {
 		const view = new DataView(
 			data.buffer,
-			data.byteOffset,
-			data.byteLength,
+			data.byteOffset + offset,
+			data.byteLength - offset,
 		);
 		return [view.getBigUint64(0, this.littleEndian), 8];
 	}
@@ -473,6 +487,8 @@ export class U64Codec extends Codec<bigint, bigint | number> {
 
 /** Default big-endian singleton {@link U64Codec} instance for unsigned 64-bit integers. */
 export const U64: U64Codec = new U64Codec();
+/** Inferred output type for {@link U64}. */
+export type U64 = Codec.InferOutput<typeof U64>;
 
 /**
  * Codec for IEEE 754 single-precision (32-bit) floating-point numbers.
@@ -521,11 +537,11 @@ export class F32Codec extends Codec<number, number | bigint> {
 	 * @param data - Buffer to read from. Must have at least 4 bytes.
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `4`.
 	 */
-	public decode(data: Uint8Array): [number, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [number, number] {
 		const view = new DataView(
 			data.buffer,
-			data.byteOffset,
-			data.byteLength,
+			data.byteOffset + offset,
+			data.byteLength - offset,
 		);
 		return [view.getFloat32(0, this.littleEndian), 4];
 	}
@@ -533,6 +549,8 @@ export class F32Codec extends Codec<number, number | bigint> {
 
 /** Default big-endian singleton {@link F32Codec} instance for 32-bit floats. */
 export const F32: F32Codec = new F32Codec();
+/** Inferred output type for {@link F32}. */
+export type F32 = Codec.InferOutput<typeof F32>;
 
 /**
  * Codec for IEEE 754 double-precision (64-bit) floating-point numbers.
@@ -581,11 +599,11 @@ export class F64Codec extends Codec<number, number | bigint> {
 	 * @param data - Buffer to read from. Must have at least 8 bytes.
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `8`.
 	 */
-	public decode(data: Uint8Array): [number, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [number, number] {
 		const view = new DataView(
 			data.buffer,
-			data.byteOffset,
-			data.byteLength,
+			data.byteOffset + offset,
+			data.byteLength - offset,
 		);
 		return [view.getFloat64(0, this.littleEndian), 8];
 	}
@@ -593,6 +611,8 @@ export class F64Codec extends Codec<number, number | bigint> {
 
 /** Default big-endian singleton {@link F64Codec} instance for 64-bit doubles. */
 export const F64: F64Codec = new F64Codec();
+/** Inferred output type for {@link F64}. */
+export type F64 = Codec.InferOutput<typeof F64>;
 
 /**
  * Codec for boolean values encoded as a single byte.
@@ -634,39 +654,57 @@ export class BoolCodec extends Codec<boolean> {
 	 * @returns Tuple of `[value, bytesConsumed]` where `bytesConsumed` is always `1`.
 	 *          Any non-zero byte yields `true`.
 	 */
-	public decode(data: Uint8Array): [boolean, number] {
-		return [data[0] !== 0, 1];
+	public decodeFrom(data: Uint8Array, offset: number): [boolean, number] {
+		return [data[offset] !== 0, 1];
 	}
 }
 
 /** Singleton {@link BoolCodec} instance for boolean values. */
 export const Bool: BoolCodec = new BoolCodec();
+/** Inferred output type for {@link Bool}. */
+export type Bool = Codec.InferOutput<typeof Bool>;
 
 // ── Little-endian singletons ─────────────────────────────────────────────────
 
 /** Little-endian singleton {@link I16Codec} instance for signed 16-bit integers. */
 export const I16LE: I16Codec = new I16Codec({ endian: "le" });
+/** Inferred output type for {@link I16LE}. */
+export type I16LE = Codec.InferOutput<typeof I16LE>;
 
 /** Little-endian singleton {@link U16Codec} instance for unsigned 16-bit integers. */
 export const U16LE: U16Codec = new U16Codec({ endian: "le" });
+/** Inferred output type for {@link U16LE}. */
+export type U16LE = Codec.InferOutput<typeof U16LE>;
 
 /** Little-endian singleton {@link I32Codec} instance for signed 32-bit integers. */
 export const I32LE: I32Codec = new I32Codec({ endian: "le" });
+/** Inferred output type for {@link I32LE}. */
+export type I32LE = Codec.InferOutput<typeof I32LE>;
 
 /** Little-endian singleton {@link U32Codec} instance for unsigned 32-bit integers. */
 export const U32LE: U32Codec = new U32Codec({ endian: "le" });
+/** Inferred output type for {@link U32LE}. */
+export type U32LE = Codec.InferOutput<typeof U32LE>;
 
 /** Little-endian singleton {@link I64Codec} instance for signed 64-bit integers. */
 export const I64LE: I64Codec = new I64Codec({ endian: "le" });
+/** Inferred output type for {@link I64LE}. */
+export type I64LE = Codec.InferOutput<typeof I64LE>;
 
 /** Little-endian singleton {@link U64Codec} instance for unsigned 64-bit integers. */
 export const U64LE: U64Codec = new U64Codec({ endian: "le" });
+/** Inferred output type for {@link U64LE}. */
+export type U64LE = Codec.InferOutput<typeof U64LE>;
 
 /** Little-endian singleton {@link F32Codec} instance for 32-bit floats. */
 export const F32LE: F32Codec = new F32Codec({ endian: "le" });
+/** Inferred output type for {@link F32LE}. */
+export type F32LE = Codec.InferOutput<typeof F32LE>;
 
 /** Little-endian singleton {@link F64Codec} instance for 64-bit doubles. */
 export const F64LE: F64Codec = new F64Codec({ endian: "le" });
+/** Inferred output type for {@link F64LE}. */
+export type F64LE = Codec.InferOutput<typeof F64LE>;
 
 /**
  * Codec for void / no-op values.
@@ -704,10 +742,12 @@ export class VoidCodec extends Codec<void, null | undefined | void> {
 	 * @param _data - Ignored.
 	 * @returns Tuple `[undefined, 0]`.
 	 */
-	public override decode(_data: Uint8Array): [void, number] {
+	public override decodeFrom(_data: Uint8Array, _offset: number): [void, number] {
 		return [void 0, 0];
 	}
 }
 
 /** Singleton {@link VoidCodec} instance for no-op / zero-byte encoding. */
 export const Void: VoidCodec = new VoidCodec();
+/** Inferred output type for {@link Void}. */
+export type Void = Codec.InferOutput<typeof Void>;

@@ -102,22 +102,6 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 	public readonly stride: O extends { size: number } ? (T extends { stride: Stride<"fixed"> } ? Stride<"fixed"> : Stride<"variable">)
 		: Stride<"variable">;
 
-	public override size(value: ArrayInput<T>): number {
-		if (this.elementCount !== undefined && value.length !== this.elementCount) {
-			throw new RangeError(`Expected array of length ${this.elementCount}, got ${value.length}`);
-		}
-		let total = 0;
-		if (this.elementCount === undefined) {
-			total += this.counter.size(value.length);
-		}
-		if (this.item.stride.kind === "fixed") {
-			total += value.length * this.item.stride.size;
-		} else {
-			for (const item of value) total += this.item.size(item);
-		}
-		return total;
-	}
-
 	/** Codec used to encode/decode the element count prefix. Unused in fixed-size mode. */
 	public readonly counter: Codec<number>;
 	/** Codec used to encode/decode individual array elements. */
@@ -233,28 +217,28 @@ export class ArrayCodec<T extends ArrayGeneric, const O extends ArrayOptions | u
 	 * const [arr, n] = codec.decode(new Uint8Array([1, 2, 3, 99]));
 	 * // arr === [1, 2, 3], n === 3
 	 */
-	public decode(data: Uint8Array): [ArrayOutput<T>, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [ArrayOutput<T>, number] {
 		if (this.elementCount !== undefined) {
 			const result: ArrayOutput<T> = [];
-			let offset = 0;
+			let currentOffset = offset;
 			for (let i = 0; i < this.elementCount; i++) {
-				const [value, size] = this.item.decode(data.subarray(offset));
+				const [value, size] = this.item.decodeFrom(data, currentOffset);
 				result.push(value);
-				offset += size;
+				currentOffset += size;
 			}
-			return [result, offset];
+			return [result, currentOffset - offset];
 		}
 
-		const [count, bytesRead] = this.counter.decode(data);
+		const [count, bytesRead] = this.counter.decodeFrom(data, offset);
 		const result: ArrayOutput<T> = [];
-		let offset = bytesRead;
+		let currentOffset = offset + bytesRead;
 
 		for (let i = 0; i < count; i++) {
-			const [value, size] = this.item.decode(data.subarray(offset));
+			const [value, size] = this.item.decodeFrom(data, currentOffset);
 			result.push(value);
-			offset += size;
+			currentOffset += size;
 		}
 
-		return [result, offset];
+		return [result, currentOffset - offset];
 	}
 }

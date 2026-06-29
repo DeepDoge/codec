@@ -58,15 +58,6 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 	public readonly stride: Stride<"variable"> extends T[number]["stride"] ? Stride<"variable">
 		: Stride<"fixed">;
 
-	public override size(value: TupleInput<T>): number {
-		if (this.stride.kind === "fixed") return this.stride.size;
-		let total = 0;
-		for (let i = 0; i < this.items.length; i++) {
-			total += this.items[i]!.size(value[i]!);
-		}
-		return total;
-	}
-
 	constructor(items: T) {
 		super();
 		this.items = items;
@@ -137,15 +128,15 @@ export class TupleCodec<const T extends TupleGeneric> extends Codec<TupleOutput<
 	 * @example
 	 * const [[r, g, b], bytesRead] = RgbCodec.decode(bytes);
 	 */
-	public decode(data: Uint8Array): [TupleOutput<T>, number] {
+	public decodeFrom(data: Uint8Array, offset: number): [TupleOutput<T>, number] {
 		const values = new Array<unknown>(this.items.length) as TupleOutput<T>;
-		let offset = 0;
+		let currentOffset = offset;
 		for (let i = 0; i < this.items.length; i++) {
 			const item = this.items[i]!;
-			const [value, size] = item.decode(data.subarray(offset));
+			const [value, size] = item.decodeFrom(data, currentOffset);
 			values[i] = value;
-			offset += size;
+			currentOffset += size;
 		}
-		return [values, offset];
+		return [values, currentOffset - offset];
 	}
 }

@@ -83,14 +83,6 @@ export type EnumOptions = {
 export class EnumCodec<const T extends EnumGeneric> extends Codec<EnumOutput<T>, EnumInput<T>> {
 	public readonly stride: Stride<"variable"> = { kind: "variable" };
 
-	public override size(value: EnumInput<T>): number {
-		const index = this.keys.indexOf(value.kind);
-		if (index === -1) {
-			throw new Error(`Invalid union variant: ${String(value.kind)}`);
-		}
-		return this.indexer.size(index) + this.variants[value.kind]!.size(value.value as never);
-	}
-
 	/** The variants map passed to the constructor. */
 	public readonly variants: T;
 	/** The codec used to encode/decode the variant index. */
@@ -157,14 +149,14 @@ export class EnumCodec<const T extends EnumGeneric> extends Codec<EnumOutput<T>,
 	 * const [shape, bytesRead] = ShapeCodec.decode(bytes);
 	 * if (shape.kind === "Circle") { ... }
 	 */
-	public decode(data: Uint8Array): [EnumOutput<T>, number] {
-		const [index, indexSize] = this.indexer.decode(data);
+	public decodeFrom(data: Uint8Array, offset: number): [EnumOutput<T>, number] {
+		const [index, indexSize] = this.indexer.decodeFrom(data, offset);
 		if (index >= this.keys.length) {
 			throw new Error(`Invalid union index: ${index}`);
 		}
 		const key = this.keys[index]!;
 		const codec = this.variants[key]!;
-		const [value, size] = codec.decode(data.subarray(indexSize));
+		const [value, size] = codec.decodeFrom(data, offset + indexSize);
 		return [{ kind: key, value } as never, indexSize + size];
 	}
 }

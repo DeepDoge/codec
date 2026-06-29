@@ -97,21 +97,6 @@ export abstract class Codec<O extends I = any, I = O> {
 	public abstract readonly stride: Stride;
 
 	/**
-	 * Number of bytes `encodeInto` will write for `value`, computed without
-	 * allocating. Fixed-size codecs inherit this; variable-size codecs must
-	 * override. Invariant: size(v) === encodeInto(v, buf, 0).
-	 */
-	public size(value: I): number {
-		if (this.stride.kind === "fixed") return this.stride.size;
-		if (!Codec.suppressWarnings) {
-			console.warn(
-				`${this.constructor.name}.size() falling back to encode().length — add a size() override to avoid allocating.`,
-			);
-		}
-		return this.encode(value).length;
-	}
-
-	/**
 	 * Encodes `value` into binary.
 	 *
 	 * @param value - The value to encode.
@@ -129,9 +114,7 @@ export abstract class Codec<O extends I = any, I = O> {
 
 	public encodeInto(value: I, target: Uint8Array, offset?: number): number {
 		if (!Codec.suppressWarnings) {
-			console.warn(
-				`${this.constructor.name}.encodeInto() falling back to encode() + set() — add an encodeInto() override to avoid allocating.`,
-			);
+			console.warn(`${this.constructor.name}.encodeInto() falling back to encode() + target.set().`);
 		}
 		const bytes = this.encode(value);
 		target.set(bytes, offset);
@@ -139,36 +122,25 @@ export abstract class Codec<O extends I = any, I = O> {
 	}
 
 	/**
-	 * Decodes a value from the beginning of `data`.
-	 *
-	 * @param data - Source bytes. The codec reads from offset 0 and may read
-	 *   fewer bytes than `data.length` for variable-length codecs.
-	 * @returns A tuple `[value, bytesConsumed]` where `bytesConsumed` is the
-	 *   number of bytes read from `data`.
-	 *
-	 * @example
-	 * const [value, size] = U32.decode(new Uint8Array([0, 0, 0, 42, 0xFF]));
-	 * // value => 42, size => 4
+	 * Decodes a value from the beginning of `data`. Equivalent to
+	 * {@link decodeFrom} with `offset` 0.
 	 */
-	public abstract decode(
-		data: Uint8Array,
-	): [O, number];
+	public decode(data: Uint8Array): [O, number] {
+		return this.decodeFrom(data, 0);
+	}
 
 	/**
-	 * Convenience wrapper around {@link decode} that discards the byte-count and
-	 * returns only the decoded value.
+	 * Decodes a value starting at `offset` within `data`.
 	 *
-	 * @param data - Source bytes, read from offset 0.
-	 * @returns The decoded value.
-	 *
+	 * @param data - Source bytes.
+	 * @param offset - Byte position to begin reading from.
+	 * @returns A tuple `[value, bytesConsumed]` where `bytesConsumed` is the
+	 *   number of bytes read starting at `offset` (not including `offset` itself).
 	 * @example
-	 * const value = U32.decodeValue(new Uint8Array([0, 0, 0, 7]));
-	 * // value => 7
+	 * const [value, size] = U32.decodeFrom(new Uint8Array([0xFF, 0, 0, 0, 42]), 1);
+	 * // value => 42, size => 4
 	 */
-	public decodeValue(data: Uint8Array): O {
-		const [value] = this.decode(data);
-		return value;
-	}
+	public abstract decodeFrom(data: Uint8Array, offset: number): [O, number];
 
 	/**
 	 * Creates a new {@link TransformCodec} that wraps this codec and applies
@@ -257,10 +229,6 @@ export class TransformCodec<
 	/** Stride inherited from the inner codec. */
 	public readonly stride: C["stride"];
 
-	public override size(value: I): number {
-		return this.inner.size(value);
-	}
-
 	/** The wrapped inner codec. */
 	public readonly inner: C;
 	private readonly transformer: (value: O, bytes: Uint8Array) => T;
@@ -302,9 +270,9 @@ export class TransformCodec<
 	 * const [s] = UpperStr.decode(encoded);
 	 * // s => "HELLO"
 	 */
-	public override decode(data: Uint8Array): [T, number] {
-		const [value, size] = this.inner.decode(data);
-		const bytes = data.subarray(0, size);
+	public override decodeFrom(data: Uint8Array, offset: number): [T, number] {
+		const [value, size] = this.inner.decodeFrom(data, offset);
+		const bytes = data.subarray(offset, offset + size);
 		const transformed = this.transformer(value, bytes);
 		return [transformed, size];
 	}
